@@ -143,9 +143,13 @@ def preprocess_for_position(df: pd.DataFrame, xscaler, xscaler_features: List[st
         raise ValueError(f"Features referenced by artifacts were not found in xscaler_features: {missing}")
 
     # Align columns in scaler order
-    X = df[xscaler_features].to_numpy()
-    X = np.nan_to_num(X).astype("float32")
-    X_scaled = xscaler.transform(X)
+    # Use a DataFrame with the scaler's expected column names to avoid feature-name warnings
+    X_df = df[xscaler_features].copy()
+    # Ensure numeric dtype and no NaNs before scaling
+    for col in X_df.columns:
+        X_df[col] = pd.to_numeric(X_df[col], errors="coerce")
+    X_df = X_df.fillna(0.0)
+    X_scaled = xscaler.transform(X_df)
     X_scaled = np.nan_to_num(X_scaled).astype("float32")
 
     # Subselect to the features used by the trained models for this position
