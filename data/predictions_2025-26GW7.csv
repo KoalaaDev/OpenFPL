@@ -1,0 +1,741 @@
+season,gw,position,player,team,opponent,home,prediction
+2025-26,7,DEF,Gabriel dos Santos Magalhães,Arsenal,West Ham,True,3.8772278062624865
+2025-26,7,DEF,Jurriën Timber,Arsenal,West Ham,True,3.7049634647394494
+2025-26,7,DEF,Tyrick Mitchell,Crystal Palace,Everton,False,3.519186930601687
+2025-26,7,DEF,Omar Alderete,Sunderland,Man Utd,False,3.4255768225241208
+2025-26,7,DEF,Marcos Senesi Barón,Bournemouth,Fulham,True,3.3712080870947636
+2025-26,7,DEF,Sepp van den Berg,Brentford,Man City,True,3.2687823897305868
+2025-26,7,DEF,Marc Guéhi,Crystal Palace,Everton,False,3.237204194237836
+2025-26,7,DEF,Maxime Estève,Burnley,Aston Villa,False,3.2277372203177794
+2025-26,7,DEF,Daniel Muñoz Mejía,Crystal Palace,Everton,False,3.1438722855358003
+2025-26,7,DEF,Kyle Walker,Burnley,Aston Villa,False,3.117662304627312
+2025-26,7,DEF,Neco Williams,Nott'm Forest,Newcastle,False,3.086093425624649
+2025-26,7,DEF,Michael Keane,Everton,Crystal Palace,True,3.085680786801663
+2025-26,7,DEF,Cristian Romero,Spurs,Leeds,False,3.0822385699257593
+2025-26,7,DEF,Micky van de Ven,Spurs,Leeds,False,3.066927159807642
+2025-26,7,DEF,Chris Richards,Crystal Palace,Everton,False,3.0435034400346157
+2025-26,7,DEF,Hjalmar Ekdal,Burnley,Aston Villa,False,3.020752560292553
+2025-26,7,DEF,Nordi Mukiele,Sunderland,Man Utd,False,2.9802436526085105
+2025-26,7,DEF,Maxence Lacroix,Crystal Palace,Everton,False,2.9717379412435623
+2025-26,7,DEF,Adrien Truffert,Bournemouth,Fulham,True,2.9382460841155
+2025-26,7,DEF,Hugo Bueno López,Wolves,Brighton,True,2.938203535732602
+2025-26,7,DEF,Joe Rodon,Leeds,Spurs,True,2.922668563020256
+2025-26,7,DEF,Joachim Andersen,Fulham,Bournemouth,False,2.9132903786792057
+2025-26,7,DEF,James Tarkowski,Everton,Crystal Palace,True,2.8791268365794345
+2025-26,7,DEF,Santiago Ignacio Bueno,Wolves,Brighton,True,2.858692730451623
+2025-26,7,DEF,El Hadji Malick Diouf,West Ham,Arsenal,False,2.8504026193718643
+2025-26,7,DEF,Virgil van Dijk,Liverpool,Chelsea,False,2.8431172022498354
+2025-26,7,DEF,Ibrahima Konaté,Liverpool,Chelsea,False,2.8292081955838233
+2025-26,7,DEF,Trai Hume,Sunderland,Man Utd,False,2.822112440257568
+2025-26,7,DEF,Riccardo Calafiori,Arsenal,West Ham,True,2.7977714406787437
+2025-26,7,DEF,Dan Burn,Newcastle,Nott'm Forest,True,2.7942272906915617
+2025-26,7,DEF,Matty Cash,Aston Villa,Burnley,True,2.79074854223059
+2025-26,7,DEF,Tino Livramento,Newcastle,Nott'm Forest,True,2.7790242206843443
+2025-26,7,DEF,Lucas Digne,Aston Villa,Burnley,True,2.7643951839257275
+2025-26,7,DEF,Sven Botman,Newcastle,Nott'm Forest,True,2.7599056491354768
+2025-26,7,DEF,Ladislav Krejcí,Wolves,Brighton,True,2.719041154076834
+2025-26,7,DEF,Bafodé Diakité,Bournemouth,Fulham,True,2.718886570393832
+2025-26,7,DEF,Matheus Nunes,Man City,Brentford,False,2.6753797265715593
+2025-26,7,DEF,Nico O'Reilly,Man City,Brentford,False,2.6678826755648224
+2025-26,7,DEF,Oleksandr Zinchenko,Nott'm Forest,Newcastle,False,2.660328108873648
+2025-26,7,DEF,Joško Gvardiol,Man City,Brentford,False,2.657999346357504
+2025-26,7,DEF,Patrick Dorgu,Man Utd,Sunderland,True,2.6229094451306327
+2025-26,7,DEF,Lamare Bogarde,Aston Villa,Burnley,True,2.609792877071201
+2025-26,7,DEF,Quilindschy Hartman,Burnley,Aston Villa,False,2.5943552028612
+2025-26,7,DEF,Malick Thiaw,Newcastle,Nott'm Forest,True,2.583346238966011
+2025-26,7,DEF,Jake O'Brien,Everton,Crystal Palace,True,2.5829993257859205
+2025-26,7,DEF,Ferdi Kadıoğlu,Brighton,Wolves,False,2.564392213064229
+2025-26,7,DEF,Destiny Udogie,Spurs,Leeds,False,2.558041623173162
+2025-26,7,DEF,Jan Paul van Hecke,Brighton,Wolves,False,2.5481924984280426
+2025-26,7,DEF,Reece James,Chelsea,Liverpool,True,2.5382376515814684
+2025-26,7,DEF,Calvin Bassey,Fulham,Bournemouth,False,2.532240832777159
+2025-26,7,DEF,Ezri Konsa Ngoyo,Aston Villa,Burnley,True,2.5235314228781327
+2025-26,7,DEF,Nathan Collins,Brentford,Man City,True,2.5141606581265057
+2025-26,7,DEF,Maximilian Kilman,West Ham,Arsenal,False,2.497601796562245
+2025-26,7,DEF,Pascal Struijk,Leeds,Spurs,True,2.493431806564331
+2025-26,7,DEF,Rúben dos Santos Gato Alves Dias,Man City,Brentford,False,2.4396404610722753
+2025-26,7,DEF,Konstantinos Mavropanos,West Ham,Arsenal,False,2.43876569078857
+2025-26,7,DEF,Kieran Trippier,Newcastle,Nott'm Forest,True,2.437791183718443
+2025-26,7,DEF,Gabriel Gudmundsson,Leeds,Spurs,True,2.4352739128862435
+2025-26,7,DEF,Jayden Bogle,Leeds,Spurs,True,2.4320215710521214
+2025-26,7,DEF,Matthijs de Ligt,Man Utd,Sunderland,True,2.4306982458935664
+2025-26,7,DEF,Marc Cucurella Saseta,Chelsea,Liverpool,True,2.429465670441954
+2025-26,7,DEF,Kyle Walker-Peters,West Ham,Arsenal,False,2.423911423522173
+2025-26,7,DEF,Milos Kerkez,Liverpool,Chelsea,False,2.4054158656790223
+2025-26,7,DEF,Felipe Rodrigues da Silva,Nott'm Forest,Newcastle,False,2.397194168914831
+2025-26,7,DEF,Nikola Milenković,Nott'm Forest,Newcastle,False,2.393957723025526
+2025-26,7,DEF,Lewis Dunk,Brighton,Wolves,False,2.3282686469957072
+2025-26,7,DEF,Michael Kayode,Brentford,Man City,True,2.3078795671463013
+2025-26,7,DEF,Harry Maguire,Man Utd,Sunderland,True,2.287103629978991
+2025-26,7,DEF,Benoît Badiashile Mukinayi,Chelsea,Liverpool,True,2.282396497764009
+2025-26,7,DEF,Timothy Castagne,Fulham,Bournemouth,False,2.272953224261083
+2025-26,7,DEF,Vitalii Mykolenko,Everton,Crystal Palace,True,2.219696283340454
+2025-26,7,DEF,Aaron Hickey,Brentford,Man City,True,2.198502971406085
+2025-26,7,DEF,Diogo Dalot Teixeira,Man Utd,Sunderland,True,2.1866263663563332
+2025-26,7,DEF,Luke Shaw,Man Utd,Sunderland,True,2.092919851130863
+2025-26,7,DEF,Pedro Porro Sauceda,Spurs,Leeds,False,2.0921654834854415
+2025-26,7,DEF,Jorrel Hato,Chelsea,Liverpool,True,2.0687692824128945
+2025-26,7,DEF,Djed Spence,Spurs,Leeds,False,1.9063176440677636
+2025-26,7,DEF,Trevoh Chalobah,Chelsea,Liverpool,True,1.8947041219526382
+2025-26,7,DEF,Álex Jiménez Sánchez,Bournemouth,Fulham,True,1.835827465064447
+2025-26,7,DEF,Josh Acheampong,Chelsea,Liverpool,True,1.8011400705473053
+2025-26,7,DEF,Maxim De Cuyper,Brighton,Wolves,False,1.6352388243174307
+2025-26,7,DEF,Pau Torres,Aston Villa,Burnley,True,1.628994629929433
+2025-26,7,DEF,Tyrone Mings,Aston Villa,Burnley,True,1.586686647863361
+2025-26,7,DEF,William Saliba,Arsenal,West Ham,True,1.5420508050545974
+2025-26,7,DEF,Jamaal Lascelles,Newcastle,Nott'm Forest,True,1.510957637100458
+2025-26,7,DEF,Jeremie Frimpong,Liverpool,Chelsea,False,1.4896465610368983
+2025-26,7,DEF,Leny Yoro,Man Utd,Sunderland,True,1.4862024671768166
+2025-26,7,DEF,Conor Bradley,Liverpool,Chelsea,False,1.442359745502472
+2025-26,7,DEF,Cristhian Mosquera,Arsenal,West Ham,True,1.432788610458374
+2025-26,7,DEF,Emmanuel Agbadou,Wolves,Brighton,True,1.427899110958347
+2025-26,7,DEF,Keane Lewis-Potter,Brentford,Man City,True,1.427366222478955
+2025-26,7,DEF,Bashir Humphreys,Burnley,Aston Villa,False,1.4245396897100298
+2025-26,7,DEF,Daniel Ballard,Sunderland,Man Utd,False,1.390271008014679
+2025-26,7,DEF,Malo Gusto,Chelsea,Liverpool,True,1.3703096426401093
+2025-26,7,DEF,Andrew Robertson,Liverpool,Chelsea,False,1.3348422646522522
+2025-26,7,DEF,Arthur Masuaku,Sunderland,Man Utd,False,1.327038814981925
+2025-26,7,DEF,Joël Veltman,Brighton,Wolves,False,1.3161279749361385
+2025-26,7,DEF,Rodrigo Martins Gomes,Wolves,Brighton,True,1.2626124562494172
+2025-26,7,DEF,Jackson Tchatchoua,Wolves,Brighton,True,1.257245191213132
+2025-26,7,DEF,Fabian Schär,Newcastle,Nott'm Forest,True,1.1920413928790379
+2025-26,7,DEF,Kenny Tete,Fulham,Bournemouth,False,1.1648362251525008
+2025-26,7,DEF,Matt Doherty,Wolves,Brighton,True,1.1560679983746327
+2025-26,7,DEF,Noussair Mazraoui,Man Utd,Sunderland,True,1.098479300610908
+2025-26,7,DEF,Lutsharel Geertruida,Sunderland,Man Utd,False,1.0959054812844358
+2025-26,7,DEF,Rico Henry,Brentford,Man City,True,1.093330262903899
+2025-26,7,DEF,Jean-Clair Todibo,West Ham,Arsenal,False,1.0822607537272089
+2025-26,7,DEF,Rico Lewis,Man City,Brentford,False,1.0695629481187123
+2025-26,7,DEF,Nathan Aké,Man City,Brentford,False,1.0571170637108955
+2025-26,7,DEF,Abdukodir Khusanov,Man City,Brentford,False,1.0532937043262907
+2025-26,7,DEF,Tosin Adarabioyo,Chelsea,Liverpool,True,1.0062431490032175
+2025-26,7,DEF,Reinildo Mandava,Sunderland,Man Utd,False,0.9846549437724176
+2025-26,7,DEF,Lewis Hall,Newcastle,Nott'm Forest,True,0.9749815480575112
+2025-26,7,DEF,Toti Gomes,Wolves,Brighton,True,0.9729578205275642
+2025-26,7,DEF,Aaron Wan-Bissaka,West Ham,Arsenal,False,0.9691051171921192
+2025-26,7,DEF,James Hill,Bournemouth,Fulham,True,0.9540356589885081
+2025-26,7,DEF,Antonee Robinson,Fulham,Bournemouth,False,0.9103827114147365
+2025-26,7,DEF,Kristoffer Ajer,Brentford,Man City,True,0.909223438592279
+2025-26,7,DEF,Myles Lewis-Skelly,Arsenal,West Ham,True,0.8986611987690649
+2025-26,7,DEF,Nayef Aguerd,West Ham,Arsenal,False,0.8764640053309452
+2025-26,7,DEF,Ethan Pinnock,Brentford,Man City,True,0.8076612902964837
+2025-26,7,DEF,Ian Maatsen,Aston Villa,Burnley,True,0.803176153667057
+2025-26,7,DEF,Victor Lindelöf,Aston Villa,Burnley,True,0.7724139328808388
+2025-26,7,DEF,John Stones,Man City,Brentford,False,0.7657945282139383
+2025-26,7,DEF,Veljko Milosavljevic,Bournemouth,Fulham,True,0.7646945296546768
+2025-26,7,DEF,Yerson Mosquera Valdelamar,Wolves,Brighton,True,0.721355484273654
+2025-26,7,DEF,Oliver Sonne,Burnley,Aston Villa,False,0.7182684387392481
+2025-26,7,DEF,Nicolò Savona,Nott'm Forest,Newcastle,False,0.707159678010873
+2025-26,7,DEF,Wesley Fofana,Chelsea,Liverpool,True,0.705857166381617
+2025-26,7,DEF,Chris Mepham,Bournemouth,Fulham,True,0.7001986079925488
+2025-26,7,DEF,Illia Zabarnyi,Bournemouth,Fulham,True,0.7001986079925488
+2025-26,7,DEF,Julián Araujo Zúñiga,Bournemouth,Fulham,True,0.7001986079925488
+2025-26,7,DEF,Matai Akinmboni,Bournemouth,Fulham,True,0.7001986079925488
+2025-26,7,DEF,Owen Bevan,Bournemouth,Fulham,True,0.7001986079925488
+2025-26,7,DEF,Issa Diop,Fulham,Bournemouth,False,0.7001986079925488
+2025-26,7,DEF,Samuel Amissah,Fulham,Bournemouth,False,0.7001986079925488
+2025-26,7,DEF,Isaac Schmidt,Leeds,Spurs,True,0.7001986079925488
+2025-26,7,DEF,Jaka Bijol,Leeds,Spurs,True,0.7001986079925488
+2025-26,7,DEF,Sebastiaan Bornauw,Leeds,Spurs,True,0.7001986079925488
+2025-26,7,DEF,Ashley Phillips,Spurs,Leeds,False,0.7001986079925488
+2025-26,7,DEF,Ben Davies,Spurs,Leeds,False,0.7001986079925488
+2025-26,7,DEF,Luka Vušković,Spurs,Leeds,False,0.7001986079925488
+2025-26,7,DEF,Radu Drăgușin,Spurs,Leeds,False,0.7001986079925488
+2025-26,7,DEF,Takai Kōta,Spurs,Leeds,False,0.7001986079925488
+2025-26,7,DEF,Brayden Clarke,Arsenal,West Ham,True,0.7001986079925488
+2025-26,7,DEF,Jakub Kiwior,Arsenal,West Ham,True,0.7001986079925488
+2025-26,7,DEF,Josh Nichols,Arsenal,West Ham,True,0.7001986079925488
+2025-26,7,DEF,Maldini Kacurri,Arsenal,West Ham,True,0.7001986079925488
+2025-26,7,DEF,Piero Hincapié,Arsenal,West Ham,True,0.7001986079925488
+2025-26,7,DEF,Emerson Palmieri dos Santos,West Ham,Arsenal,False,0.7001986079925488
+2025-26,7,DEF,Kaelan Casey,West Ham,Arsenal,False,0.7001986079925488
+2025-26,7,DEF,Ollie Scarles,West Ham,Arsenal,False,0.7001986079925488
+2025-26,7,DEF,Diego León Blanco,Man Utd,Sunderland,True,0.7001986079925488
+2025-26,7,DEF,Harry Amass,Man Utd,Sunderland,True,0.7001986079925488
+2025-26,7,DEF,Lisandro Martínez,Man Utd,Sunderland,True,0.7001986079925488
+2025-26,7,DEF,Tyler Fredricson,Man Utd,Sunderland,True,0.7001986079925488
+2025-26,7,DEF,Tyrell Malacia,Man Utd,Sunderland,True,0.7001986079925488
+2025-26,7,DEF,Aji Alese,Sunderland,Man Utd,False,0.7001986079925488
+2025-26,7,DEF,Dennis Cirkin,Sunderland,Man Utd,False,0.7001986079925488
+2025-26,7,DEF,Joe Anderson,Sunderland,Man Utd,False,0.7001986079925488
+2025-26,7,DEF,Leo Fuhr Hjelde,Sunderland,Man Utd,False,0.7001986079925488
+2025-26,7,DEF,Luke O'Nien,Sunderland,Man Utd,False,0.7001986079925488
+2025-26,7,DEF,Niall Huggins,Sunderland,Man Utd,False,0.7001986079925488
+2025-26,7,DEF,Timothée Pembélé,Sunderland,Man Utd,False,0.7001986079925488
+2025-26,7,DEF,Zak Johnson,Sunderland,Man Utd,False,0.7001986079925488
+2025-26,7,DEF,Aarón Anselmino,Chelsea,Liverpool,True,0.7001986079925488
+2025-26,7,DEF,Levi Samuels Colwill,Chelsea,Liverpool,True,0.7001986079925488
+2025-26,7,DEF,Mamadou Sarr,Chelsea,Liverpool,True,0.7001986079925488
+2025-26,7,DEF,Amara Nallo,Liverpool,Chelsea,False,0.7001986079925488
+2025-26,7,DEF,Calvin Ramsay,Liverpool,Chelsea,False,0.7001986079925488
+2025-26,7,DEF,Giovanni Leoni,Liverpool,Chelsea,False,0.7001986079925488
+2025-26,7,DEF,Konstantinos Tsimikas,Liverpool,Chelsea,False,0.7001986079925488
+2025-26,7,DEF,Rhys Williams,Liverpool,Chelsea,False,0.7001986079925488
+2025-26,7,DEF,Andrés García,Aston Villa,Burnley,True,0.7001986079925488
+2025-26,7,DEF,Lino da Cruz Sousa,Aston Villa,Burnley,True,0.7001986079925488
+2025-26,7,DEF,Travis Patterson,Aston Villa,Burnley,True,0.7001986079925488
+2025-26,7,DEF,Triston Rowe,Aston Villa,Burnley,True,0.7001986079925488
+2025-26,7,DEF,Yasin Özcan,Aston Villa,Burnley,True,0.7001986079925488
+2025-26,7,DEF,Álex Moreno Lopera,Aston Villa,Burnley,True,0.7001986079925488
+2025-26,7,DEF,Axel Tuanzebe,Burnley,Aston Villa,False,0.7001986079925488
+2025-26,7,DEF,Connor Roberts,Burnley,Aston Villa,False,0.7001986079925488
+2025-26,7,DEF,Hannes Delcroix,Burnley,Aston Villa,False,0.7001986079925488
+2025-26,7,DEF,Jordan Beyer,Burnley,Aston Villa,False,0.7001986079925488
+2025-26,7,DEF,Lucas Pires Silva,Burnley,Aston Villa,False,0.7001986079925488
+2025-26,7,DEF,Owen Dodgson,Burnley,Aston Villa,False,0.7001986079925488
+2025-26,7,DEF,Shurandy Sambo,Burnley,Aston Villa,False,0.7001986079925488
+2025-26,7,DEF,Adam Aznou,Everton,Crystal Palace,True,0.7001986079925488
+2025-26,7,DEF,Elijah Campbell,Everton,Crystal Palace,True,0.7001986079925488
+2025-26,7,DEF,Jarrad Branthwaite,Everton,Crystal Palace,True,0.7001986079925488
+2025-26,7,DEF,Nathan Patterson,Everton,Crystal Palace,True,0.7001986079925488
+2025-26,7,DEF,Reece Welch,Everton,Crystal Palace,True,0.7001986079925488
+2025-26,7,DEF,Roman Dixon,Everton,Crystal Palace,True,0.7001986079925488
+2025-26,7,DEF,Borna Sosa,Crystal Palace,Everton,False,0.7001986079925488
+2025-26,7,DEF,Caleb Kporha,Crystal Palace,Everton,False,0.7001986079925488
+2025-26,7,DEF,Chadi Riad Dnanou,Crystal Palace,Everton,False,0.7001986079925488
+2025-26,7,DEF,Jaydee Canvot,Crystal Palace,Everton,False,0.7001986079925488
+2025-26,7,DEF,Rob Holding,Crystal Palace,Everton,False,0.7001986079925488
+2025-26,7,DEF,Alex Murphy,Newcastle,Nott'm Forest,True,0.7001986079925488
+2025-26,7,DEF,Emil Krafth,Newcastle,Nott'm Forest,True,0.7001986079925488
+2025-26,7,DEF,Harrison Ashby,Newcastle,Nott'm Forest,True,0.7001986079925488
+2025-26,7,DEF,Matt Targett,Newcastle,Nott'm Forest,True,0.7001986079925488
+2025-26,7,DEF,Miodrag Pivaš,Newcastle,Nott'm Forest,True,0.7001986079925488
+2025-26,7,DEF,David Mota Veiga Teixeira do Carmo,Nott'm Forest,Newcastle,False,0.7001986079925488
+2025-26,7,DEF,Jair Paula da Cunha Filho,Nott'm Forest,Newcastle,False,0.7001986079925488
+2025-26,7,DEF,Luis Eduardo Soares da Silva,Nott'm Forest,Newcastle,False,0.7001986079925488
+2025-26,7,DEF,Omar Richards,Nott'm Forest,Newcastle,False,0.7001986079925488
+2025-26,7,DEF,Willy Boly,Nott'm Forest,Newcastle,False,0.7001986079925488
+2025-26,7,DEF,Zach Abbott,Nott'm Forest,Newcastle,False,0.7001986079925488
+2025-26,7,DEF,Alfie Pond,Wolves,Brighton,True,0.7001986079925488
+2025-26,7,DEF,Bastien Meupiyou Menadjou,Wolves,Brighton,True,0.7001986079925488
+2025-26,7,DEF,Pedro Cardoso de Lima,Wolves,Brighton,True,0.7001986079925488
+2025-26,7,DEF,Adam Webster,Brighton,Wolves,False,0.7001986079925488
+2025-26,7,DEF,Charlie Tasker,Brighton,Wolves,False,0.7001986079925488
+2025-26,7,DEF,Eiran Cashin,Brighton,Wolves,False,0.7001986079925488
+2025-26,7,DEF,Jacob Slater,Brighton,Wolves,False,0.7001986079925488
+2025-26,7,DEF,Olivier Boscagli,Brighton,Wolves,False,0.7001986079925488
+2025-26,7,DEF,Pervis Estupiñán Tenorio,Brighton,Wolves,False,0.7001986079925488
+2025-26,7,DEF,Tariq Lamptey,Brighton,Wolves,False,0.7001986079925488
+2025-26,7,DEF,Benjamin Arthur,Brentford,Man City,True,0.7001986079925488
+2025-26,7,DEF,Benjamin Fredrick,Brentford,Man City,True,0.7001986079925488
+2025-26,7,DEF,Jayden Meghoma,Brentford,Man City,True,0.7001986079925488
+2025-26,7,DEF,Kim Ji-soo,Brentford,Man City,True,0.7001986079925488
+2025-26,7,DEF,Mads Roerslev Rasmussen,Brentford,Man City,True,0.7001986079925488
+2025-26,7,DEF,Manuel Akanji,Man City,Brentford,False,0.7001986079925488
+2025-26,7,DEF,Stephen Mfuni,Man City,Brentford,False,0.7001986079925488
+2025-26,7,DEF,Vitor de Oliveira Nunes dos Reis,Man City,Brentford,False,0.7001986079925488
+2025-26,7,DEF,Murillo Costa dos Santos,Nott'm Forest,Newcastle,False,0.6998909202915293
+2025-26,7,DEF,Diego Coppola,Brighton,Wolves,False,0.6901006385072518
+2025-26,7,DEF,Kevin Danso,Spurs,Leeds,False,0.6846231818199158
+2025-26,7,DEF,Ki-Jana Hoever,Wolves,Brighton,True,0.6664134952497174
+2025-26,7,DEF,James Justin,Leeds,Spurs,True,0.648797333240509
+2025-26,7,DEF,Ola Aina,Nott'm Forest,Newcastle,False,0.6265794266639702
+2025-26,7,DEF,Sam Byram,Leeds,Spurs,True,0.6154817492681683
+2025-26,7,DEF,Jorge Cuenca Barreno,Fulham,Bournemouth,False,0.6125110542670228
+2025-26,7,DEF,Igor Julio dos Santos de Paulo,West Ham,Arsenal,False,0.5777816772460938
+2025-26,7,DEF,Joe Worrall,Burnley,Aston Villa,False,0.5761996465822017
+2025-26,7,DEF,Rayan Aït-Nouri,Man City,Brentford,False,0.5634746412510356
+2025-26,7,DEF,Jenson Seelt,Sunderland,Man Utd,False,0.5522376298904419
+2025-26,7,DEF,Adam Smith,Bournemouth,Fulham,True,0.5487528145313263
+2025-26,7,DEF,Benjamin White,Arsenal,West Ham,True,0.5224610842519244
+2025-26,7,DEF,David Møller Wolfe,Wolves,Brighton,True,0.5125561058521271
+2025-26,7,DEF,Joe Gomez,Liverpool,Chelsea,False,0.4668758809566498
+2025-26,7,DEF,Nathaniel Clyne,Crystal Palace,Everton,False,0.4379841387271881
+2025-26,7,DEF,Julio Soler Barreto,Bournemouth,Fulham,True,0.43044352531433105
+2025-26,7,DEF,Séamus Coleman,Everton,Crystal Palace,True,0.42251306772232056
+2025-26,7,DEF,Ayden Heaven,Man Utd,Sunderland,True,0.40709835290908813
+2025-26,7,FWD,Erling Haaland,Man City,Brentford,False,4.676452745373646
+2025-26,7,FWD,Jean-Philippe Mateta,Crystal Palace,Everton,False,4.588482881280921
+2025-26,7,FWD,João Pedro Junqueira de Jesus,Chelsea,Liverpool,True,4.243784429184878
+2025-26,7,FWD,Viktor Gyökeres,Arsenal,West Ham,True,4.218950930707734
+2025-26,7,FWD,Wilson Isidor,Sunderland,Man Utd,False,4.139166610514609
+2025-26,7,FWD,Francisco Evanilson de Lima Barbosa,Bournemouth,Fulham,True,4.012220161094378
+2025-26,7,FWD,Jarrod Bowen,West Ham,Arsenal,False,3.9371591089728946
+2025-26,7,FWD,Benjamin Sesko,Man Utd,Sunderland,True,3.6778039007237453
+2025-26,7,FWD,Igor Thiago Nascimento Rodrigues,Brentford,Man City,True,3.5618253575497594
+2025-26,7,FWD,Dominic Calvert-Lewin,Leeds,Spurs,True,3.5146944401313185
+2025-26,7,FWD,Richarlison de Andrade,Spurs,Leeds,False,3.4964855787317966
+2025-26,7,FWD,Ollie Watkins,Aston Villa,Burnley,True,3.4160575241788567
+2025-26,7,FWD,Alexander Isak,Liverpool,Chelsea,False,3.3246275931475844
+2025-26,7,FWD,Niclas Füllkrug,West Ham,Arsenal,False,3.1854026065811545
+2025-26,7,FWD,Jørgen Strand Larsen,Wolves,Brighton,True,3.1851351013672895
+2025-26,7,FWD,Danny Welbeck,Brighton,Wolves,False,3.1374017524615923
+2025-26,7,FWD,Nick Woltemade,Newcastle,Nott'm Forest,True,3.0802266597747803
+2025-26,7,FWD,Lyle Foster,Burnley,Aston Villa,False,3.037140352518677
+2025-26,7,FWD,Chris Wood,Nott'm Forest,Newcastle,False,2.9828789930242086
+2025-26,7,FWD,Norberto Bercique Gomes Betuncal,Everton,Crystal Palace,True,2.3892135537020414
+2025-26,7,FWD,Igor Jesus Maciel da Cruz,Nott'm Forest,Newcastle,False,2.073317588540326
+2025-26,7,FWD,William Osula,Newcastle,Nott'm Forest,True,2.0122426170204077
+2025-26,7,FWD,Eli Junior Kroupi,Bournemouth,Fulham,True,1.6460363716004123
+2025-26,7,FWD,Thierno Barry,Everton,Crystal Palace,True,1.620706435406533
+2025-26,7,FWD,Eddie Nketiah,Crystal Palace,Everton,False,1.5633341833429493
+2025-26,7,FWD,Hugo Ekitiké,Liverpool,Chelsea,False,1.5019299739937577
+2025-26,7,FWD,Raúl Jiménez Rodríguez,Fulham,Bournemouth,False,1.3854556084979706
+2025-26,7,FWD,Rodrigo Muniz Carvalho,Fulham,Bournemouth,False,1.2719161384001214
+2025-26,7,FWD,Joshua Zirkzee,Man Utd,Sunderland,True,1.1984290188871274
+2025-26,7,FWD,Tolu Arokodare,Wolves,Brighton,True,1.1741233978070165
+2025-26,7,FWD,Armando Broja,Burnley,Aston Villa,False,1.1376626567011625
+2025-26,7,FWD,Stefanos Tzimas,Brighton,Wolves,False,1.1332627700983762
+2025-26,7,FWD,Brian Brobbey,Sunderland,Man Utd,False,1.0773279077844675
+2025-26,7,FWD,Arnaud Kalimuendo,Nott'm Forest,Newcastle,False,1.048064105141449
+2025-26,7,FWD,Daniel Adu-Adjei,Bournemouth,Fulham,True,1.0423497917083455
+2025-26,7,FWD,Enes Ünal,Bournemouth,Fulham,True,1.0423497917083455
+2025-26,7,FWD,Jonah Kusi-Asare,Fulham,Bournemouth,False,1.0423497917083455
+2025-26,7,FWD,Mateo Joseph Fernández-Regatillo,Leeds,Spurs,True,1.0423497917083455
+2025-26,7,FWD,Patrick Bamford,Leeds,Spurs,True,1.0423497917083455
+2025-26,7,FWD,Dane Scarlett,Spurs,Leeds,False,1.0423497917083455
+2025-26,7,FWD,Randal Kolo Muani,Spurs,Leeds,False,1.0423497917083455
+2025-26,7,FWD,Will Lankshear,Spurs,Leeds,False,1.0423497917083455
+2025-26,7,FWD,Gabriel Fernando de Jesus,Arsenal,West Ham,True,1.0423497917083455
+2025-26,7,FWD,Callum Marshall,West Ham,Arsenal,False,1.0423497917083455
+2025-26,7,FWD,Chido Obi,Man Utd,Sunderland,True,1.0423497917083455
+2025-26,7,FWD,Ethan Wheatley,Man Utd,Sunderland,True,1.0423497917083455
+2025-26,7,FWD,Rasmus Højlund,Man Utd,Sunderland,True,1.0423497917083455
+2025-26,7,FWD,Ahmed Abdullahi,Sunderland,Man Utd,False,1.0423497917083455
+2025-26,7,FWD,Luís Hemir Silva Semedo,Sunderland,Man Utd,False,1.0423497917083455
+2025-26,7,FWD,Nazarii Rusyn,Sunderland,Man Utd,False,1.0423497917083455
+2025-26,7,FWD,Nicolas Jackson,Chelsea,Liverpool,True,1.0423497917083455
+2025-26,7,FWD,Darwin Núñez Ribeiro,Liverpool,Chelsea,False,1.0423497917083455
+2025-26,7,FWD,Jayden Danns,Liverpool,Chelsea,False,1.0423497917083455
+2025-26,7,FWD,Zépiqueno Redmond,Aston Villa,Burnley,True,1.0423497917083455
+2025-26,7,FWD,Ashley Barnes,Burnley,Aston Villa,False,1.0423497917083455
+2025-26,7,FWD,Michael Obafemi,Burnley,Aston Villa,False,1.0423497917083455
+2025-26,7,FWD,Zeki Amdouni,Burnley,Aston Villa,False,1.0423497917083455
+2025-26,7,FWD,Martin Sherif,Everton,Crystal Palace,True,1.0423497917083455
+2025-26,7,FWD,Youssef Ramalho Chermiti,Everton,Crystal Palace,True,1.0423497917083455
+2025-26,7,FWD,Zach Marsh,Crystal Palace,Everton,False,1.0423497917083455
+2025-26,7,FWD,Sean Neave,Newcastle,Nott'm Forest,True,1.0423497917083455
+2025-26,7,FWD,Yoane Wissa,Newcastle,Nott'm Forest,True,1.0423497917083455
+2025-26,7,FWD,Taiwo Awoniyi,Nott'm Forest,Newcastle,False,1.0423497917083455
+2025-26,7,FWD,Fábio Soares Silva,Wolves,Brighton,True,1.0423497917083455
+2025-26,7,FWD,Leon Chiwome,Wolves,Brighton,True,1.0423497917083455
+2025-26,7,FWD,Nathan Fraser,Wolves,Brighton,True,1.0423497917083455
+2025-26,7,FWD,Charalampos Kostoulas,Brighton,Wolves,False,1.0423497917083455
+2025-26,7,FWD,Evan Ferguson,Brighton,Wolves,False,1.0423497917083455
+2025-26,7,FWD,Iwan Morgan,Brentford,Man City,True,1.0423497917083455
+2025-26,7,FWD,Odsonne Édouard,Crystal Palace,Everton,False,0.9852434345243428
+2025-26,7,FWD,Lukas Nmecha,Leeds,Spurs,True,0.971844080863848
+2025-26,7,FWD,Eliezer Mayenda Dossou,Sunderland,Man Utd,False,0.9099015819597268
+2025-26,7,FWD,Callum Wilson,West Ham,Arsenal,False,0.9096123057830389
+2025-26,7,FWD,Zian Flemming,Burnley,Aston Villa,False,0.8324907033230657
+2025-26,7,FWD,Saša Kalajdžić,Wolves,Brighton,True,0.7713175545882069
+2025-26,7,FWD,Kai Havertz,Arsenal,West Ham,True,0.7567163363193652
+2025-26,7,FWD,Dominic Solanke-Mitchell,Spurs,Leeds,False,0.6975396161667935
+2025-26,7,FWD,Christantus Uche,Crystal Palace,Everton,False,0.6842818272841473
+2025-26,7,FWD,Liam Delap,Chelsea,Liverpool,True,0.4904468051984293
+2025-26,7,FWD,Joël Piroe,Leeds,Spurs,True,0.4750642207856089
+2025-26,7,FWD,Marc Guiu Paz,Chelsea,Liverpool,True,0.4503695434206004
+2025-26,7,GK,Robert Lynch Sánchez,Chelsea,Liverpool,True,4.088117783524642
+2025-26,7,GK,Gianluigi Donnarumma,Man City,Brentford,False,3.8553427608064714
+2025-26,7,GK,David Raya Martín,Arsenal,West Ham,True,3.7930576881445006
+2025-26,7,GK,Robin Roefs,Sunderland,Man Utd,False,3.715465645679231
+2025-26,7,GK,Dean Henderson,Crystal Palace,Everton,False,3.6278594024095696
+2025-26,7,GK,Alisson Becker,Liverpool,Chelsea,False,3.5571677392654975
+2025-26,7,GK,Sam Johnstone,Wolves,Brighton,True,3.5340855161340006
+2025-26,7,GK,Bart Verbruggen,Brighton,Wolves,False,3.492690440342442
+2025-26,7,GK,Đorđe Petrović,Bournemouth,Fulham,True,3.4390057956890194
+2025-26,7,GK,Bernd Leno,Fulham,Bournemouth,False,3.4220394039404365
+2025-26,7,GK,Guglielmo Vicario,Spurs,Leeds,False,3.4187507932329773
+2025-26,7,GK,Emiliano Martínez Romero,Aston Villa,Burnley,True,3.4131217450704705
+2025-26,7,GK,Jordan Pickford,Everton,Crystal Palace,True,3.3844609530632566
+2025-26,7,GK,Matz Sels,Nott'm Forest,Newcastle,False,3.359799040698887
+2025-26,7,GK,Alphonse Areola,West Ham,Arsenal,False,3.282945075488056
+2025-26,7,GK,Nick Pope,Newcastle,Nott'm Forest,True,3.2483574690827037
+2025-26,7,GK,Altay Bayındır,Man Utd,Sunderland,True,3.1872580921125078
+2025-26,7,GK,Caoimhín Kelleher,Brentford,Man City,True,3.0435323088194677
+2025-26,7,GK,Martin Dúbravka,Burnley,Aston Villa,False,3.0374945656783074
+2025-26,7,GK,Karl Darlow,Leeds,Spurs,True,3.0272783240759944
+2025-26,7,GK,Marco Bizot,Aston Villa,Burnley,True,1.272428023735546
+2025-26,7,GK,José Malheiro de Sá,Wolves,Brighton,True,1.088188646347499
+2025-26,7,GK,Mads Hermansen,West Ham,Arsenal,False,1.084324351363458
+2025-26,7,GK,James Trafford,Man City,Brentford,False,0.7318056604655068
+2025-26,7,GK,Alex Paulsen,Bournemouth,Fulham,True,0.4630698356835588
+2025-26,7,GK,Callan McKenna,Bournemouth,Fulham,True,0.4630698356835588
+2025-26,7,GK,Norberto Murara Neto,Bournemouth,Fulham,True,0.4630698356835588
+2025-26,7,GK,Will Dennis,Bournemouth,Fulham,True,0.4630698356835588
+2025-26,7,GK,Benjamin Lecomte,Fulham,Bournemouth,False,0.4630698356835588
+2025-26,7,GK,Steven Benda,Fulham,Bournemouth,False,0.4630698356835588
+2025-26,7,GK,Alex Cairns,Leeds,Spurs,True,0.4630698356835588
+2025-26,7,GK,Illan Meslier,Leeds,Spurs,True,0.4630698356835588
+2025-26,7,GK,Antonín Kinský,Spurs,Leeds,False,0.4630698356835588
+2025-26,7,GK,Brandon Austin,Spurs,Leeds,False,0.4630698356835588
+2025-26,7,GK,Karl Hein,Arsenal,West Ham,True,0.4630698356835588
+2025-26,7,GK,Kepa Arrizabalaga Revuelta,Arsenal,West Ham,True,0.4630698356835588
+2025-26,7,GK,Tommy Setford,Arsenal,West Ham,True,0.4630698356835588
+2025-26,7,GK,Krisztián Hegyi,West Ham,Arsenal,False,0.4630698356835588
+2025-26,7,GK,Lukasz Fabianski,West Ham,Arsenal,False,0.4630698356835588
+2025-26,7,GK,Wes Foderingham,West Ham,Arsenal,False,0.4630698356835588
+2025-26,7,GK,André Onana,Man Utd,Sunderland,True,0.4630698356835588
+2025-26,7,GK,Dermot Mee,Man Utd,Sunderland,True,0.4630698356835588
+2025-26,7,GK,Elyh Harrison,Man Utd,Sunderland,True,0.4630698356835588
+2025-26,7,GK,Senne Lammens,Man Utd,Sunderland,True,0.4630698356835588
+2025-26,7,GK,Tom Heaton,Man Utd,Sunderland,True,0.4630698356835588
+2025-26,7,GK,Anthony Patterson,Sunderland,Man Utd,False,0.4630698356835588
+2025-26,7,GK,Blondy Nna Noukeu,Sunderland,Man Utd,False,0.4630698356835588
+2025-26,7,GK,Simon Moore,Sunderland,Man Utd,False,0.4630698356835588
+2025-26,7,GK,Gabriel Słonina,Chelsea,Liverpool,True,0.4630698356835588
+2025-26,7,GK,Mike Penders,Chelsea,Liverpool,True,0.4630698356835588
+2025-26,7,GK,Freddie Woodman,Liverpool,Chelsea,False,0.4630698356835588
+2025-26,7,GK,Giorgi Mamardashvili,Liverpool,Chelsea,False,0.4630698356835588
+2025-26,7,GK,Ármin Pécsi,Liverpool,Chelsea,False,0.4630698356835588
+2025-26,7,GK,Filip Marschall,Aston Villa,Burnley,True,0.4630698356835588
+2025-26,7,GK,James Wright,Aston Villa,Burnley,True,0.4630698356835588
+2025-26,7,GK,Joe Gauci,Aston Villa,Burnley,True,0.4630698356835588
+2025-26,7,GK,Sam Proctor,Aston Villa,Burnley,True,0.4630698356835588
+2025-26,7,GK,Etienne Green,Burnley,Aston Villa,False,0.4630698356835588
+2025-26,7,GK,Max Weiß,Burnley,Aston Villa,False,0.4630698356835588
+2025-26,7,GK,Václav Hladký,Burnley,Aston Villa,False,0.4630698356835588
+2025-26,7,GK,Harry Tyrer,Everton,Crystal Palace,True,0.4630698356835588
+2025-26,7,GK,Mark Travers,Everton,Crystal Palace,True,0.4630698356835588
+2025-26,7,GK,Tom King,Everton,Crystal Palace,True,0.4630698356835588
+2025-26,7,GK,Remi Matthews,Crystal Palace,Everton,False,0.4630698356835588
+2025-26,7,GK,Walter Benítez,Crystal Palace,Everton,False,0.4630698356835588
+2025-26,7,GK,Aaron Ramsdale,Newcastle,Nott'm Forest,True,0.4630698356835588
+2025-26,7,GK,Mark Gillespie,Newcastle,Nott'm Forest,True,0.4630698356835588
+2025-26,7,GK,Odysseas Vlachodimos,Newcastle,Nott'm Forest,True,0.4630698356835588
+2025-26,7,GK,Angus Gunn,Nott'm Forest,Newcastle,False,0.4630698356835588
+2025-26,7,GK,Carlos Miguel dos Santos Pereira,Nott'm Forest,Newcastle,False,0.4630698356835588
+2025-26,7,GK,John Victor Maciel Furtado,Nott'm Forest,Newcastle,False,0.4630698356835588
+2025-26,7,GK,Matt Turner,Nott'm Forest,Newcastle,False,0.4630698356835588
+2025-26,7,GK,Daniel Bentley,Wolves,Brighton,True,0.4630698356835588
+2025-26,7,GK,Carl Rushworth,Brighton,Wolves,False,0.4630698356835588
+2025-26,7,GK,Jason Steele,Brighton,Wolves,False,0.4630698356835588
+2025-26,7,GK,Kjell Scherpen,Brighton,Wolves,False,0.4630698356835588
+2025-26,7,GK,Tom McGill,Brighton,Wolves,False,0.4630698356835588
+2025-26,7,GK,Ellery Balcombe,Brentford,Man City,True,0.4630698356835588
+2025-26,7,GK,Hákon Rafn Valdimarsson,Brentford,Man City,True,0.4630698356835588
+2025-26,7,GK,Julian Eyestone,Brentford,Man City,True,0.4630698356835588
+2025-26,7,GK,Matthew Cox,Brentford,Man City,True,0.4630698356835588
+2025-26,7,GK,Ederson Santana de Moraes,Man City,Brentford,False,0.4630698356835588
+2025-26,7,GK,Marcus Bettinelli,Man City,Brentford,False,0.4630698356835588
+2025-26,7,GK,Stefan Ortega Moreno,Man City,Brentford,False,0.4630698356835588
+2025-26,7,GK,Lucas Estella Perri,Leeds,Spurs,True,0.40147413471689325
+2025-26,7,GK,Filip Jörgensen,Chelsea,Liverpool,True,0.39920176255776757
+2025-26,7,MID,Jack Grealish,Everton,Crystal Palace,True,4.9175831311580485
+2025-26,7,MID,Ryan Gravenberch,Liverpool,Chelsea,False,4.276791749746355
+2025-26,7,MID,Jérémy Doku,Man City,Brentford,False,3.9901182223177507
+2025-26,7,MID,Yankuba Minteh,Brighton,Wolves,False,3.9179261868187396
+2025-26,7,MID,Moisés Caicedo Corozo,Chelsea,Liverpool,True,3.869337174323853
+2025-26,7,MID,Enzo Fernández,Chelsea,Liverpool,True,3.823770662463156
+2025-26,7,MID,Kevin Schade,Brentford,Man City,True,3.744725384038982
+2025-26,7,MID,James Garner,Everton,Crystal Palace,True,3.7168472574213567
+2025-26,7,MID,Sean Longstaff,Leeds,Spurs,True,3.667775980756612
+2025-26,7,MID,Bruno Borges Fernandes,Man Utd,Sunderland,True,3.6413235307660052
+2025-26,7,MID,Mohammed Kudus,Spurs,Leeds,False,3.5953255234210095
+2025-26,7,MID,Phil Foden,Man City,Brentford,False,3.539495719214771
+2025-26,7,MID,Bryan Mbeumo,Man Utd,Sunderland,True,3.536551473220337
+2025-26,7,MID,Jaidon Anthony,Burnley,Aston Villa,False,3.532254820300315
+2025-26,7,MID,Mohamed Salah,Liverpool,Chelsea,False,3.486603459427095
+2025-26,7,MID,Lucas Tolentino Coelho de Lima,West Ham,Arsenal,False,3.459724415339351
+2025-26,7,MID,Antoine Semenyo,Bournemouth,Fulham,True,3.4057323531267256
+2025-26,7,MID,Jhon Arias,Wolves,Brighton,True,3.3846453428268433
+2025-26,7,MID,Ismaïla Sarr,Crystal Palace,Everton,False,3.3757653464335955
+2025-26,7,MID,João Maria Lobo Alves Palhares Costa Palhinha Gonçalves,Spurs,Leeds,False,3.370537179719661
+2025-26,7,MID,Granit Xhaka,Sunderland,Man Utd,False,3.316430179660732
+2025-26,7,MID,Declan Rice,Arsenal,West Ham,True,3.2894156520906455
+2025-26,7,MID,Iliman Ndiaye,Everton,Crystal Palace,True,3.2703801680739812
+2025-26,7,MID,Martín Zubimendi Ibáñez,Arsenal,West Ham,True,3.2290697641546577
+2025-26,7,MID,Dominik Szoboszlai,Liverpool,Chelsea,False,3.2084159637838416
+2025-26,7,MID,Sandro Tonali,Newcastle,Nott'm Forest,True,3.1893148167310157
+2025-26,7,MID,Eberechi Eze,Arsenal,West Ham,True,3.1255482708032702
+2025-26,7,MID,Florian Wirtz,Liverpool,Chelsea,False,3.110131591097613
+2025-26,7,MID,Dilane Bakwa,Nott'm Forest,Newcastle,False,3.0599799110960433
+2025-26,7,MID,Kiernan Dewsbury-Hall,Everton,Crystal Palace,True,3.044371169877647
+2025-26,7,MID,Dango Ouattara,Brentford,Man City,True,3.0300538667513974
+2025-26,7,MID,Anton Stach,Leeds,Spurs,True,3.0241865093847347
+2025-26,7,MID,Morgan Rogers,Aston Villa,Burnley,True,3.0169665813446045
+2025-26,7,MID,Brenden Aaronson,Leeds,Spurs,True,2.9833124603210193
+2025-26,7,MID,Saša Lukić,Fulham,Bournemouth,False,2.9599804666486014
+2025-26,7,MID,Tijjani Reijnders,Man City,Brentford,False,2.9174384794336916
+2025-26,7,MID,Josh Cullen,Burnley,Aston Villa,False,2.8991506880645757
+2025-26,7,MID,Cody Gakpo,Liverpool,Chelsea,False,2.8702104077886252
+2025-26,7,MID,Elliot Anderson,Nott'm Forest,Newcastle,False,2.8365441964002454
+2025-26,7,MID,Jacob Murphy,Newcastle,Nott'm Forest,True,2.8136208205430737
+2025-26,7,MID,Daichi Kamada,Crystal Palace,Everton,False,2.790039369573307
+2025-26,7,MID,Pedro Lomba Neto,Chelsea,Liverpool,True,2.7799134712925397
+2025-26,7,MID,Adama Traoré Diarra,Fulham,Bournemouth,False,2.7606574392340852
+2025-26,7,MID,Mikkel Damsgaard,Brentford,Man City,True,2.702795371869162
+2025-26,7,MID,Xavi Simons,Spurs,Leeds,False,2.6977486086579687
+2025-26,7,MID,Lucas Bergvall,Spurs,Leeds,False,2.671950520086629
+2025-26,7,MID,Leandro Trossard,Arsenal,West Ham,True,2.658163866737092
+2025-26,7,MID,Crysencio Summerville,West Ham,Arsenal,False,2.6545028540029607
+2025-26,7,MID,Adam Wharton,Crystal Palace,Everton,False,2.6469962788889854
+2025-26,7,MID,Harry Wilson,Fulham,Bournemouth,False,2.641114528005498
+2025-26,7,MID,Yasin Ayari,Brighton,Wolves,False,2.6253087673001154
+2025-26,7,MID,Idrissa Gana Gueye,Everton,Crystal Palace,True,2.6090611421252046
+2025-26,7,MID,Matheus Santos Carneiro da Cunha,Man Utd,Sunderland,True,2.586130849185444
+2025-26,7,MID,Jordan Henderson,Brentford,Man City,True,2.552654771691465
+2025-26,7,MID,Chemsdine Talbi,Sunderland,Man Utd,False,2.547236442565918
+2025-26,7,MID,Evann Guessand,Aston Villa,Burnley,True,2.525919556617737
+2025-26,7,MID,Marshall Munetsi,Wolves,Brighton,True,2.5243759978174083
+2025-26,7,MID,Bukayo Saka,Arsenal,West Ham,True,2.523171817424151
+2025-26,7,MID,Alex Iwobi,Fulham,Bournemouth,False,2.510019540786743
+2025-26,7,MID,Ryan Sessegnon,Fulham,Bournemouth,False,2.5059021444033434
+2025-26,7,MID,John McGinn,Aston Villa,Burnley,True,2.5004728793243958
+2025-26,7,MID,Mitoma Kaoru,Brighton,Wolves,False,2.4894560501178926
+2025-26,7,MID,Josh King,Fulham,Bournemouth,False,2.485782244640491
+2025-26,7,MID,Yéremy Pino Santos,Crystal Palace,Everton,False,2.471353037445201
+2025-26,7,MID,Emiliano Buendía Stati,Aston Villa,Burnley,True,2.4704528735869378
+2025-26,7,MID,Georginio Rutter,Brighton,Wolves,False,2.4641281851825045
+2025-26,7,MID,Mikel Merino Zazón,Arsenal,West Ham,True,2.4438667872237034
+2025-26,7,MID,Callum Hudson-Odoi,Nott'm Forest,Newcastle,False,2.433264136421616
+2025-26,7,MID,Bruno Guimarães Rodriguez Moura,Newcastle,Nott'm Forest,True,2.4145392179489136
+2025-26,7,MID,Sávio Moreira de Oliveira,Man City,Brentford,False,2.3994554564931265
+2025-26,7,MID,Yehor Yarmoliuk,Brentford,Man City,True,2.370955817185996
+2025-26,7,MID,Morgan Gibbs-White,Nott'm Forest,Newcastle,False,2.3455986141185545
+2025-26,7,MID,Joelinton Cássio Apolinário de Lira,Newcastle,Nott'm Forest,True,2.338562846183777
+2025-26,7,MID,Omari Hutchinson,Nott'm Forest,Newcastle,False,2.3174166184659875
+2025-26,7,MID,David Brooks,Bournemouth,Fulham,True,2.315207921886713
+2025-26,7,MID,Tyler Adams,Bournemouth,Fulham,True,2.3093804067351282
+2025-26,7,MID,Noah Okafor,Leeds,Spurs,True,2.294684028094789
+2025-26,7,MID,Anthony Gordon,Newcastle,Nott'm Forest,True,2.293175635791123
+2025-26,7,MID,Pape Matar Sarr,Spurs,Leeds,False,2.2813275607948724
+2025-26,7,MID,Marcus Tavernier,Bournemouth,Fulham,True,2.266265973205723
+2025-26,7,MID,Florentino Ibrain Morris Luís,Burnley,Aston Villa,False,2.2161665904286316
+2025-26,7,MID,Nico González Iglesias,Man City,Brentford,False,2.2073694669438586
+2025-26,7,MID,Sander Berge,Fulham,Bournemouth,False,2.199046090130893
+2025-26,7,MID,Noah Sadiki,Sunderland,Man Utd,False,2.192466263229838
+2025-26,7,MID,Mateus Gonçalo Espanha Fernandes,West Ham,Arsenal,False,2.1917935576547034
+2025-26,7,MID,Ethan Ampadu,Leeds,Spurs,True,2.1669749291011904
+2025-26,7,MID,Estêvão Almeida de Oliveira Gonçalves,Chelsea,Liverpool,True,2.141493196273079
+2025-26,7,MID,Dan Ndoye,Nott'm Forest,Newcastle,False,2.140532970428467
+2025-26,7,MID,André Trindade da Costa Neto,Wolves,Brighton,True,2.1176595680122525
+2025-26,7,MID,Josh Laurent,Burnley,Aston Villa,False,2.061843514442444
+2025-26,7,MID,Federico Chiesa,Liverpool,Chelsea,False,2.0464248282484228
+2025-26,7,MID,Diego Gómez Amarilla,Brighton,Wolves,False,2.034701108932495
+2025-26,7,MID,Enzo Le Fée,Sunderland,Man Utd,False,2.0217937580911522
+2025-26,7,MID,Amine Adli,Bournemouth,Fulham,True,2.0126674120348884
+2025-26,7,MID,Alex Scott,Bournemouth,Fulham,True,2.0019042650953924
+2025-26,7,MID,Bernardo Mota Veiga de Carvalho e Silva,Man City,Brentford,False,1.971721526071841
+2025-26,7,MID,Brajan Gruda,Brighton,Wolves,False,1.9689926972654737
+2025-26,7,MID,Justin Kluivert,Bournemouth,Fulham,True,1.944071291755162
+2025-26,7,MID,Gabriel Martinelli Silva,Arsenal,West Ham,True,1.9247675443847234
+2025-26,7,MID,Hwang Hee-chan,Wolves,Brighton,True,1.9207531493091068
+2025-26,7,MID,Oscar Bobb,Man City,Brentford,False,1.8999012537110687
+2025-26,7,MID,João Victor Gomes da Silva,Wolves,Brighton,True,1.8965295678102412
+2025-26,7,MID,James Ward-Prowse,West Ham,Arsenal,False,1.8568794470422136
+2025-26,7,MID,Brennan Johnson,Spurs,Leeds,False,1.8562764804552851
+2025-26,7,MID,Amad Diallo,Man Utd,Sunderland,True,1.8490583937281648
+2025-26,7,MID,Loum Tchaouna,Burnley,Aston Villa,False,1.8081965112262535
+2025-26,7,MID,Emile Smith Rowe,Fulham,Bournemouth,False,1.7944159186901332
+2025-26,7,MID,Jefferson Lerma Solís,Crystal Palace,Everton,False,1.7811631275950894
+2025-26,7,MID,Will Hughes,Crystal Palace,Everton,False,1.7765983925702284
+2025-26,7,MID,Rodrigo Bentancur,Spurs,Leeds,False,1.7633104986851063
+2025-26,7,MID,Boubacar Kamara,Aston Villa,Burnley,True,1.7035844494776797
+2025-26,7,MID,Ryan Christie,Bournemouth,Fulham,True,1.6960558127376015
+2025-26,7,MID,Alexis Mac Allister,Liverpool,Chelsea,False,1.683060344490054
+2025-26,7,MID,Andrey Nascimento dos Santos,Chelsea,Liverpool,True,1.679939253531517
+2025-26,7,MID,James McAtee,Nott'm Forest,Newcastle,False,1.6639899240659746
+2025-26,7,MID,Jean-Ricner Bellegarde,Wolves,Brighton,True,1.663541403651017
+2025-26,7,MID,Curtis Jones,Liverpool,Chelsea,False,1.6581000901629643
+2025-26,7,MID,Mats Wieffer,Brighton,Wolves,False,1.6532066124593379
+2025-26,7,MID,Carlos Baleba,Brighton,Wolves,False,1.6527392864227295
+2025-26,7,MID,Chris Rigg,Sunderland,Man Utd,False,1.6523935647020913
+2025-26,7,MID,Wilson Odobert,Spurs,Leeds,False,1.6480780149603387
+2025-26,7,MID,Kobbie Mainoo,Man Utd,Sunderland,True,1.6341563893679047
+2025-26,7,MID,Harvey Elliott,Aston Villa,Burnley,True,1.6323491334915161
+2025-26,7,MID,Jacob Bruun Larsen,Burnley,Aston Villa,False,1.6174032230397408
+2025-26,7,MID,Manuel Ugarte Ribeiro,Man Utd,Sunderland,True,1.6079092025756836
+2025-26,7,MID,Bertrand Traoré,Sunderland,Man Utd,False,1.6006441460180294
+2025-26,7,MID,Anthony Elanga,Newcastle,Nott'm Forest,True,1.6003066872196148
+2025-26,7,MID,Kevin Santos Lopes de Macedo,Fulham,Bournemouth,False,1.5947215639685215
+2025-26,7,MID,Ben Gannon-Doak,Bournemouth,Fulham,True,1.5723869162301307
+2025-26,7,MID,Mathias Jensen,Brentford,Man City,True,1.5569776454138213
+2025-26,7,MID,Soungoutou Magassa,West Ham,Arsenal,False,1.5543605163692917
+2025-26,7,MID,Nicolás Domínguez,Nott'm Forest,Newcastle,False,1.497774065418736
+2025-26,7,MID,Jack Harrison,Leeds,Spurs,True,1.4904488583885662
+2025-26,7,MID,Freddie Potts,West Ham,Arsenal,False,1.450845149500543
+2025-26,7,MID,Mason Mount,Man Utd,Sunderland,True,1.4430891214703307
+2025-26,7,MID,Frank Onyeka,Brentford,Man City,True,1.3620780404857111
+2025-26,7,MID,Lesley Ugochukwu,Burnley,Aston Villa,False,1.357209579072986
+2025-26,7,MID,Tomáš Souček,West Ham,Arsenal,False,1.3541984584734568
+2025-26,7,MID,Noni Madueke,Arsenal,West Ham,True,1.34422786705314
+2025-26,7,MID,Harvey Barnes,Newcastle,Nott'm Forest,True,1.3034368963251906
+2025-26,7,MID,Martin Ødegaard,Arsenal,West Ham,True,1.2946681033961953
+2025-26,7,MID,Luis Guilherme Lira dos Santos,West Ham,Arsenal,False,1.241308134436229
+2025-26,7,MID,Mathys Tel,Spurs,Leeds,False,1.2270519283395869
+2025-26,7,MID,Vitaly Janelt,Brentford,Man City,True,1.1694762110710144
+2025-26,7,MID,Habib Diarra,Sunderland,Man Utd,False,1.1621374379009053
+2025-26,7,MID,Simon Adingra,Sunderland,Man Utd,False,1.1164369444080064
+2025-26,7,MID,Carlos Henrique Casimiro,Man Utd,Sunderland,True,1.1089750692956546
+2025-26,7,MID,Roméo Lavia,Chelsea,Liverpool,True,1.106183747843564
+2025-26,7,MID,Rio Ngumoha,Liverpool,Chelsea,False,1.089298665523529
+2025-26,7,MID,Hannibal Mejbri,Burnley,Aston Villa,False,1.0835917633766268
+2025-26,7,MID,Fer López González,Wolves,Brighton,True,1.066792346209695
+2025-26,7,MID,Fábio Freitas Gouveia Carvalho,Brentford,Man City,True,1.050202710827861
+2025-26,7,MID,Rodrigo 'Rodri' Hernandez Cascante,Man City,Brentford,False,1.0440159641681468
+2025-26,7,MID,Cole Palmer,Chelsea,Liverpool,True,1.038412294390549
+2025-26,7,MID,Douglas Luiz Soares de Paulo,Nott'm Forest,Newcastle,False,1.0304723978042603
+2025-26,7,MID,Justin Devenny,Crystal Palace,Everton,False,1.0295061546561308
+2025-26,7,MID,Donyell Malen,Aston Villa,Burnley,True,1.019820511341095
+2025-26,7,MID,Ethan Nwaneri,Arsenal,West Ham,True,0.9977385401725769
+2025-26,7,MID,Dominic Sadi,Bournemouth,Fulham,True,0.9619696107014426
+2025-26,7,MID,Luis Sinisterra Lucumí,Bournemouth,Fulham,True,0.9619696107014426
+2025-26,7,MID,Philip Billing,Bournemouth,Fulham,True,0.9619696107014426
+2025-26,7,MID,Remy Rees-Dottin,Bournemouth,Fulham,True,0.9619696107014426
+2025-26,7,MID,Romain Faivre,Bournemouth,Fulham,True,0.9619696107014426
+2025-26,7,MID,Zain Silcott-Duberry,Bournemouth,Fulham,True,0.9619696107014426
+2025-26,7,MID,Andreas Hoelgebaum Pereira,Fulham,Bournemouth,False,0.9619696107014426
+2025-26,7,MID,Harrison Reed,Fulham,Bournemouth,False,0.9619696107014426
+2025-26,7,MID,Luke Harris,Fulham,Bournemouth,False,0.9619696107014426
+2025-26,7,MID,Martial Godo,Fulham,Bournemouth,False,0.9619696107014426
+2025-26,7,MID,Charlie Crew,Leeds,Spurs,True,0.9619696107014426
+2025-26,7,MID,Darko Gyabi,Leeds,Spurs,True,0.9619696107014426
+2025-26,7,MID,Joe Gelhardt,Leeds,Spurs,True,0.9619696107014426
+2025-26,7,MID,Largie Ramazani,Leeds,Spurs,True,0.9619696107014426
+2025-26,7,MID,Sam Greenwood,Leeds,Spurs,True,0.9619696107014426
+2025-26,7,MID,Bryan Gil Salvatierra,Spurs,Leeds,False,0.9619696107014426
+2025-26,7,MID,Callum Olusesi,Spurs,Leeds,False,0.9619696107014426
+2025-26,7,MID,Dejan Kulusevski,Spurs,Leeds,False,0.9619696107014426
+2025-26,7,MID,James Maddison,Spurs,Leeds,False,0.9619696107014426
+2025-26,7,MID,Manor Solomon,Spurs,Leeds,False,0.9619696107014426
+2025-26,7,MID,Mikey Moore,Spurs,Leeds,False,0.9619696107014426
+2025-26,7,MID,Son Heung-min,Spurs,Leeds,False,0.9619696107014426
+2025-26,7,MID,Yang Min-hyeok,Spurs,Leeds,False,0.9619696107014426
+2025-26,7,MID,Yves Bissouma,Spurs,Leeds,False,0.9619696107014426
+2025-26,7,MID,Albert Sambi Lokonga,Arsenal,West Ham,True,0.9619696107014426
+2025-26,7,MID,Andre Harriman-Annous,Arsenal,West Ham,True,0.9619696107014426
+2025-26,7,MID,Christian Nørgaard,Arsenal,West Ham,True,0.9619696107014426
+2025-26,7,MID,Fábio Ferreira Vieira,Arsenal,West Ham,True,0.9619696107014426
+2025-26,7,MID,Ismeal Kabia,Arsenal,West Ham,True,0.9619696107014426
+2025-26,7,MID,Edson Álvarez Velázquez,West Ham,Arsenal,False,0.9619696107014426
+2025-26,7,MID,George Earthy,West Ham,Arsenal,False,0.9619696107014426
+2025-26,7,MID,Lewis Orford,West Ham,Arsenal,False,0.9619696107014426
+2025-26,7,MID,Maxwel Cornet,West Ham,Arsenal,False,0.9619696107014426
+2025-26,7,MID,Antony dos Santos,Man Utd,Sunderland,True,0.9619696107014426
+2025-26,7,MID,Jack Fletcher,Man Utd,Sunderland,True,0.9619696107014426
+2025-26,7,MID,Jack Moorhouse,Man Utd,Sunderland,True,0.9619696107014426
+2025-26,7,MID,Jayce Fitzgerald,Man Utd,Sunderland,True,0.9619696107014426
+2025-26,7,MID,Marcus Rashford,Man Utd,Sunderland,True,0.9619696107014426
+2025-26,7,MID,Sékou Koné,Man Utd,Sunderland,True,0.9619696107014426
+2025-26,7,MID,Toby Collyer,Man Utd,Sunderland,True,0.9619696107014426
+2025-26,7,MID,Abdoullah Ba,Sunderland,Man Utd,False,0.9619696107014426
+2025-26,7,MID,Alan Browne,Sunderland,Man Utd,False,0.9619696107014426
+2025-26,7,MID,Harrison Jones,Sunderland,Man Utd,False,0.9619696107014426
+2025-26,7,MID,Ian Poveda-Ocampo,Sunderland,Man Utd,False,0.9619696107014426
+2025-26,7,MID,Jay Matete,Sunderland,Man Utd,False,0.9619696107014426
+2025-26,7,MID,Milan Aleksić,Sunderland,Man Utd,False,0.9619696107014426
+2025-26,7,MID,Nectarios Triantis,Sunderland,Man Utd,False,0.9619696107014426
+2025-26,7,MID,Pierre Ekwah Elimby,Sunderland,Man Utd,False,0.9619696107014426
+2025-26,7,MID,Romaine Mundle,Sunderland,Man Utd,False,0.9619696107014426
+2025-26,7,MID,Christopher Nkunku,Chelsea,Liverpool,True,0.9619696107014426
+2025-26,7,MID,Dário Luís Essugo,Chelsea,Liverpool,True,0.9619696107014426
+2025-26,7,MID,Kendry Páez Andrade,Chelsea,Liverpool,True,0.9619696107014426
+2025-26,7,MID,Mykhailo Mudryk,Chelsea,Liverpool,True,0.9619696107014426
+2025-26,7,MID,James McConnell,Liverpool,Chelsea,False,0.9619696107014426
+2025-26,7,MID,Luis Díaz Marulanda,Liverpool,Chelsea,False,0.9619696107014426
+2025-26,7,MID,Stefan Bajčetić Maquieira,Liverpool,Chelsea,False,0.9619696107014426
+2025-26,7,MID,Trey Nyoni,Liverpool,Chelsea,False,0.9619696107014426
+2025-26,7,MID,Tyler Morton,Liverpool,Chelsea,False,0.9619696107014426
+2025-26,7,MID,Ben Broggio,Aston Villa,Burnley,True,0.9619696107014426
+2025-26,7,MID,Enzo Barrenechea,Aston Villa,Burnley,True,0.9619696107014426
+2025-26,7,MID,Jamaldeen Jimoh-Aloba,Aston Villa,Burnley,True,0.9619696107014426
+2025-26,7,MID,Kadan Young,Aston Villa,Burnley,True,0.9619696107014426
+2025-26,7,MID,Leander Dendoncker,Aston Villa,Burnley,True,0.9619696107014426
+2025-26,7,MID,Leon Bailey,Aston Villa,Burnley,True,0.9619696107014426
+2025-26,7,MID,Lewis Dobbin,Aston Villa,Burnley,True,0.9619696107014426
+2025-26,7,MID,Ross Barkley,Aston Villa,Burnley,True,0.9619696107014426
+2025-26,7,MID,Samuel Iling-Junior,Aston Villa,Burnley,True,0.9619696107014426
+2025-26,7,MID,Aaron Ramsey,Burnley,Aston Villa,False,0.9619696107014426
+2025-26,7,MID,Darko Churlinov,Burnley,Aston Villa,False,0.9619696107014426
+2025-26,7,MID,Enock Agyei,Burnley,Aston Villa,False,0.9619696107014426
+2025-26,7,MID,Jaydon Banel,Burnley,Aston Villa,False,0.9619696107014426
+2025-26,7,MID,Luca Koleosho,Burnley,Aston Villa,False,0.9619696107014426
+2025-26,7,MID,Manuel Benson Hedilazio,Burnley,Aston Villa,False,0.9619696107014426
+2025-26,7,MID,Mike Trésor Ndayishimiye,Burnley,Aston Villa,False,0.9619696107014426
+2025-26,7,MID,Oluwaseun Adewumi,Burnley,Aston Villa,False,0.9619696107014426
+2025-26,7,MID,Callum Bates,Everton,Crystal Palace,True,0.9619696107014426
+2025-26,7,MID,Coby Ebere,Everton,Crystal Palace,True,0.9619696107014426
+2025-26,7,MID,Isaac Heath,Everton,Crystal Palace,True,0.9619696107014426
+2025-26,7,MID,Jenson Metcalfe,Everton,Crystal Palace,True,0.9619696107014426
+2025-26,7,MID,Tyler Onyango,Everton,Crystal Palace,True,0.9619696107014426
+2025-26,7,MID,Asher Agbinone,Crystal Palace,Everton,False,0.9619696107014426
+2025-26,7,MID,Cheick Doucouré,Crystal Palace,Everton,False,0.9619696107014426
+2025-26,7,MID,David Ozoh,Crystal Palace,Everton,False,0.9619696107014426
+2025-26,7,MID,Franco Umeh-Chibueze,Crystal Palace,Everton,False,0.9619696107014426
+2025-26,7,MID,Jesurun Rak-Sakyi,Crystal Palace,Everton,False,0.9619696107014426
+2025-26,7,MID,Kaden Rodney,Crystal Palace,Everton,False,0.9619696107014426
+2025-26,7,MID,Malcolm Ebiowei,Crystal Palace,Everton,False,0.9619696107014426
+2025-26,7,MID,Matheus França de Oliveira,Crystal Palace,Everton,False,0.9619696107014426
+2025-26,7,MID,Naouirou Ahamada,Crystal Palace,Everton,False,0.9619696107014426
+2025-26,7,MID,Rio Cardines,Crystal Palace,Everton,False,0.9619696107014426
+2025-26,7,MID,Antoñito Cordero Campillo,Newcastle,Nott'm Forest,True,0.9619696107014426
+2025-26,7,MID,Garang Kuol,Newcastle,Nott'm Forest,True,0.9619696107014426
+2025-26,7,MID,Isaac Hayden,Newcastle,Nott'm Forest,True,0.9619696107014426
+2025-26,7,MID,Joe White,Newcastle,Nott'm Forest,True,0.9619696107014426
+2025-26,7,MID,Seung-Soo Park,Newcastle,Nott'm Forest,True,0.9619696107014426
+2025-26,7,MID,Eric da Silva Moreira,Nott'm Forest,Newcastle,False,0.9619696107014426
+2025-26,7,MID,Lewis O'Brien,Nott'm Forest,Newcastle,False,0.9619696107014426
+2025-26,7,MID,Marko Stamenić,Nott'm Forest,Newcastle,False,0.9619696107014426
+2025-26,7,MID,Boubacar Traoré,Wolves,Brighton,True,0.9619696107014426
+2025-26,7,MID,Enso González Medina,Wolves,Brighton,True,0.9619696107014426
+2025-26,7,MID,Gonçalo Manuel Ganchinho Guedes,Wolves,Brighton,True,0.9619696107014426
+2025-26,7,MID,Joe Hodge,Wolves,Brighton,True,0.9619696107014426
+2025-26,7,MID,Tawanda Chirewa,Wolves,Brighton,True,0.9619696107014426
+2025-26,7,MID,Tom Edozie,Wolves,Brighton,True,0.9619696107014426
+2025-26,7,MID,Abdallah Sima,Brighton,Wolves,False,0.9619696107014426
+2025-26,7,MID,Adrian Mazilu,Brighton,Wolves,False,0.9619696107014426
+2025-26,7,MID,Andrew Moran,Brighton,Wolves,False,0.9619696107014426
+2025-26,7,MID,Jeremy Sarmiento Morante,Brighton,Wolves,False,0.9619696107014426
+2025-26,7,MID,Joe Knight,Brighton,Wolves,False,0.9619696107014426
+2025-26,7,MID,Julio Enciso Espínola,Brighton,Wolves,False,0.9619696107014426
+2025-26,7,MID,Malick Yalcouyé,Brighton,Wolves,False,0.9619696107014426
+2025-26,7,MID,Solly March,Brighton,Wolves,False,0.9619696107014426
+2025-26,7,MID,Tom Watson,Brighton,Wolves,False,0.9619696107014426
+2025-26,7,MID,Gustavo Nunes Fernandes Gomes,Brentford,Man City,True,0.9619696107014426
+2025-26,7,MID,Myles Peart-Harris,Brentford,Man City,True,0.9619696107014426
+2025-26,7,MID,Paris Maghoma,Brentford,Man City,True,0.9619696107014426
+2025-26,7,MID,Reiss Nelson,Brentford,Man City,True,0.9619696107014426
+2025-26,7,MID,Romelle Donovan,Brentford,Man City,True,0.9619696107014426
+2025-26,7,MID,Ryan Trevitt,Brentford,Man City,True,0.9619696107014426
+2025-26,7,MID,Yunus Emre Konak,Brentford,Man City,True,0.9619696107014426
+2025-26,7,MID,Claudio Echeverri,Man City,Brentford,False,0.9619696107014426
+2025-26,7,MID,Divine Mukasa,Man City,Brentford,False,0.9619696107014426
+2025-26,7,MID,Kalvin Phillips,Man City,Brentford,False,0.9619696107014426
+2025-26,7,MID,Mateo Kovačić,Man City,Brentford,False,0.9619696107014426
+2025-26,7,MID,Sverre Nypan,Man City,Brentford,False,0.9619696107014426
+2025-26,7,MID,İlkay Gündoğan,Man City,Brentford,False,0.9619696107014426
+2025-26,7,MID,Lewis Cook,Bournemouth,Fulham,True,0.9531674169229334
+2025-26,7,MID,Joe Willock,Newcastle,Nott'm Forest,True,0.9527481809943765
+2025-26,7,MID,Lewis Miley,Newcastle,Nott'm Forest,True,0.9291768842869217
+2025-26,7,MID,Youri Tielemans,Aston Villa,Burnley,True,0.9246038061305952
+2025-26,7,MID,Ibrahim Sangaré,Nott'm Forest,Newcastle,False,0.9108818936421623
+2025-26,7,MID,James Milner,Brighton,Wolves,False,0.8895700142216701
+2025-26,7,MID,Tyler Dibling,Everton,Crystal Palace,True,0.8828767133974328
+2025-26,7,MID,Facundo Buonanotte,Chelsea,Liverpool,True,0.879011088643324
+2025-26,7,MID,Tanaka Ao,Leeds,Spurs,True,0.8405428542875278
+2025-26,7,MID,Jamie Bynoe-Gittens,Chelsea,Liverpool,True,0.8395210841672252
+2025-26,7,MID,Daniel James,Leeds,Spurs,True,0.8339374165538926
+2025-26,7,MID,Tyrique George,Chelsea,Liverpool,True,0.8270379321186894
+2025-26,7,MID,Samuel Chukwueze,Fulham,Bournemouth,False,0.8176657557487488
+2025-26,7,MID,Tim Iroegbunam,Everton,Crystal Palace,True,0.8032321186313665
+2025-26,7,MID,Matt O'Riley,Brighton,Wolves,False,0.7503970265388489
+2025-26,7,MID,Merlin Röhl,Everton,Crystal Palace,True,0.7030869424343109
+2025-26,7,MID,Omar Marmoush,Man City,Brentford,False,0.6924331188201904
+2025-26,7,MID,Max Dowman,Arsenal,West Ham,True,0.6565422251509021
+2025-26,7,MID,Andy Irving,West Ham,Arsenal,False,0.6554669885272528
+2025-26,7,MID,Alejandro Garnacho Ferreyra,Chelsea,Liverpool,True,0.6495935320854187
+2025-26,7,MID,Jadon Sancho,Aston Villa,Burnley,True,0.6396986246109009
+2025-26,7,MID,Archie Gray,Spurs,Leeds,False,0.614671140909195
+2025-26,7,MID,Jacob Ramsey,Newcastle,Nott'm Forest,True,0.6075221984007504
+2025-26,7,MID,Tom Cairney,Fulham,Bournemouth,False,0.5981660890463747
+2025-26,7,MID,Dan Neil,Sunderland,Man Utd,False,0.5523464679718018
+2025-26,7,MID,Jack Hinshelwood,Brighton,Wolves,False,0.5487733001154728
+2025-26,7,MID,Ilia Gruev,Leeds,Spurs,True,0.5366074880937035
+2025-26,7,MID,Wilfried Gnonto,Leeds,Spurs,True,0.5247384943852549
+2025-26,7,MID,Harrison Armstrong,Everton,Crystal Palace,True,0.5074550658464432
+2025-26,7,MID,Carlos Alcaraz Durán,Everton,Crystal Palace,True,0.4976000191713769
+2025-26,7,MID,Marcus Edwards,Burnley,Aston Villa,False,0.47359874844551086
+2025-26,7,MID,Rayan Cherki,Man City,Brentford,False,0.4681762700425015
+2025-26,7,MID,Ryan Yates,Nott'm Forest,Newcastle,False,0.4472964406013489
+2025-26,7,MID,Amadou Onana,Aston Villa,Burnley,True,0.4454087227006541
+2025-26,7,MID,Endo Wataru,Liverpool,Chelsea,False,0.42931008686222827
+2025-26,7,MID,Dwight McNeil,Everton,Crystal Palace,True,0.42370516061782837
+2025-26,7,MID,Patrick Roberts,Sunderland,Man Utd,False,0.3673844635486603
+2025-26,7,MID,Antoni Milambo,Brentford,Man City,True,0.3632249463722166
+2025-26,7,MID,João Pedro Ferreira da Silva,Nott'm Forest,Newcastle,False,0.3607393801212311
+2025-26,7,MID,Ben Winterburn,Bournemouth,Fulham,True,0.3563735783100128
+2025-26,7,MID,Hamed Traorè,Bournemouth,Fulham,True,0.35431982275146545
+2025-26,7,MID,Bradley Burrowes,Aston Villa,Burnley,True,0.3473253846168518
+2025-26,7,MID,Romain Esse,Crystal Palace,Everton,False,0.345008909702301
+2025-26,7,MID,Guido Rodríguez,West Ham,Arsenal,False,0.3241801857948303
