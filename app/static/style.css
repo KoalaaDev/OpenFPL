@@ -1,0 +1,150 @@
+:root {
+  color-scheme: dark;
+}
+
+body {
+  background: radial-gradient(circle at top, rgba(14, 116, 144, 0.15), transparent 60%),
+    radial-gradient(circle at bottom right, rgba(124, 58, 237, 0.12), transparent 55%),
+    #020617;
+}
+
+.card-glow {
+  position: relative;
+}
+
+.card-glow::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  background: linear-gradient(120deg, rgba(34, 211, 238, 0.25), rgba(76, 29, 149, 0.25));
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  filter: blur(12px);
+  z-index: -1;
+}
+
+.card-glow:hover::before {
+  opacity: 1;
+}
+
+.player-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 0.75rem;
+  align-items: center;
+  border-radius: 1rem;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: rgba(15, 23, 42, 0.75);
+  padding: 0.85rem 1rem;
+  transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+.player-row:hover {
+  transform: translateY(-2px);
+  border-color: rgba(45, 212, 191, 0.45);
+  background: rgba(8, 47, 73, 0.4);
+}
+
+.player-row .badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.35rem 0.6rem;
+  border-radius: 999px;
+  background: rgba(45, 212, 191, 0.15);
+  color: rgb(165, 243, 252);
+  font-size: 0.65rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.player-row .stat {
+  text-align: right;
+  font-size: 0.85rem;
+  color: rgb(148, 163, 184);
+}
+
+.player-row .stat strong {
+  display: block;
+  color: rgb(224, 231, 255);
+  font-size: 1rem;
+}
+
+.fade-in {
+  animation: fade-in 0.45s ease forwards;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.chip-card {
+  border-radius: 1rem;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: rgba(15, 23, 42, 0.75);
+  padding: 1rem;
+  display: grid;
+  gap: 0.5rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.chip-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(94, 234, 212, 0.12), transparent 60%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.chip-card:hover::after {
+  opacity: 1;
+}
+
+.chip-card h5 {
+  font-size: 0.8rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgb(148, 163, 184);
+}
+
+.chip-card p {
+  font-size: 0.9rem;
+  color: rgb(226, 232, 240);
+}
+
+.badge-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 999px;
+  background: rgba(56, 189, 248, 0.15);
+  color: rgba(56, 189, 248, 0.95);
+  padding: 0.35rem 0.75rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.loading {
+  animation: pulse 1.6s infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 1;
+  }
+}
