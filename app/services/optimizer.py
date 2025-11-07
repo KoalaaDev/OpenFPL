@@ -13,6 +13,21 @@ from app.utils.naming import build_name_keys, normalize_name
 POSITION_MAP = {1: "GKP", 2: "DEF", 3: "MID", 4: "FWD"}
 POSITION_REQUIREMENTS = {"GKP": 2, "DEF": 5, "MID": 5, "FWD": 3}
 
+POSITION_ALIASES = {
+    "GK": "GKP",
+    "GKP": "GKP",
+    "GOALKEEPER": "GKP",
+    "DEF": "DEF",
+    "DF": "DEF",
+    "DEFENDER": "DEF",
+    "MID": "MID",
+    "MF": "MID",
+    "MIDFIELDER": "MID",
+    "FWD": "FWD",
+    "FW": "FWD",
+    "FORWARD": "FWD",
+}
+
 
 @dataclass
 class PlayerProjection:
@@ -89,9 +104,14 @@ def match_projection(row: pd.Series, name_index: Dict[str, List[Dict[str, object
         if filtered:
             candidates = filtered
 
-    predicted_position = str(row.position).upper()
+    predicted_position_raw = str(row.position).upper()
+    predicted_position = POSITION_ALIASES.get(predicted_position_raw, predicted_position_raw)
     if predicted_position:
-        filtered = [element for element in candidates if POSITION_MAP.get(element["element_type"], "").upper() == predicted_position]
+        filtered = [
+            element
+            for element in candidates
+            if POSITION_MAP.get(element["element_type"], "").upper() == predicted_position
+        ]
         if filtered:
             candidates = filtered
 
