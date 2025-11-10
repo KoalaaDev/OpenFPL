@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import os
 import re
+import difflib
 from tqdm import tqdm
 
 # Detect latest samples file
@@ -93,6 +94,9 @@ def main():
     samples = pd.read_csv(samples_path)
 
     # Filter fixtures for next GW and current season
+    # Coerce event to integer, normalize season strings
+    fixtures['event'] = pd.to_numeric(fixtures['event'], errors='coerce').astype('Int64')
+    fixtures['season'] = fixtures['season'].astype(str).str.strip()
     fixtures_next = fixtures[(fixtures['season'] == season) & (fixtures['event'] == next_gw)]
     if fixtures_next.empty:
         raise ValueError(f'No fixtures found in fixtures_timetable.csv for season={season} event={next_gw}')
@@ -100,14 +104,59 @@ def main():
     # Prepare output rows
     rows = []
 
+    # Canonicalization helpers for team-name matching between fixtures and samples
+    def slug(s: str) -> str:
+        s = (s or '').lower()
+        s = re.sub(r"[^a-z0-9]", "", s)
+        return s
+
+    # Synonym mapping from slug -> canonical slug
+    syn = {
+        'manutd': 'manchesterunited', 'manchesterutd': 'manchesterunited', 'manchesterunited': 'manchesterunited',
+        'mancity': 'manchestercity', 'manchestercity': 'manchestercity',
+        'spurs': 'tottenham', 'tottenhamhotspur': 'tottenham', 'tottenham': 'tottenham',
+        'wolves': 'wolverhampton', 'wolverhamptonwanderers': 'wolverhampton', 'wolverhampton': 'wolverhampton',
+        'nottmforest': 'nottinghamforest', "nottmforest": 'nottinghamforest', "nottforest": 'nottinghamforest', "nottinghamforest": 'nottinghamforest', "nottm": 'nottinghamforest',
+        'nottmforest': 'nottinghamforest',
+        'newcastleutd': 'newcastle', 'newcastleunited': 'newcastle', 'newcastle': 'newcastle',
+        'westhamunited': 'westham', 'westham': 'westham',
+        'sheffutd': 'sheffieldunited', 'sheffieldunited': 'sheffieldunited',
+        'brightonandhovealbion': 'brighton', 'brighton': 'brighton',
+        'crystalpalace': 'crystalpalace', 'burnley': 'burnley', 'astonvilla': 'astonvilla', 'fulham': 'fulham',
+        'chelsea': 'chelsea', 'arsenal': 'arsenal', 'brentford': 'brentford', 'bournemouth': 'bournemouth',
+        'everton': 'everton', 'liverpool': 'liverpool', 'leicestercity': 'leicester', 'leicester': 'leicester',
+        'southampton': 'southampton', 'westbromwichalbion': 'westbrom', 'westbrom': 'westbrom',
+        'leedsunited': 'leeds', 'leeds': 'leeds', 'nottinghamforest': 'nottinghamforest'
+    }
+
+    def canon(sname: str) -> str:
+        sg = slug(sname)
+        return syn.get(sg, sg)
+
+    # Precompute canonical names for the base samples' teams (for last_gw & season)
+    base = samples[(samples['season'] == season) & (samples['gw'] == last_gw)].copy()
+    base['team_canon'] = base['team'].astype(str).map(canon)
+    teams_available = sorted(base['team'].unique().tolist())
+    teams_canon = sorted(base['team_canon'].unique().tolist())
+
     # For each fixture, get home and away teams and clone last GW row per player, then update features
     for _, fix in fixtures_next.iterrows():
-        for team, opp, is_home in [
+        for team_raw, opp_raw, is_home in [
             (fix['team_h_name'], fix['team_a_name'], True),
             (fix['team_a_name'], fix['team_h_name'], False)
         ]:
-            # Get all players from this team in the latest samples file (last_gw rows)
-            team_players = samples[(samples['team'] == team) & (samples['gw'] == last_gw) & (samples['season'] == season)]
+            # Map fixture team names to canonical and match against base samples
+            team_can = canon(str(team_raw))
+            opp_can = canon(str(opp_raw))
+            # Find exact canonical match
+            team_players = base[base['team_canon'] == team_can]
+            if team_players.empty:
+                # Try fuzzy match for diagnostics
+                close = difflib.get_close_matches(team_can, teams_canon, n=1)
+                hint = f"; close match: {close[0]}" if close else ""
+                print(f"[next_gw] WARNING: No players for fixture team '{team_raw}' (canon={team_can}){hint}")
+                continue
+            opp_name = opp_raw  # Keep original opponent label for readability
             if team_players.empty:
                 # If no rows (e.g., promoted teams or naming mismatches), skip gracefully
                 continue
@@ -115,7 +164,7 @@ def main():
                 new_row = player_row.copy()
                 new_row['season'] = season
                 new_row['gw'] = next_gw
-                new_row['opponent'] = opp
+                new_row['opponent'] = opp_name
                 new_row['home'] = is_home
 
                 # Compute per-player rolling stats up to last_gw (inclusive)
