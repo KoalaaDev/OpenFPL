@@ -36,6 +36,24 @@ To use OpenFPL on custom data, you need to construct samples based on data from 
 
 Historical FPL and Understat data can be accessed by help of [FPL Historical Dataset](https://github.com/vaastav/Fantasy-Premier-League)
 
+## XI Optimizer Web App
+
+The repository now includes a fully interactive FastAPI web application that connects directly to the Fantasy Premier League API, ingests the latest OpenFPL projections, and builds an optimised squad for any manager ID.
+
+### Run locally
+
+```bash
+pip install -r requirements.txt
+uvicorn app.main:app --reload
+```
+
+Then visit [http://localhost:8000](http://localhost:8000) to:
+
+- Enter an FPL manager ID, season, and gameweek.
+- Optimise the full 15-player squad and starting XI with budget, position, and club constraints.
+- Review chip recommendations (Triple Captain, Bench Boost, Free Hit) based on projected gains.
+- Compare the optimised team with your current squad and persist the results for later review.
+
 ## Head-to-head evaluation with state-of-the-art commercial method
 
 | Method | RMSE<sub>Zeros*</sub> | RMSE<sub>Blanks*</sub> | RMSE<sub>Tickers*</sub> | RMSE<sub>Haulers*</sub> |
