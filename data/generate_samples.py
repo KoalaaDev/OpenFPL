@@ -4,17 +4,39 @@ import numpy as np
 import os
 from tqdm import tqdm
 
+
+def _season_rank(value):
+    if pd.isna(value):
+        return -1
+    text = str(value).strip()
+    if not text:
+        return -1
+    head = text.split('-')[0]
+    if head.isdigit():
+        return int(head)
+    digits = ''.join(ch for ch in text if ch.isdigit())
+    if len(digits) >= 4:
+        return int(digits[:4])
+    return -1
+
+
 # File paths
 input_path = os.path.join('data', 'cleaned_merged_seasons.csv')
 samples_path = os.path.join('data', 'samples.csv')
 
-# Output suffix (latest season and GW)
-LATEST_SEASON = '2025-26'
-LATEST_GW = 4
-output_path = os.path.join('data', f'samples_{LATEST_SEASON}GW{LATEST_GW}.csv')
-
 # Read input data
 raw = pd.read_csv(input_path)
+
+# Detect latest season/GW present in the cleaned data
+raw['_season_rank'] = raw['season_x'].apply(_season_rank)
+raw['_gw_numeric'] = pd.to_numeric(raw['GW'], errors='coerce').fillna(0).astype(int)
+latest_record = raw.sort_values(['_season_rank', '_gw_numeric']).iloc[-1]
+latest_season = str(latest_record['season_x'])
+latest_gw = int(latest_record['_gw_numeric'])
+output_path = os.path.join('data', f'samples_{latest_season}GW{latest_gw}.csv')
+
+# Remove helper columns before further processing
+raw = raw.drop(columns=['_season_rank', '_gw_numeric'])
 
 # Columns for output (from samples.csv)
 sample_header = pd.read_csv(samples_path, nrows=0).columns.tolist()

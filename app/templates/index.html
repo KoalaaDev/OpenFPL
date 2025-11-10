@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OpenFPL XI Optimizer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body class="bg-slate-950 text-slate-50 min-h-screen font-[\'Outfit\']">
+    <div class="relative overflow-hidden">
+      <div class="absolute -top-32 -left-24 h-96 w-96 bg-cyan-500/30 blur-3xl animate-pulse"></div>
+      <div class="absolute -bottom-20 right-0 h-[28rem] w-[28rem] bg-violet-500/30 blur-3xl animate-pulse"></div>
+      <header class="relative z-10 px-6 pt-10 pb-20 lg:px-16">
+        <div class="max-w-5xl mx-auto text-center">
+          <span class="inline-flex items-center gap-2 rounded-full border border-cyan-400/50 bg-cyan-500/10 px-4 py-1 text-xs font-medium uppercase tracking-[0.3em] text-cyan-200">
+            Intelligent Fantasy Optimizer
+          </span>
+          <h1 class="mt-6 text-4xl font-semibold leading-tight text-white sm:text-5xl lg:text-6xl">
+            Build the<strong class="text-cyan-400"> Perfect XI</strong> from your latest FPL data
+          </h1>
+          <p class="mt-6 text-lg text-slate-300">
+            Connect your team, leverage machine learning projections, and get an optimised XI that respects every Fantasy Premier League rule.
+          </p>
+        </div>
+      </header>
+      <main class="relative z-10 -mt-16 pb-24">
+        <section class="mx-auto max-w-7xl px-6 lg:px-12">
+          <div class="flex flex-col gap-12">
+            <div class="rounded-3xl border border-slate-800 bg-slate-900/70 p-8 shadow-2xl shadow-cyan-500/10 backdrop-blur">
+              <div class="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
+                <div>
+                  <h2 class="text-2xl font-semibold text-white">Optimise your squad</h2>
+                  <p class="mt-2 text-sm text-slate-400">Enter your FPL manager ID, season, gameweek, and free transfers, then let the optimiser build the best XI.</p>
+                </div>
+                <form id="optimize-form" class="grid gap-4 md:grid-cols-2 xl:grid-cols-5 xl:items-end">
+                  <div class="flex flex-col gap-2">
+                    <label for="team-id" class="text-xs font-medium uppercase tracking-[0.3em] text-slate-400">FPL Team ID</label>
+                    <input
+                      id="team-id"
+                      name="team-id"
+                      type="number"
+                      min="1"
+                      required
+                      class="w-full rounded-xl border border-slate-700 bg-slate-900/70 px-4 py-3 text-base text-white outline-none transition focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/40"
+                      placeholder="Manager ID"
+                    />
+                  </div>
+                  <div class="flex flex-col gap-2">
+                    <label for="season" class="text-xs font-medium uppercase tracking-[0.3em] text-slate-400">Season</label>
+                    <input
+                      id="season"
+                      name="season"
+                      type="text"
+                      value="2025-26"
+                      class="w-full rounded-xl border border-slate-700 bg-slate-900/70 px-4 py-3 text-base text-white outline-none transition focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/40"
+                      placeholder="2025-26"
+                    />
+                  </div>
+                  <div class="flex flex-col gap-2">
+                    <label for="gameweek" class="text-xs font-medium uppercase tracking-[0.3em] text-slate-400">Gameweek</label>
+                    <input
+                      id="gameweek"
+                      name="gameweek"
+                      type="number"
+                      min="1"
+                      max="38"
+                      value="9"
+                      class="w-full rounded-xl border border-slate-700 bg-slate-900/70 px-4 py-3 text-base text-white outline-none transition focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/40"
+                    />
+                  </div>
+                  <div class="flex flex-col gap-2">
+                    <label for="free-transfers" class="text-xs font-medium uppercase tracking-[0.3em] text-slate-400">Free Transfers</label>
+                    <input
+                      id="free-transfers"
+                      name="free-transfers"
+                      type="number"
+                      min="0"
+                      max="15"
+                      value="1"
+                      class="w-full rounded-xl border border-slate-700 bg-slate-900/70 px-4 py-3 text-base text-white outline-none transition focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/40"
+                    />
+                    <p class="text-[0.65rem] uppercase tracking-[0.2em] text-slate-500">Set to 0 if you&apos;ve used your free move.</p>
+                  </div>
+                  <div class="flex flex-wrap items-center gap-3">
+                    <button
+                      type="submit"
+                      class="group relative inline-flex w-full items-center justify-center overflow-hidden rounded-xl bg-gradient-to-r from-cyan-400 via-blue-500 to-violet-500 px-6 py-3 text-base font-semibold text-white shadow-lg shadow-cyan-500/30 transition hover:scale-[1.01] focus:outline-none"
+                    >
+                      <span class="absolute inset-0 translate-y-full bg-white/20 transition-transform duration-500 ease-out group-hover:translate-y-0"></span>
+                      <span class="relative flex items-center gap-2">
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.126M2.25 9.348h4.126m2.2-5.435 2.337 3.917m4.674 0 2.337-3.917m-4.674 0v15.66" />
+                        </svg>
+                        Optimise XI
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      id="load-saved"
+                      class="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-700/70 bg-slate-900/40 px-6 py-3 text-sm font-medium text-slate-200 transition hover:border-cyan-400 hover:text-white"
+                    >
+                      <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      Load saved XI
+                    </button>
+                  </div>
+                  <p id="form-feedback" class="md:col-span-2 xl:col-span-5 hidden rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200"></p>
+                  <div class="md:col-span-2 xl:col-span-5">
+                    <div id="saved-teams-panel" class="hidden rounded-2xl border border-slate-800/80 bg-slate-900/60 px-5 py-6 shadow-lg shadow-cyan-500/10 backdrop-blur">
+                      <div class="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <h3 class="text-lg font-semibold text-white">Saved squads</h3>
+                          <p class="text-xs uppercase tracking-[0.3em] text-slate-500">Tap to load a previous optimisation</p>
+                        </div>
+                        <button
+                          type="button"
+                          id="refresh-saved"
+                          class="inline-flex items-center gap-2 rounded-lg border border-slate-700/70 bg-slate-900/70 px-3 py-2 text-xs font-medium uppercase tracking-[0.25em] text-slate-300 transition hover:border-cyan-400 hover:text-white"
+                        >
+                          <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.126M2.25 9.348h4.126m2.2-5.435 2.337 3.917m4.674 0 2.337-3.917m-4.674 0v15.66" />
+                          </svg>
+                          Refresh
+                        </button>
+                      </div>
+                      <p id="saved-teams-empty" class="mt-4 hidden rounded-xl border border-slate-700/60 bg-slate-900/80 px-4 py-3 text-sm text-slate-300">
+                        Save an optimisation to see it here.
+                      </p>
+                      <div id="saved-teams-grid" class="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3"></div>
+                    </div>
+                  </div>
+                </form>
+              </div>
+            </div>
+
+            <div id="team-insights" class="hidden flex flex-col gap-10">
+              <div class="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+                <div class="rounded-3xl border border-slate-800 bg-slate-900/70 p-6 shadow-xl shadow-cyan-500/10 backdrop-blur">
+                  <div class="flex flex-wrap items-center justify-between gap-4">
+                    <div>
+                      <h3 id="team-title" class="text-2xl font-semibold text-white"></h3>
+                      <p class="mt-1 text-xs uppercase tracking-[0.3em] text-slate-500">Projection overview</p>
+                    </div>
+                    <span id="saved-at" class="text-xs uppercase tracking-[0.3em] text-slate-400"></span>
+                  </div>
+                  <div class="mt-5 grid gap-4 text-sm text-slate-300 sm:grid-cols-3">
+                    <div class="rounded-xl bg-slate-900/70 p-4">
+                      <p class="text-xs uppercase tracking-widest text-slate-400">Budget</p>
+                      <p id="team-budget" class="mt-1 text-lg font-semibold text-cyan-300"></p>
+                    </div>
+                    <div class="rounded-xl bg-slate-900/70 p-4">
+                      <p class="text-xs uppercase tracking-widest text-slate-400">Team Value</p>
+                      <p id="team-value" class="mt-1 text-lg font-semibold text-emerald-300"></p>
+                    </div>
+                    <div class="rounded-xl bg-slate-900/70 p-4">
+                      <p class="text-xs uppercase tracking-widest text-slate-400">Bank</p>
+                      <p id="team-bank" class="mt-1 text-lg font-semibold text-amber-300"></p>
+                    </div>
+                  </div>
+                </div>
+                <div class="rounded-3xl border border-slate-800 bg-slate-900/70 p-6 shadow-xl shadow-violet-500/10 backdrop-blur">
+                  <div class="flex items-center justify-between">
+                    <h4 class="text-lg font-semibold text-white">Chip Insights</h4>
+                    <span class="text-xs uppercase tracking-[0.3em] text-slate-500">Smart plays</span>
+                  </div>
+                  <div id="chip-recommendations" class="mt-4 grid gap-4 md:grid-cols-2"></div>
+                </div>
+              </div>
+
+              <div class="comparison-grid">
+                <div class="pitch-column">
+                  <div class="column-heading">
+                    <div class="flex items-center gap-2">
+                      <span class="inline-flex h-2 w-2 rounded-full bg-cyan-400"></span>
+                      <h3 class="text-lg font-semibold text-white">Recommended XI</h3>
+                    </div>
+                    <p class="text-xs uppercase tracking-[0.3em] text-slate-500">Optimised median projection</p>
+                  </div>
+                  <div id="pitch-optimized" class="pitch"></div>
+                  <div class="bench-block">
+                    <h4 class="bench-heading">Bench Order</h4>
+                    <div id="optimized-bench" class="mt-3 grid gap-3"></div>
+                  </div>
+                </div>
+
+                <div class="summary-column">
+                  <div class="column-heading">
+                    <h3 class="text-lg font-semibold text-white">Change Ledger</h3>
+                    <p class="text-xs uppercase tracking-[0.3em] text-slate-500">Transfers · Hits · Net gain</p>
+                  </div>
+                  <div id="change-summary" class="change-summary-grid"></div>
+                </div>
+
+                <div class="pitch-column">
+                  <div class="column-heading">
+                    <div class="flex items-center gap-2">
+                      <span class="inline-flex h-2 w-2 rounded-full bg-emerald-300"></span>
+                      <h3 class="text-lg font-semibold text-white">Current XI</h3>
+                    </div>
+                    <p class="text-xs uppercase tracking-[0.3em] text-slate-500">Based on latest picks</p>
+                  </div>
+                  <div id="pitch-current" class="pitch"></div>
+                  <div class="bench-block">
+                    <h4 class="bench-heading">Current Bench</h4>
+                    <div id="current-bench" class="mt-3 grid gap-3"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div id="loading-overlay" class="pointer-events-none fixed inset-0 hidden place-items-center bg-slate-950/70 backdrop-blur">
+      <div class="relative flex items-center gap-3 rounded-2xl border border-cyan-400/40 bg-slate-900/80 px-6 py-4 text-cyan-200">
+        <span class="h-3 w-3 animate-ping rounded-full bg-cyan-400"></span>
+        <p class="text-sm font-medium">Optimising your XI, hold tight...</p>
+      </div>
+    </div>
+
+    <script src="/static/app.js" type="module"></script>
+  </body>
+</html>
