@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Iterable, List, Tuple
+from typing import Dict, Iterable, List, Optional, Tuple
 
 import pandas as pd
 import pulp
@@ -55,14 +55,22 @@ class OptimizationError(Exception):
     pass
 
 
-def load_predictions(data_dir: Path, season: str, gameweek: int) -> pd.DataFrame:
-    filename = data_dir / f"predictions_{season}GW{gameweek}.csv"
-    if not filename.exists():
-        raise OptimizationError(f"Prediction file {filename.name} not found")
-    df = pd.read_csv(filename)
-    if df.empty:
-        raise OptimizationError("Prediction file is empty")
-    return df
+def load_predictions(data_dir: Path, season: str, gameweek: int) -> Tuple[pd.DataFrame, int]:
+    """Load the latest available prediction file at or before the requested gameweek."""
+
+    candidate = gameweek
+    while candidate >= 1:
+        filename = data_dir / f"predictions_{season}GW{candidate}.csv"
+        if filename.exists():
+            df = pd.read_csv(filename)
+            if df.empty:
+                raise OptimizationError("Prediction file is empty")
+            return df, candidate
+        candidate -= 1
+
+    raise OptimizationError(
+        f"Prediction file for season {season} up to GW{gameweek} not found"
+    )
 
 
 def build_player_catalog(bootstrap: Dict[str, object]) -> Tuple[Dict[str, List[Dict[str, object]]], Dict[int, str]]:
@@ -143,12 +151,29 @@ def build_projection_pool(predictions: pd.DataFrame, name_index: Dict[str, List[
     return list(projections.values())
 
 
-def optimize_squad(projections: Iterable[PlayerProjection], budget: float) -> List[PlayerProjection]:
+def optimize_squad(
+    projections: Iterable[PlayerProjection],
+    budget: float,
+    current_squad_ids: Optional[Iterable[int]] = None,
+    free_transfers: int = 1,
+    hit_penalty: float = 4.0,
+) -> List[PlayerProjection]:
     projections = list(projections)
     problem = pulp.LpProblem("fpl_squad_optimization", pulp.LpMaximize)
 
     decision_vars = {proj.element_id: pulp.LpVariable(f"player_{proj.element_id}", cat="Binary") for proj in projections}
     objective = pulp.lpSum(proj.prediction * decision_vars[proj.element_id] for proj in projections)
+
+    current_ids_set = set(current_squad_ids or [])
+    if current_ids_set:
+        new_player_ids = [proj.element_id for proj in projections if proj.element_id not in current_ids_set]
+        if new_player_ids:
+            extra_transfers = pulp.LpVariable("extra_transfers", lowBound=0)
+            new_player_count = pulp.lpSum(decision_vars[player_id] for player_id in new_player_ids)
+            problem += extra_transfers >= new_player_count - float(free_transfers)
+            problem += extra_transfers >= 0
+            objective -= hit_penalty * extra_transfers
+
     problem += objective
 
     # Total squad size

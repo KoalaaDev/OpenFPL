@@ -46,7 +46,18 @@ async def gather_with_client(team_id: int, event_id: int) -> Dict[str, Any]:
     client = get_fpl_client()
     bootstrap_task = asyncio.create_task(client.fetch_bootstrap())
     entry_task = asyncio.create_task(client.fetch_entry(team_id))
-    picks_task = asyncio.create_task(client.fetch_picks(team_id, event_id))
 
-    bootstrap, entry, picks = await asyncio.gather(bootstrap_task, entry_task, picks_task)
-    return {"bootstrap": bootstrap, "entry": entry, "picks": picks or None}
+    picks = await client.fetch_picks(team_id, event_id)
+    picks_event = event_id
+    picks_list = picks.get("picks") if isinstance(picks, dict) else None
+
+    if (not picks_list) and event_id > 1:
+        fallback_event = event_id - 1
+        fallback_picks = await client.fetch_picks(team_id, fallback_event)
+        fallback_list = fallback_picks.get("picks") if isinstance(fallback_picks, dict) else None
+        if fallback_list:
+            picks = fallback_picks
+            picks_event = fallback_event
+
+    bootstrap, entry = await asyncio.gather(bootstrap_task, entry_task)
+    return {"bootstrap": bootstrap, "entry": entry, "picks": picks or None, "picks_event": picks_event}
