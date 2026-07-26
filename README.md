@@ -36,6 +36,76 @@ To use OpenFPL on custom data, you need to construct samples based on data from 
 
 Historical FPL and Understat data can be accessed by help of [FPL Historical Dataset](https://github.com/vaastav/Fantasy-Premier-League)
 
+## Automatic data pipeline (`fpl_engine`)
+
+Instead of hand-building `samples.csv`, the `fpl_engine/` package **pulls the
+data automatically, for free, into a simple local SQLite database** and builds
+the OpenFPL feature samples point-in-time, so predictions run end-to-end.
+
+- **Store:** one SQLite file (`data/fpl.sqlite`) — no server, no cloud, no keys.
+- **Free sources, no auth:** the official [FPL API](https://fantasy.premierleague.com/api/bootstrap-static/),
+  the [vaastav historical dataset](https://github.com/vaastav/Fantasy-Premier-League)
+  (so early-season form carries over from last season), and — when reachable —
+  [Understat](https://understat.com/) advanced stats. If Understat is
+  unavailable the pipeline degrades gracefully to FPL-only features.
+
+```bash
+pip install -r requirements-pipeline.txt
+
+python -m fpl_engine pull            # FPL live + historical backfill -> SQLite
+python -m fpl_engine predict --gw 1  # build point-in-time samples + run OpenFPL
+python -m fpl_engine run  --gw 1     # pull + build + predict in one command
+```
+
+### Squad optimiser (transfers, captaincy, chips-ready)
+
+Give it your **FPL squad id** (from your team URL,
+`fantasy.premierleague.com/en/entry/<id>/`) and it fetches your current team and
+recommends moves over a multi-gameweek horizon:
+
+```bash
+python -m fpl_engine optimise --entry 883566 --horizon 5
+```
+
+A multi-period mixed-integer optimiser (PuLP + the free bundled CBC solver)
+chooses squad, starting XI, captain and transfers to maximise discounted
+expected points **net of the -4 point hit** for transfers beyond your free
+allowance. It models free-transfer accrual (bankable up to 5) and therefore
+decides for itself whether a hit is worth taking. It respects every FPL rule:
+£100m budget with correct bank/selling-price accounting, 2/5/5/3 squad, max 3
+per club and legal formations. **If no squad exists yet** (pre-season, before
+the first deadline) it builds an optimal squad from £100m — the initial pick is
+free. The entry id defaults to `883566`.
+
+### Adapting to new results (form + optional retraining)
+
+The projections react to recent matches automatically: re-run `pull` after a
+gameweek and the new matches flow into the trailing-form features, so the next
+`predict`/`optimise` reflects current form — no retraining needed.
+
+To also let the model **relearn its weights** (useful as the new-season rules
+bed in), retrain and blend — GPU-accelerated when one is present:
+
+```bash
+python -m fpl_engine train                        # refit on the feature store
+python -m fpl_engine predict  --gw 1  --blend auto # blend fresh + OpenFPL
+python -m fpl_engine optimise --entry 883566 --blend auto
+```
+
+`train` refits position-specific XGBoost models **strictly forward-in-time**
+(features never see future matches; the latest season is held out for
+validation and reported as stratified RMSE), reusing OpenFPL's scaler and
+feature space so predictions blend cleanly. `--blend auto` weights the retrained
+model up as the season progresses; `--blend 0` (the default) is pure OpenFPL.
+GPU is auto-detected (`--device cuda|cpu`, or `$FPL_DEVICE`).
+
+The pipeline is verified end-to-end: the canonical scoring engine reconciles
+100% of 2024-25 player-gameweek points; the feature builder reproduces the
+FPL-sourced columns of `data/samples.csv`; and the predictor reproduces
+`data/predictions.csv` exactly. See `CLAUDE.md` for architecture and the
+engineering principles (point-in-time discipline, single scoring source, etc.),
+and run `python -m pytest tests/ -q`.
+
 ## Head-to-head evaluation with state-of-the-art commercial method
 
 | Method | RMSE<sub>Zeros*</sub> | RMSE<sub>Blanks*</sub> | RMSE<sub>Tickers*</sub> | RMSE<sub>Haulers*</sub> |
