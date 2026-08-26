@@ -112,6 +112,85 @@ export function bestXI(squadIds, posOf, epFor) {
   return xi
 }
 
+// Best legal XI you could actually field on a one-week chip, within a spend
+// cap. The old Free Hit hint compared your XI against the highest-EP eleven in
+// the game with no budget and no club limit, so it advertised a gain nobody
+// could buy. This respects the formation (1 GK, 3-5 DEF, 2-5 MID, 1-3 FWD),
+// max 3 per club, and reserves money for the four bench players a legal 15
+// still needs. Greedy by points, then repaired by swapping out whichever pick
+// loses the fewest points per pound freed.
+//
+// It is an estimate, not an optimum — the Solver remains the authority.
+export function bestAffordableXI(pool, posOf, epFor, priceOf, clubOf, budget) {
+  const MIN = { GK: 1, DEF: 3, MID: 2, FWD: 1 }
+  const MAX = { GK: 1, DEF: 5, MID: 5, FWD: 3 }
+  const byPos = { GK: [], DEF: [], MID: [], FWD: [] }
+  for (const id of pool) if (byPos[posOf(id)]) byPos[posOf(id)].push(id)
+  for (const k of Object.keys(byPos)) {
+    byPos[k] = byPos[k].filter((id) => epFor(id) > 0 || priceOf(id) > 0)
+    byPos[k].sort((a, b) => epFor(b) - epFor(a))
+  }
+  // reserve the cheapest bench that completes a legal 15 (1 GK + 3 outfield)
+  const cheapest = (pos, n) => [...byPos[pos]].sort((a, b) => priceOf(a) - priceOf(b)).slice(0, n)
+  const bench = [...cheapest('GK', 1), ...cheapest('DEF', 1), ...cheapest('MID', 1), ...cheapest('FWD', 1)]
+  const benchCost = bench.reduce((a, id) => a + priceOf(id), 0)
+  const cap = Math.max(0, budget - benchCost)
+
+  const picked = []
+  const count = { GK: 0, DEF: 0, MID: 0, FWD: 0 }
+  const perClub = {}
+  const canAdd = (id) => {
+    const pos = posOf(id)
+    if (count[pos] >= MAX[pos]) return false
+    if ((perClub[clubOf(id)] || 0) >= 3) return false
+    return true
+  }
+  const add = (id) => {
+    picked.push(id); count[posOf(id)]++
+    perClub[clubOf(id)] = (perClub[clubOf(id)] || 0) + 1
+  }
+  const drop = (id) => {
+    picked.splice(picked.indexOf(id), 1); count[posOf(id)]--
+    perClub[clubOf(id)]--
+  }
+  // minimum quotas first, then the best of the rest up to 11
+  for (const pos of ['GK', 'DEF', 'MID', 'FWD']) {
+    for (const id of byPos[pos]) {
+      if (count[pos] >= MIN[pos]) break
+      if (canAdd(id)) add(id)
+    }
+  }
+  const rest = [...byPos.DEF, ...byPos.MID, ...byPos.FWD]
+    .filter((id) => !picked.includes(id))
+    .sort((a, b) => epFor(b) - epFor(a))
+  for (const id of rest) {
+    if (picked.length >= 11) break
+    if (canAdd(id)) add(id)
+  }
+
+  const cost = () => picked.reduce((a, id) => a + priceOf(id), 0)
+  // repair: swap the pick with the worst points-lost-per-pound-freed
+  for (let guard = 0; guard < 60 && cost() > cap; guard++) {
+    let best = null
+    for (const id of picked) {
+      const pos = posOf(id)
+      for (const alt of byPos[pos]) {
+        if (picked.includes(alt) || priceOf(alt) >= priceOf(id)) continue
+        if (alt !== id && (perClub[clubOf(alt)] || 0) >= 3 && clubOf(alt) !== clubOf(id)) continue
+        const saved = priceOf(id) - priceOf(alt)
+        if (saved <= 0) continue
+        const lost = epFor(id) - epFor(alt)
+        const ratio = lost / saved
+        if (!best || ratio < best.ratio) best = { out: id, in: alt, ratio }
+        break     // alternatives are EP-sorted; the first cheaper one is best
+      }
+    }
+    if (!best) break
+    drop(best.out); add(best.in)
+  }
+  return { xi: picked, cost: cost(), affordable: cost() <= cap, benchCost }
+}
+
 export function formationRows(xiIds, posOf) {
   const rows = { GK: [], DEF: [], MID: [], FWD: [] }
   for (const id of xiIds) rows[posOf(id)]?.push(id)

@@ -3,8 +3,9 @@ import Flag from '../components/Flag'
 import PlayerModal from '../components/PlayerModal'
 import { useFixtureLookup, useStore } from '../store'
 import {
-  CHIP_LONG, CHIP_SHORT, POS_ORDER, baselineDeltas, bestXI, epOf, fdrColor,
-  formationRows, fmt1, gwEV, gwHasProj, money, shirtUrl, withBaseline, xiLegal,
+  CHIP_LONG, CHIP_SHORT, POS_ORDER, baselineDeltas, bestAffordableXI, bestXI,
+  epOf, fdrColor, formationRows, fmt1, gwEV, gwHasProj, money, shirtUrl,
+  withBaseline, xiLegal,
 } from '../util'
 
 export default function Planner() {
@@ -617,11 +618,19 @@ function ChipAdvisor({ draft, proj, byId, players, posOf, updateDraft }) {
     }, { id: null, ep: 0 })
     const benchEp = p.squad.filter((s) => !p.xi.includes(s.id))
       .reduce((a, s) => a + epOf(proj, s.id, p.gw), 0)
-    // best XI available from the whole pool (ignoring budget) for this gw
+    // Best XI a Free Hit could actually buy this gw: the chip spends the
+    // squad's selling value plus the bank, so the comparison has to respect
+    // that budget (and the 3-per-club cap) or it advertises a gain you cannot
+    // buy — which is also why it could never name the team.
+    const budget = p.squad.reduce((a, s) => a + (s.sell ?? byId.get(s.id)?.price ?? 0), 0)
+      + (p.bank || 0)
     const pool = players.map((x) => x.id)
-    const best = bestXI(pool, posOf, (id) => epOf(proj, id, p.gw))
-    const bestEp = best.reduce((a, id) => a + epOf(proj, id, p.gw), 0)
-    return { gw: p.gw, chip: p.chip, xiEp, cap, benchEp, bestEp, gap: bestEp - xiEp }
+    const fh = bestAffordableXI(
+      pool, posOf, (id) => epOf(proj, id, p.gw),
+      (id) => byId.get(id)?.price ?? 0, (id) => byId.get(id)?.team_id ?? 0, budget)
+    const bestEp = fh.xi.reduce((a, id) => a + epOf(proj, id, p.gw), 0)
+    return { gw: p.gw, chip: p.chip, xiEp, cap, benchEp, bestEp,
+             gap: bestEp - xiEp, fhXi: fh.xi, fhCost: fh.cost, budget }
   }), [draft, proj, players])
 
   const median = (xs) => { const s = [...xs].sort((a, b) => a - b); return s.length ? s[Math.floor(s.length / 2)] : 0 }
@@ -637,7 +646,8 @@ function ChipAdvisor({ draft, proj, byId, players, posOf, updateDraft }) {
       gain: bb.benchEp, text: `bench projects ${fmt1(bb.benchEp)} pts` })
     const fh = stats.reduce((b, s) => (s.gap > b.gap ? s : b), stats[0])
     hints.push({ chip: 'freehit', gw: fh.gw, score: fh.gap, strong: fh.gap >= 12,
-      gain: fh.gap, text: `your XI ${fmt1(fh.xiEp)} vs ${fmt1(fh.bestEp)} best available (${fh.gap >= 0 ? '+' : ''}${fmt1(fh.gap)})` })
+      gain: fh.gap, xi: fh.fhXi, cost: fh.fhCost, budget: fh.budget,
+      text: `your XI ${fmt1(fh.xiEp)} vs ${fmt1(fh.bestEp)} best affordable (${fh.gap >= 0 ? '+' : ''}${fmt1(fh.gap)}) — ${money(fh.fhCost)} of ${money(fh.budget)}` })
     const first = stats[0].gap
     const worse = stats.find((s) => s.gap - first >= 4)
     if (worse) {
@@ -645,6 +655,7 @@ function ChipAdvisor({ draft, proj, byId, players, posOf, updateDraft }) {
         gain: worse.gap - first, text: `gap to the best XI grows by ${fmt1(worse.gap - first)} from GW${worse.gw}` })
     }
   }
+  const [showXi, setShowXi] = useState(null)
   const apply = (chip, gw) => updateDraft((d) => {
     for (const p of d.gws) if (p.chip === chip) p.chip = null
     const t = d.gws.find((p) => p.gw === gw)
@@ -660,13 +671,45 @@ function ChipAdvisor({ draft, proj, byId, players, posOf, updateDraft }) {
         </span>
       </div>
       {hints.map((h) => (
-        <div key={h.chip} className={`advice ${h.strong ? 'strong' : ''}`}>
-          <span className="chip gold">{CHIP_SHORT[h.chip]}</span>
-          <span className="num" style={{ fontWeight: 800 }}>GW{h.gw}</span>
-          <span className="txt">{h.text}</span>
-          {active.has(`${h.chip}@${h.gw}`)
-            ? <span className="chip green">set</span>
-            : <button className="pill-btn" onClick={() => apply(h.chip, h.gw)}>apply</button>}
+        <div key={h.chip}>
+          <div className={`advice ${h.strong ? 'strong' : ''}`}>
+            <span className="chip gold">{CHIP_SHORT[h.chip]}</span>
+            <span className="num" style={{ fontWeight: 800 }}>GW{h.gw}</span>
+            <span className="txt">{h.text}</span>
+            {h.xi?.length > 0 && (
+              <button className="pill-btn" onClick={() => setShowXi(showXi === h.chip ? null : h.chip)}>
+                {showXi === h.chip ? 'hide XI' : 'show XI'}
+              </button>
+            )}
+            {active.has(`${h.chip}@${h.gw}`)
+              ? <span className="chip green">set</span>
+              : <button className="pill-btn" onClick={() => apply(h.chip, h.gw)}>apply</button>}
+          </div>
+          {showXi === h.chip && h.xi?.length > 0 && (
+            <div className="fh-xi">
+              {POS_ORDER.map((pos) => {
+                const ids = h.xi.filter((id) => posOf(id) === pos)
+                if (!ids.length) return null
+                return (
+                  <div key={pos} className="fh-row">
+                    <span className="fh-pos">{pos}</span>
+                    {ids.sort((a, b) => epOf(proj, b, h.gw) - epOf(proj, a, h.gw)).map((id) => (
+                      <span key={id} className="fh-p">
+                        {byId.get(id)?.web_name || id}
+                        <em>{fmt1(epOf(proj, id, h.gw))}</em>
+                        <i>{money(byId.get(id)?.price ?? 0)}</i>
+                      </span>
+                    ))}
+                  </div>
+                )
+              })}
+              <div className="fh-foot">
+                XI costs {money(h.cost)} of {money(h.budget)} available (squad value + bank).
+                Bench not shown — a legal 15 needs four more, reserved from the budget.
+                Estimate only: run the Solver with Free Hit enabled for the exact squad.
+              </div>
+            </div>
+          )}
         </div>
       ))}
       {!hints.length && <div className="ml-note">No projections yet.</div>}
