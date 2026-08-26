@@ -28,6 +28,64 @@ from .milp import (MAX_FREE_TRANSFERS, MAX_PER_CLUB, POSITION_QUOTA, SQUAD_SIZE,
                    XI_MAX, XI_MIN, XI_SIZE)
 
 
+# --- playstyles -------------------------------------------------------------
+# Three strategies a manager actually chooses between, not three near-identical
+# optima. Each varies only *preferences* (how far ahead to look, how much a
+# banked transfer is worth, whether hits are acceptable at all) — never the
+# rules: the -4 is always priced at -4, and "no hits" forbids them outright
+# rather than pretending they are cheap.
+PLAYSTYLES: dict[str, dict] = {
+    "aggressive": {
+        "label": "Win now",
+        "note": "Chases the next gameweek or two and will pay a hit to do it.",
+        "params": {"decay": 0.70, "ft_value": 0.5, "allow_hits": True,
+                   "bench_weight": 0.05},
+    },
+    "balanced": {
+        "label": "Balanced",
+        "note": "Takes a hit only when it clearly pays; even weight across the horizon.",
+        "params": {"decay": 0.85, "ft_value": 1.5, "allow_hits": True,
+                   "bench_weight": 0.10},
+    },
+    "patient": {
+        "label": "Patient",
+        "note": "Never takes a hit; banks free transfers and plans the long game.",
+        "params": {"decay": 0.95, "ft_value": 2.5, "allow_hits": False,
+                   "bench_weight": 0.15},
+    },
+}
+DEFAULT_PLAYSTYLES = ["aggressive", "balanced", "patient"]
+
+
+def optimise_playstyles(proj, gws: list[int], *, styles: list[str] | None = None,
+                        on_progress=None, **kw) -> list[ChipPlan]:
+    """One plan per playstyle, so the user picks a strategy rather than a
+    near-duplicate of the same optimum.
+
+    Style presets override any matching keyword (that is the point of a
+    style); everything else — squad, bank, chips, locks, club rules — is
+    shared. Plans come back ordered by the requested styles, each tagged with
+    ``style``/``style_label``/``style_note``. Compare them on ``total_ep``,
+    never on ``objective`` (the styles weight gameweeks differently).
+    """
+    styles = [s for s in (styles or DEFAULT_PLAYSTYLES) if s in PLAYSTYLES]
+    out: list[ChipPlan] = []
+    for i, key in enumerate(styles):
+        spec = PLAYSTYLES[key]
+        if on_progress:
+            on_progress(f"Solving {spec['label']} plan ({i + 1}/{len(styles)})…")
+        params = {**kw, **spec["params"], "n_plans": 1}
+        plans = optimise_with_chips(proj, gws, on_progress=None, **params)
+        if not plans:
+            continue
+        plan = plans[0]
+        plan.style = key
+        plan.style_label = spec["label"]
+        plan.style_note = spec["note"]
+        out.append(plan)
+    return out
+
+
 def _solve(prob: pulp.LpProblem, time_limit: int) -> None:
     """CBC/HiGHS with a 1% optimality gap — plans converge far faster and a
     1% gap is far below projection noise."""
@@ -43,6 +101,27 @@ warnings.filterwarnings("ignore", category=DeprecationWarning, module="pulp")
 
 CHIPS = ("wildcard", "freehit", "bench_boost", "triple_captain")
 
+# What a chip is worth if you *save* it, in points. A rolling-horizon optimiser
+# sees a chip as free upside — it only ever adds points — so with no opportunity
+# cost it burns every available chip inside the horizon (GW2-6 of a season, for
+# single-digit gains). These are the option value of holding the chip back for
+# the week it is actually meant for: a Triple Captain on a premium in a double
+# gameweek, a Bench Boost with a full bench playing twice. A chip is played only
+# when its gain here beats what it would be worth saved.
+#
+# No horizon optimiser can derive these: the reason to hold a chip is the double
+# and blank gameweeks of GW25+, which sit outside a 5-week horizon and are not
+# even scheduled yet. So this is the only lever, and it is a HEURISTIC — it
+# encodes ordinary FPL practice (a well-timed TC/BB is worth ~15-25 pts), not a
+# fitted season-long simulation. Raise them to be stricter early in a season,
+# lower them (or set 0) once a chip genuinely has to be spent.
+DEFAULT_CHIP_RESERVE: dict[str, float] = {
+    "wildcard": 20.0,
+    "freehit": 15.0,
+    "bench_boost": 15.0,
+    "triple_captain": 15.0,
+}
+
 
 @dataclass
 class ChipPlan:
@@ -50,6 +129,40 @@ class ChipPlan:
     objective: float
     status: str = ""
     per_gw: list[dict] = field(default_factory=list)
+    style: str = ""            # playstyle key, when produced by a preset
+    style_label: str = ""      # human-readable name for the UI
+    style_note: str = ""       # one line on what this style optimises for
+
+    @property
+    def total_ep(self) -> float:
+        """Undecayed projected XI points over the horizon, net of hits.
+
+        ``objective`` is NOT comparable between playstyles (each uses its own
+        decay and free-transfer valuation); this is, so the UI ranks on it.
+        """
+        return round(sum(g.get("xi_points", 0.0) - 4.0 * (g.get("hits", 0) or 0)
+                         for g in self.per_gw), 2)
+
+
+
+def _check_selling_prices(initial: dict[int, float] | None) -> None:
+    """Refuse a squad whose selling prices are missing.
+
+    FPL's cheapest player costs £3.5m+, so a £0.0 selling price is never real
+    — it means the price was absent from the source (the public picks endpoint
+    carries none) and got defaulted to zero. Left alone it silently makes every
+    sale raise nothing, so no transfer is affordable and the optimiser returns
+    a "do nothing" plan that looks legitimate. Fail loud instead (CLAUDE.md #5).
+    """
+    if not initial:
+        return
+    bad = sorted(pid for pid, v in initial.items() if not v or float(v) <= 0.0)
+    if bad:
+        raise ValueError(
+            f"{len(bad)} squad player(s) have a £0.00 selling price "
+            f"(ids {bad[:5]}{'…' if len(bad) > 5 else ''}). The public picks "
+            "endpoint does not expose selling prices — use "
+            "fpl_engine.manager.reconstruct_prices() to derive them.")
 
 
 def optimise_with_chips(
@@ -61,6 +174,7 @@ def optimise_with_chips(
     free_transfers: int = 1,
     budget: float = 100.0,
     decay: float = 0.85,
+    chip_decay: float = 1.0,
     hit_cost: float = 4.0,
     bench_weight: float = 0.1,
     ft_value: float = 1.5,
@@ -68,9 +182,12 @@ def optimise_with_chips(
     time_limit: int = 60,
     chip_gws: dict[str, list[int]] | None = None,
     chip_force: dict[str, int] | None = None,
+    chip_reserve: dict[str, float] | None = None,
     locked: set[int] | None = None,
     avoid: set[int] | None = None,
     banned_clubs: set[int] | None = None,
+    sell_clubs: set[int] | None = None,
+    allow_hits: bool = True,
     forced_in: dict[int, list[int]] | None = None,
     forced_out: dict[int, list[int]] | None = None,
     min_ft: dict[int, int] | None = None,
@@ -82,6 +199,25 @@ def optimise_with_chips(
 
     ``chip_gws`` maps chip name -> gameweeks it may be played in (absent or
     empty = chip unavailable). ``chip_force`` pins a chip to a gameweek.
+    ``banned_clubs`` blocks *buying* from those clubs; ``sell_clubs`` also
+    forces players already owned from those clubs out of the squad by the end
+    of the horizon (the solver picks the cheapest gameweek to do it, so a
+    "get off this club" instruction still uses free transfers where possible).
+    ``chip_reserve`` maps chip -> the points it is worth if saved for a better
+    gameweek beyond the horizon; a chip is played only when its gain here beats
+    that (see ``DEFAULT_CHIP_RESERVE``). Without it the optimiser burns every
+    available chip inside the horizon, because within a 5-gameweek window a chip
+    is pure upside with no opportunity cost.
+    ``chip_decay`` discounts the *chip-specific* payoff (Triple Captain's extra
+    captain haul, Bench Boost's bench) separately from ``decay``. The horizon
+    decay exists to discount uncertain far-future transfer planning, but
+    applying it to a one-week chip makes every chip drift to the first
+    gameweek — at ``decay=0.85`` a chip worth 10 pts in GW5 scores 6.1 against
+    8 pts in GW2, so the model plays it early rather than where it actually
+    pays. Default 1.0 times those chips on their real payoff; lower it to
+    re-introduce caution about distant projections.
+    ``allow_hits=False`` forbids paid transfers outright — the honest way to
+    express a no-hits playstyle (the -4 itself is never re-priced).
     ``forced_in``/``forced_out`` map gw -> player_ids that must move that gw.
     ``min_ft`` maps gw -> minimum banked FTs to hold *after* that gw's moves.
     ``unlimited_first`` models the pre-GW1-deadline state: the first gw's
@@ -89,6 +225,7 @@ def optimise_with_chips(
     the FT stock resets to 1 afterwards — like a scratch build, but from an
     existing squad so the plan still reads as transfers.
     """
+    _check_selling_prices(initial)
     scratch = initial is None
     free0 = scratch or unlimited_first     # first gw's moves are free
     P = proj.reset_index(drop=True)
@@ -106,12 +243,14 @@ def optimise_with_chips(
 
     chip_gws = {c: set(v) for c, v in (chip_gws or {}).items() if v}
     chip_force = chip_force or {}
+    reserve = {**DEFAULT_CHIP_RESERVE, **(chip_reserve or {})}
     tc_on = bool(chip_gws.get("triple_captain"))
     bb_on = bool(chip_gws.get("bench_boost"))
     fh_on = bool(chip_gws.get("freehit"))
     locked = locked or set()
     avoid = avoid or set()
     banned_clubs = banned_clubs or set()
+    sell_clubs = sell_clubs or set()
     forced_in = forced_in or {}
     forced_out = forced_out or {}
     min_ft = min_ft or {}
@@ -169,15 +308,20 @@ def optimise_with_chips(
     obj = []
     for t, g in enumerate(gws):
         d = decay ** t
+        cd = chip_decay ** t          # one-week chips are timed on real payoff
         for p in ids:
             e = ep[g][p]
             obj.append(d * e * (xi[p][t] + cap[p][t]))
             obj.append(d * bench_weight * e * (squad[p][t] - xi[p][t]))
             if tc_on:
-                obj.append(d * e * tcp[p][t])
+                obj.append(cd * e * tcp[p][t])
             if bb_on:
-                obj.append(d * (1.0 - bench_weight) * e * bbp[p][t])
+                obj.append(cd * (1.0 - bench_weight) * e * bbp[p][t])
         obj.append(-hit_cost * paid[t])
+        # opportunity cost of spending a chip now instead of saving it
+        for c in CHIPS:
+            if chip_gws.get(c) and reserve.get(c):
+                obj.append(-float(reserve[c]) * chip[c][t])
     obj.append(ft_value * ftv[T[-1]])
     prob += pulp.lpSum(obj)
 
@@ -288,6 +432,13 @@ def optimise_with_chips(
         if club[p] in banned_clubs and not prev.get(p):
             for t in T:
                 prob += squad[p][t] == 0
+        if club[p] in sell_clubs:
+            for t in T:
+                prob += tin[p][t] == 0        # never buy into the club
+            prob += squad[p][T[-1]] == 0      # and be out of it by the end
+    if not allow_hits:
+        for t in T:
+            prob += paid[t] == 0
     for g, plist in forced_in.items():
         if g in gws:
             for p in plist:

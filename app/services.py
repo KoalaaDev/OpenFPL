@@ -703,7 +703,14 @@ def run_solve(job_id: str, params: dict) -> dict:
         bool((entry_state or {}).get("unlimited_transfers")), played, gws[0], start)
     jobs.progress(job_id, f"Solving MILP over {len(proj_p)} players × "
                   f"{len(gws)} GWs…", pct=0.72)
-    plans = chips.optimise_with_chips(
+    # Three plans means three *playstyles* to choose between, not three
+    # near-identical optima; n_plans>1 with no explicit styles uses the presets.
+    styles = params.get("playstyles")
+    if styles is None and int(params.get("n_plans") or 1) > 1:
+        styles = chips.DEFAULT_PLAYSTYLES[:int(params["n_plans"])]
+    solver = (chips.optimise_playstyles if styles else chips.optimise_with_chips)
+    extra = {"styles": styles} if styles else {"n_plans": int(params.get("n_plans") or 1)}
+    plans = solver(
         proj_p, gws,
         initial=initial, bank=bank, free_transfers=fts,
         budget=float(params.get("budget") or 100.0),
@@ -714,12 +721,15 @@ def run_solve(job_id: str, params: dict) -> dict:
         max_transfers_per_gw=int(params.get("max_transfers") or 3),
         time_limit=int(params.get("time_limit") or 60),
         chip_gws=chip_gws, chip_force=chip_force,
+        chip_reserve={k: float(v) for k, v in
+                      (params.get("chip_reserve") or {}).items()},
         locked=locked, avoid=avoid,
         banned_clubs=set(params.get("banned_teams") or []),
+        sell_clubs=set(params.get("sell_teams") or []),
         forced_in={int(g): v for g, v in (params.get("forced_in") or {}).items()},
         forced_out={int(g): v for g, v in (params.get("forced_out") or {}).items()},
         min_ft={int(g): int(v) for g, v in (params.get("min_ft") or {}).items()},
-        n_plans=int(params.get("n_plans") or 1),
+        **extra,
         # pre-GW1 deadline: FPL grants unlimited free transfers, so first-gw
         # moves cost nothing and don't bank into the next gw — but only for
         # the season's first gameweek itself, never a later-starting horizon
@@ -737,7 +747,9 @@ def run_solve(job_id: str, params: dict) -> dict:
                   "team_name": (entry_state or {}).get("name") if entry_state
                   else None},
         "plans": [{"objective": p.objective, "status": p.status,
-                   "per_gw": p.per_gw} for p in plans],
+                   "per_gw": p.per_gw, "style": p.style,
+                   "style_label": p.style_label, "style_note": p.style_note,
+                   "total_ep": p.total_ep} for p in plans],
     }
 
 

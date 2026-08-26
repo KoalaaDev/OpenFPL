@@ -29,6 +29,7 @@ export default function Solver({ goPlanner }) {
   const [locked, setLocked] = useState([])
   const [avoid, setAvoid] = useState([])
   const [banned, setBanned] = useState([])
+  const [sellTeams, setSellTeams] = useState([])
   const [minFt, setMinFt] = useState([])       // [{gw, n}]
 
   const [running, setRunning] = useState(false)
@@ -60,7 +61,7 @@ export default function Solver({ goPlanner }) {
         keep_per_position: keepPerPos, n_plans: nPlans,
         free_transfers: ftOverride === '' ? null : Number(ftOverride),
         chips: chipParams,
-        locked, avoid, banned_teams: banned,
+        locked, avoid, banned_teams: banned, sell_teams: sellTeams,
         min_ft: Object.fromEntries(minFt.map((m) => [m.gw, m.n])),
       })
       const res = await pollJob(job_id, (j) => {
@@ -200,6 +201,30 @@ export default function Solver({ goPlanner }) {
               setList={setLocked} players={players} byId={byId} exclude={avoid} />
             <PlayerPicker label="Avoid / sell players" color="red" list={avoid}
               setList={setAvoid} players={players} byId={byId} exclude={locked} />
+          </div>
+          <div style={{ marginTop: 16 }}>
+            <div className="lbl" style={{ marginBottom: 8 }}>
+              <span className="section-label">📤 Sell out of teams</span>
+              <span className="hintdot" title="Players you already own from these teams must be sold by the end of the horizon. The solver picks the cheapest gameweek to do it, so it uses free transfers where it can.">i</span>
+            </div>
+            <div className="tagbox">
+              {!sellTeams.length && <span className="empty">No teams to sell out of.</span>}
+              {sellTeams.map((tid) => (
+                <span className="tag red" key={tid}>
+                  {teams[String(tid)]?.name || tid}
+                  <button onClick={() => setSellTeams((b) => b.filter((x) => x !== tid))}>×</button>
+                </span>
+              ))}
+              <select className="pill-btn" value="" style={{ background: 'var(--panel)', appearance: 'auto' }}
+                onChange={(e) => {
+                  const v = Number(e.target.value)
+                  if (v && !sellTeams.includes(v)) setSellTeams((b) => [...b, v])
+                }}>
+                <option value="">+ add team</option>
+                {Object.values(teams).sort((a, b) => a.name.localeCompare(b.name))
+                  .map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+              </select>
+            </div>
           </div>
           <div style={{ marginTop: 16 }}>
             <div className="lbl" style={{ marginBottom: 8 }}>
@@ -364,10 +389,20 @@ function PlanCard({ plan, i, addDraft, byId, freeFirst }) {
     <div className="plan-card">
       <div className="head" onClick={() => setOpen((o) => !o)} style={{ cursor: 'pointer' }}>
         <span className="chip pink num">#{i + 1}</span>
-        Plan {i + 1}
+        {plan.style_label || `Plan ${i + 1}`}
+        {/* total_ep is undecayed and net of hits, so it compares fairly across
+            playstyles; obj is not comparable (each style weights gws its own way) */}
         <span className="num" style={{ color: 'var(--muted)', fontSize: 12 }}>
-          obj {fmt1(plan.objective)}
+          {plan.total_ep != null ? `${fmt1(plan.total_ep)} pts` : `obj ${fmt1(plan.objective)}`}
         </span>
+        {plan.style_note && (
+          <span style={{ color: 'var(--muted-2)', fontSize: 11, fontStyle: 'italic',
+                         marginLeft: 8, maxWidth: 320, overflow: 'hidden',
+                         textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                title={plan.style_note}>
+            {plan.style_note}
+          </span>
+        )}
         <span style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
           <button className="pill-btn accent"
             onClick={(e) => { e.stopPropagation(); addDraft(plan, i) }}>

@@ -104,7 +104,9 @@ python -m fpl_engine backtest --backtest-season 2025-26   # also (re)trains minu
 `optimise/milp.py` is a multi-period mixed-integer program (PuLP + bundled CBC,
 free) over a rolling horizon. It jointly chooses squad, starting XI, captain and
 transfers per gameweek to maximise **discounted expected points net of the -4
-hit cost**. Free transfers accrue (+1/gw, bankable to 5) and are modelled
+hit cost**. Free transfers accrue (+1/gw, bankable to 5; the stock starts at
+**0** — transfers before the GW1 deadline are unlimited and bank nothing, so a
+quiet GW1 leaves exactly 1 FT for GW2) and are modelled
 explicitly, so the model decides whether a hit is worth it (a transfer is taken
 only when its marginal XI gain over the displaced/benched player beats 4 points).
 Constraints enforced as hard: £100m budget with the bank recursion, 2/5/5/3
@@ -155,6 +157,17 @@ Run: `python -m pytest tests/ -q`
   kickoff, though matches later in the gameweek carry a little extra market
   information. The Odds API covers upcoming fixtures only on the free tier
   (its historical endpoints are paid), so backtests rely on football-data.
+* **Selling prices are reconstructed, not fetched.** The public
+  `entry/{id}/event/{gw}/picks/` endpoint carries no `selling_price` — only the
+  authenticated `my-team/{id}/` endpoint does. `manager.reconstruct_prices`
+  derives them keylessly: price paid comes from `entry/{id}/transfers/`, or for
+  a player never transferred in his season-start price
+  (`now_cost - cost_change_start` from bootstrap), then FPL's rule (purchase +
+  half the profit, rounded down; a fallen price sells at current value) is
+  applied. Verified exact against an authenticated squad. Both optimisers
+  refuse a £0.00 selling price outright — left silent it makes every sale raise
+  nothing, so no transfer is affordable and the solver emits a plausible-looking
+  "do nothing" plan.
 * **League-rank / status-rank** columns are AM-only in OpenFPL and left NaN for
   player rows (matching the reference samples).
 
@@ -164,8 +177,34 @@ Run: `python -m pytest tests/ -q`
 UI on **http://127.0.0.1:8410** with four tabs: Planner (pitch + drafts),
 Projections (per-GW model output table), Fixtures (FDR heatmap) and Solver
 (chip-aware optimisation via `fpl_engine/optimise/chips.py` — a superset of
-`milp.py` adding WC/FH/BB/TC chips, target/avoid/ban constraints and N
-alternative plans; `milp.py` itself stays untouched).
+`milp.py` adding WC/FH/BB/TC chips, target/avoid/ban constraints, club-level
+buy/sell rules and playstyle plans; `milp.py` itself stays untouched).
+
+Solver specifics worth knowing:
+
+* **Playstyles, not near-duplicates.** Asking for N plans returns one per
+  preset in `chips.PLAYSTYLES` (Win now / Balanced / Patient) rather than N
+  solutions of the same optimum, which differed only cosmetically. Styles vary
+  *preferences* only — horizon `decay`, `ft_value`, and whether hits are
+  allowed at all — never the rules: a -4 is always priced at -4, and the
+  no-hits style forbids them via `allow_hits=False` instead of underpricing
+  them. Compare plans on `ChipPlan.total_ep` (undecayed, net of hits), **never**
+  on `objective` — each style weights gameweeks differently, so objectives are
+  not comparable across them.
+* **Club rules.** `banned_clubs` blocks *buying* from a club; `sell_clubs` also
+  forces players already owned out by the end of the horizon, letting the
+  solver choose the cheapest gameweek so the exit still uses free transfers.
+* **Chips have option value.** A rolling-horizon optimiser sees a chip as pure
+  upside and burns every available one inside the horizon (all four across
+  GW2-6, for single-digit gains). `chip_reserve` (defaults in
+  `DEFAULT_CHIP_RESERVE`) prices what a chip is worth *saved* for the double
+  gameweek it is meant for, so it is played only when the gain here beats that.
+  These defaults are a documented heuristic reflecting ordinary FPL practice,
+  not a fitted season-long simulation — set a chip to 0 for the old behaviour.
+* **`chip_decay`** discounts one-week chip payoffs separately from `decay`
+  (default 1.0). The horizon decay exists for uncertain far-future *transfer*
+  planning; applying it to a chip made every chip drift to the first gameweek,
+  since a 10-pt chip in GW5 scored 6.1 against 8 pts in GW2.
 
 ```
 python -m app                      # serve the built site (needs app/static)

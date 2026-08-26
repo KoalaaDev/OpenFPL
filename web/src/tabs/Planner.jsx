@@ -3,8 +3,8 @@ import Flag from '../components/Flag'
 import PlayerModal from '../components/PlayerModal'
 import { useFixtureLookup, useStore } from '../store'
 import {
-  CHIP_LONG, CHIP_SHORT, POS_ORDER, baselineDeltas, bestXI, epOf, formationRows,
-  fmt1, gwEV, money, shirtUrl, withBaseline, xiLegal,
+  CHIP_LONG, CHIP_SHORT, POS_ORDER, baselineDeltas, bestXI, epOf, fdrColor,
+  formationRows, fmt1, gwEV, gwHasProj, money, shirtUrl, withBaseline, xiLegal,
 } from '../util'
 
 export default function Planner() {
@@ -20,6 +20,14 @@ export default function Planner() {
   const [undoN, setUndoN] = useState(0)
 
   const plan = draft?.gws?.[Math.min(gwIdx, (draft?.gws?.length || 1) - 1)] || null
+  // A draft saved before the season still lists played gameweeks; those have no
+  // projections (every player would read 0.0), so open the first live one.
+  const firstLiveGw = useMemo(() => {
+    const i = (draft?.gws || []).findIndex((g) => gwHasProj(proj, g.gw))
+    return i < 0 ? 0 : i
+  }, [draft?.id, draft?.gws, proj])
+  useEffect(() => { setGwIdx(firstLiveGw) }, [draft?.id, firstLiveGw])
+  const planIsPast = plan ? !gwHasProj(proj, plan.gw) : false
   const posOf = (pid) => byId.get(pid)?.position || 'MID'
 
   // every edit goes through here: snapshot for undo, then mutate a clone
@@ -213,6 +221,12 @@ export default function Planner() {
         plan={plan} nMoves={nMoves} updateDraft={updateDraft} undo={undo} canUndo={undoN > 0} />
       <div className="planner-grid">
         <div>
+          {planIsPast && (
+            <div className="past-gw-note">
+              GW{plan.gw} has already been played, so there are no projections for
+              it — every point shown reads 0.0. Pick a later gameweek to plan.
+            </div>
+          )}
           {plan && (
             <PitchView plan={plan} draft={draft} sel={sel} setSel={setSel}
               setStatPid={setStatPid} posOf={posOf} armed={armed} setArmed={setArmed}
@@ -275,6 +289,7 @@ export default function Planner() {
 const ALL_CHIPS = ['bench_boost', 'triple_captain', 'wildcard', 'freehit']
 
 function GwBar({ draft, gwIdx, setGwIdx, evs, deltas, plan, nMoves, updateDraft, undo, canUndo }) {
+  const { proj } = useStore()
   const total = evs.reduce((a, b) => a + b, 0)
   const dTotal = deltas ? deltas.reduce((a, b) => a + b, 0) : null
   const [openChip, setOpenChip] = useState(null)
@@ -298,13 +313,18 @@ function GwBar({ draft, gwIdx, setGwIdx, evs, deltas, plan, nMoves, updateDraft,
   return (
     <div className="gwbar">
       <div className="pager">
-        {draft.gws.map((p, i) => (
-          <button key={p.gw} className={`gw-dot ${i === gwIdx ? 'active' : ''}`}
-            onClick={() => setGwIdx(i)}>
-            {p.gw}
-            {p.chip && <span className="chipmark">{CHIP_SHORT[p.chip]}</span>}
-          </button>
-        ))}
+        {draft.gws.map((p, i) => {
+          const past = !gwHasProj(proj, p.gw)
+          return (
+            <button key={p.gw}
+              className={`gw-dot ${i === gwIdx ? 'active' : ''} ${past ? 'past' : ''}`}
+              title={past ? `GW${p.gw} has already been played — no projections` : undefined}
+              onClick={() => setGwIdx(i)}>
+              {p.gw}
+              {p.chip && <span className="chipmark">{CHIP_SHORT[p.chip]}</span>}
+            </button>
+          )
+        })}
       </div>
       <div className="chipbar">
         {openChip && (
@@ -453,6 +473,7 @@ function Card({ pid, plan, sel, onClick, posOf, dim, delta }) {
   const team = teams[String(p?.team_id)]
   const ep = epOf(proj, pid, plan.gw)
   const fixes = fixOf(p?.team_id, plan.gw)
+  const attacking = !['GK', 'DEF'].includes(posOf(pid))
   const isCap = plan.captain === pid
   const isVice = plan.vice === pid
   const isNew = plan.transfers_in.length < 15 && plan.transfers_in.includes(pid)
@@ -478,7 +499,19 @@ function Card({ pid, plan, sel, onClick, posOf, dim, delta }) {
       <div className="pmeta">
         <span className="ep">{fmt1(ep)}</span>
         <span className="fix">
-          {fixes.length ? fixes.map((f) => f.oppShort).join(',').toLowerCase() : '–'}
+          {fixes.length ? fixes.map((f, i) => {
+            // attackers care how hard the opponent is to score against,
+            // defenders how hard it is to keep a clean sheet against them
+            const d = f[attacking ? 'diff_att' : 'diff_def'] ?? f.fdr ?? 3
+            const c = fdrColor(d)
+            return (
+              <span key={i} className="fixchip"
+                style={{ background: c.bg, color: c.fg }}
+                title={`${f.oppShort} ${f.home ? '(H)' : '(A)'} — ${attacking ? 'attacking' : 'defensive'} difficulty ${fmt1(d)}/5`}>
+                {f.oppShort.toLowerCase()}{f.home ? '' : '↓'}
+              </span>
+            )
+          }) : '–'}
         </span>
         <span className="pr">{p ? p.price.toFixed(1) : ''}</span>
       </div>

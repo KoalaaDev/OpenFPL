@@ -184,7 +184,25 @@ input, select { font-family: inherit; color: inherit; }
 }
 .pcard .pmeta > span { flex: 1; padding: 2.5px 2px; }
 .pmeta .ep { background: var(--blue-cell); color: #fff; }
-.pmeta .fix { background: #191930; color: var(--muted); text-transform: lowercase; }
+.pmeta .fix {
+  background: #191930; color: var(--muted); text-transform: lowercase;
+  display: flex; gap: 1px; padding: 0 !important; align-items: stretch;
+}
+/* one chip per fixture, tinted by difficulty (doubles show two) */
+.pmeta .fix .fixchip {
+  flex: 1; display: grid; place-items: center; padding: 2.5px 1px;
+  min-width: 0; overflow: hidden; font-weight: 700; letter-spacing: -0.2px;
+}
+/* a gameweek that has already kicked off — no projections exist for it */
+.gw-dot.past { opacity: 0.45; }
+.gw-dot.past::after {
+  content: '✓'; font-size: 8px; margin-left: 2px; vertical-align: super;
+}
+.past-gw-note {
+  margin: 8px 0; padding: 8px 10px; border-radius: 6px;
+  background: var(--panel-2); color: var(--muted);
+  font-size: 12px; border-left: 3px solid var(--muted-2);
+}
 .pmeta .pr { background: #12122a; color: var(--muted-2); }
 .pcard .armband {
   position: absolute; top: -4px; right: 6px; width: 20px; height: 20px;

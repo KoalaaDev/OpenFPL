@@ -51,6 +51,14 @@ export function epColor(v, max = 8) {
 // gwPlan = { gw, chip, squad: [{id, sell}], xi: [ids], captain, vice,
 //            transfers_in: [ids], transfers_out: [ids], bank, free_after, hits }
 
+// A gameweek only has projections while it is still upcoming: once it kicks
+// off the pipeline drops it, so a saved draft that still lists it would show
+// 0.0 for every player. Callers use this to say "already played" instead of
+// silently rendering zeros.
+export function gwHasProj(proj, gw) {
+  return !!(proj?.gws && String(gw) in proj.gws)
+}
+
 export function epOf(proj, pid, gw) {
   const rec = proj?.players?.[String(pid)]
   return rec ? rec.ep?.[String(gw)] ?? 0 : 0
