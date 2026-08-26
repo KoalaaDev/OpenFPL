@@ -65,6 +65,27 @@ def _solve(prob: pulp.LpProblem, time_limit: int):
     prob.solve(pulp.PULP_CBC_CMD(msg=False, timeLimit=time_limit))
 
 
+
+def _check_selling_prices(initial: dict[int, float] | None) -> None:
+    """Refuse a squad whose selling prices are missing.
+
+    FPL's cheapest player costs £3.5m+, so a £0.0 selling price is never real
+    — it means the price was absent from the source (the public picks endpoint
+    carries none) and got defaulted to zero. Left alone it silently makes every
+    sale raise nothing, so no transfer is affordable and the optimiser returns
+    a "do nothing" plan that looks legitimate. Fail loud instead (CLAUDE.md #5).
+    """
+    if not initial:
+        return
+    bad = sorted(pid for pid, v in initial.items() if not v or float(v) <= 0.0)
+    if bad:
+        raise ValueError(
+            f"{len(bad)} squad player(s) have a £0.00 selling price "
+            f"(ids {bad[:5]}{'…' if len(bad) > 5 else ''}). The public picks "
+            "endpoint does not expose selling prices — use "
+            "fpl_engine.manager.reconstruct_prices() to derive them.")
+
+
 def optimise(proj: pd.DataFrame, gws: list[int], *,
              initial: dict[int, float] | None = None,
              bank: float = 0.0, free_transfers: int = 1, budget: float = 100.0,
@@ -76,6 +97,7 @@ def optimise(proj: pd.DataFrame, gws: list[int], *,
     ``initial`` maps owned player_id -> selling price (None => build from scratch,
     where the first-gameweek squad is free and the budget applies).
     """
+    _check_selling_prices(initial)
     scratch = initial is None
     P = proj.reset_index(drop=True)
     ids = list(P["player_id"])
@@ -89,9 +111,9 @@ def optimise(proj: pd.DataFrame, gws: list[int], *,
     prev = {pid: (0 if scratch else (1 if pid in initial else 0)) for pid in ids}
     sell = {pid: (initial.get(pid, price[pid]) if not scratch else price[pid])
             for pid in ids}
-    start_bank = budget if scratch else bank + sum(sell[p] for p in ids if prev[p])
-    # (for existing squad, total spending power = squad sale value + bank; the
-    #  per-gw bank recursion below keeps it consistent)
+    start_bank = budget if scratch else bank
+    # (existing squad: only actual bank is spendable; kept players' value is
+    #  locked in. The per-gw recursion adds sells and subtracts buys.)
 
     T = list(range(len(gws)))
     prob = pulp.LpProblem("fpl", pulp.LpMaximize)

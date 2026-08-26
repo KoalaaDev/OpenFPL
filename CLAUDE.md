@@ -73,12 +73,40 @@ Two independent mechanisms:
    random splits, no look-ahead) — the frame is built with the same `as_of`
    builder used for prediction.
 
+## xPts component engine (fpl_engine/xpts/)
+
+A structural alternative to the monolithic OpenFPL regression: FPL points are
+*assembled* from modelled processes, combined through the scoring YAML (which
+stays the single source of truth):
+
+| Module | Component |
+|---|---|
+| `xpts/team_model.py` | time-decayed Poisson attack/defence (fit on `team_match`, teams matched across seasons by `code`, goals blended with xG, promoted clubs shrunk to a below-average prior) |
+| `xpts/minutes_model.py` | XGBoost P(0 / 1-59 / 60+ minutes) from start-pattern + depth-chart features (per-gw price rank inside team+position — raw price is deliberately excluded as a fame bias); cached in `models/xpts/`; live availability (status/chance_next) is applied on top |
+| `xpts/rates.py` | empirical-Bayes-shrunk per-90 rates (xG, xA, saves, cards), an event-conditional **bonus model** (league per-position WLS `bonus ~ goals+assists+cs`; players keep only their deviation as a flat rate, so E[bonus] scales with the fixture), a **DefCon threshold-crossing rate** (raw `defcon` counts are ingested from vaastav/FPL for the rule era — `defensive_contribution.since` in the scoring YAML; rate = shrunk crossings per 90) + a **residual rate** = actual points minus full reconstruction (including actual DefCon), i.e. genuinely unmodelled scraps only. Player histories get an extra ×`SEASON_BREAK_DECAY` per season boundary so an outlier season is not carried whole across a summer |
+| `xpts/engine.py` | E[points] per player per gw: exposure x rates x fixture scalers, P(CS)=P(60+)*exp(-λ_opp), Poisson floor-division expectations for conceded/saves (GK saves scale sublinearly with opponent threat), E[bonus] from the league event coefficients applied to the player's own expected events; DGWs sum over fixtures |
+| `xpts/odds_model.py` | betting odds → implied Poisson goal rates: de-margin 1X2 (+ over/under 2.5) odds, invert to (λ_home, λ_away), blend into the team model's fixture rates with `ODDS_WEIGHT` (0.85; fitted by backtest sweep on 2024-25 + 2025-26 — improves active-player rank and captain picks, 0 disables) |
+| `ingest/odds.py` | two free odds sources into `match_odds`: football-data.co.uk CSVs (no key; historical + in-season, early-snapshot `Avg` columns preferred over closing for point-in-time honesty) and The Odds API upcoming fixtures (`$ODDS_API_KEY`, free tier — one call = 2 credits of 500/month). Team names resolve via explicit maps and fail loud |
+| `backtest.py` | forward-in-time replay of a past season scoring xpts vs OpenFPL vs naive baselines (Spearman, precision@20, captain pts, RMSE); fits the blend weight on the first half of the season, evaluates on the second, writes `models/xpts/blend.json` |
+
+`predict`/`optimise`/the web app automatically blend xPts with OpenFPL using
+the weight in `models/xpts/blend.json` (absent or 0 = pure OpenFPL). Penalty
+takers (`penalties_order` from the live bootstrap) get a small xG90 boost in
+the web path. Backtests disable the availability overlay (stored status is
+today's, not historical). Run:
+
+```
+python -m fpl_engine backtest --backtest-season 2025-26   # also (re)trains minutes model
+```
+
 ## Optimiser
 
 `optimise/milp.py` is a multi-period mixed-integer program (PuLP + bundled CBC,
 free) over a rolling horizon. It jointly chooses squad, starting XI, captain and
 transfers per gameweek to maximise **discounted expected points net of the -4
-hit cost**. Free transfers accrue (+1/gw, bankable to 5) and are modelled
+hit cost**. Free transfers accrue (+1/gw, bankable to 5; the stock starts at
+**0** — transfers before the GW1 deadline are unlimited and bank nothing, so a
+quiet GW1 leaves exactly 1 FT for GW2) and are modelled
 explicitly, so the model decides whether a hit is worth it (a transfer is taken
 only when its marginal XI gain over the displaced/benched player beats 4 points).
 Constraints enforced as hard: £100m budget with the bank recursion, 2/5/5/3
@@ -103,17 +131,98 @@ Run: `python -m pytest tests/ -q`
 * **`player relevant fpl points`** (5 columns): OpenFPL's exact definition is
   not reconstructable from this repo's artefacts, so a documented best-effort
   (`total_points - appearance_points`) is used. All other FPL columns match.
-* **Understat features** are NaN when Understat is unreachable (bot protection);
-  the models tolerate this via `np.nan_to_num`. This is the design's sanctioned
-  "degrade gracefully to FPL-only" path.
+* **Understat** is ingested from its JSON endpoints (`getLeagueData/{league}/{year}`
+  for every club's per-match xG/xGA/deep/PPDA in one call, `getPlayerData/{id}`
+  for a player's per-match log across all seasons, `main/getPlayersStats/` for
+  ids/names used in resolution; all need `X-Requested-With: XMLHttpRequest`).
+  `pull --understat` (the web Data button has it on) covers the current and
+  previous season; current-season players are fetched live, the rest cached.
+  Understat features are NaN when it is unreachable; the models tolerate this
+  via `np.nan_to_num`. To limit the damage, FPL's own (Opta) expected stats —
+  stored per match in `player_gw.xg/xa/xgi/xgc` (plus per-gw `price` and raw DefCon counts `defcon/tackles/cbi/recoveries` from 2025-26 on) and `team_match.xg/xga` (team
+  xG = summed player xG, xGA = opponent's) — stand in for the Understat
+  metrics they map onto (`player xg/xa`, `team/opponent xg/xga`) whenever the
+  Understat history is empty. Understat data takes precedence when present.
+  Shots, key passes, xGChain/xGBuildup, deep and PPDA have no FPL equivalent
+  and stay NaN.
+* **Expected minutes** (`fpl_engine/minutes.py`) scale EP relative to the
+  trailing-minutes baseline the features encode; across a season break a fit
+  player is never down-weighted on stale absences (pre-season factor is in
+  `[avail, 1.15·avail]`).
+* **Clubs with no top-flight match log** (promoted) borrow a pooled prior from
+  the previous season's relegated clubs for team/opponent features instead of
+  NaN→0; clubs are matched across seasons by FPL's stable `team.code`.
+* **Odds timing**: football-data's early-snapshot odds are collected days
+  before kickoff — honest for a prediction made before the gameweek's first
+  kickoff, though matches later in the gameweek carry a little extra market
+  information. The Odds API covers upcoming fixtures only on the free tier
+  (its historical endpoints are paid), so backtests rely on football-data.
+* **Selling prices are reconstructed, not fetched.** The public
+  `entry/{id}/event/{gw}/picks/` endpoint carries no `selling_price` — only the
+  authenticated `my-team/{id}/` endpoint does. `manager.reconstruct_prices`
+  derives them keylessly: price paid comes from `entry/{id}/transfers/`, or for
+  a player never transferred in his season-start price
+  (`now_cost - cost_change_start` from bootstrap), then FPL's rule (purchase +
+  half the profit, rounded down; a fallen price sells at current value) is
+  applied. Verified exact against an authenticated squad. Both optimisers
+  refuse a £0.00 selling price outright — left silent it makes every sale raise
+  nothing, so no transfer is affordable and the solver emits a plausible-looking
+  "do nothing" plan.
 * **League-rank / status-rank** columns are AM-only in OpenFPL and left NaN for
   player rows (matching the reference samples).
+
+## Web app (FPL Review-style planner)
+
+`app/` (FastAPI backend) + `web/` (React/Vite frontend) serve a local planner
+UI on **http://127.0.0.1:8410** with four tabs: Planner (pitch + drafts),
+Projections (per-GW model output table), Fixtures (FDR heatmap) and Solver
+(chip-aware optimisation via `fpl_engine/optimise/chips.py` — a superset of
+`milp.py` adding WC/FH/BB/TC chips, target/avoid/ban constraints, club-level
+buy/sell rules and playstyle plans; `milp.py` itself stays untouched).
+
+Solver specifics worth knowing:
+
+* **Playstyles, not near-duplicates.** Asking for N plans returns one per
+  preset in `chips.PLAYSTYLES` (Win now / Balanced / Patient) rather than N
+  solutions of the same optimum, which differed only cosmetically. Styles vary
+  *preferences* only — horizon `decay`, `ft_value`, and whether hits are
+  allowed at all — never the rules: a -4 is always priced at -4, and the
+  no-hits style forbids them via `allow_hits=False` instead of underpricing
+  them. Compare plans on `ChipPlan.total_ep` (undecayed, net of hits), **never**
+  on `objective` — each style weights gameweeks differently, so objectives are
+  not comparable across them.
+* **Club rules.** `banned_clubs` blocks *buying* from a club; `sell_clubs` also
+  forces players already owned out by the end of the horizon, letting the
+  solver choose the cheapest gameweek so the exit still uses free transfers.
+* **Chips have option value.** A rolling-horizon optimiser sees a chip as pure
+  upside and burns every available one inside the horizon (all four across
+  GW2-6, for single-digit gains). `chip_reserve` (defaults in
+  `DEFAULT_CHIP_RESERVE`) prices what a chip is worth *saved* for the double
+  gameweek it is meant for, so it is played only when the gain here beats that.
+  These defaults are a documented heuristic reflecting ordinary FPL practice,
+  not a fitted season-long simulation — set a chip to 0 for the old behaviour.
+* **`chip_decay`** discounts one-week chip payoffs separately from `decay`
+  (default 1.0). The horizon decay exists for uncertain far-future *transfer*
+  planning; applying it to a chip made every chip drift to the first gameweek,
+  since a 10-pt chip in GW5 scored 6.1 against 8 pts in GW2.
+
+```
+python -m app                      # serve the built site (needs app/static)
+cd web && npm install && npm run build   # rebuild frontend -> app/static
+cd web && npm run dev              # frontend dev server (proxies /api to 8410)
+```
+
+Projections are cached per (season, gw) in `data/web_cache/projections.json`
+(invalidated by a data pull); drafts persist in `data/web_cache/drafts.json`.
+A solve builds any missing projection gameweeks first, so the first solve of a
+session is slow (model inference per GW) and later ones are fast.
 
 ## Commands
 
 ```
 python -m fpl_engine init-db
-python -m fpl_engine pull            # FPL live + vaastav backfill -> SQLite (free)
+python -m fpl_engine pull            # FPL live + vaastav backfill + odds -> SQLite (free;
+                                     #   set $ODDS_API_KEY for upcoming-fixture odds)
 python -m fpl_engine predict --gw 1        # end-to-end predictions
 python -m fpl_engine run --gw 1            # pull + build + predict
 python -m fpl_engine optimise --entry 883566 --horizon 5   # transfers / squad

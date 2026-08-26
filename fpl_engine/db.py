@@ -41,6 +41,7 @@ CREATE TABLE IF NOT EXISTS team (
     team_id     INTEGER NOT NULL,        -- FPL team id within the season
     name        TEXT NOT NULL,
     short_name  TEXT,
+    code        INTEGER,                 -- FPL stable cross-season club code
     understat_name TEXT,                 -- resolved Understat title
     PRIMARY KEY (season, team_id)
 );
@@ -107,11 +108,36 @@ CREATE TABLE IF NOT EXISTS player_gw (
     creativity      REAL,
     threat          REAL,
     starts          REAL,
+    xg              REAL,                -- FPL (Opta) expected goals, per match
+    xa              REAL,                -- FPL expected assists
+    xgi             REAL,                -- FPL expected goal involvements
+    xgc             REAL,                -- FPL expected goals conceded (on pitch)
+    price           REAL,                -- player price (0.1m units) at that gw
+    defcon          REAL,                -- raw defensive-contribution count
+    tackles         REAL,
+    cbi             REAL,                -- clearances+blocks+interceptions
+    recoveries      REAL,
     PRIMARY KEY (season, gw, source, player_id, fixture_id)
 );
 CREATE INDEX IF NOT EXISTS ix_player_gw_code ON player_gw(player_code, season, gw);
 
 -- Per-team-per-match results (drives team/opponent goals + league-rank features).
+CREATE TABLE IF NOT EXISTS match_odds (
+    season          TEXT NOT NULL,
+    fixture_id      INTEGER NOT NULL,
+    source          TEXT NOT NULL,       -- 'football-data' | 'odds-api'
+    kickoff_date    TEXT,
+    home_id         INTEGER,
+    away_id         INTEGER,
+    p_home          REAL,                -- de-margined outcome probabilities
+    p_draw          REAL,
+    p_away          REAL,
+    p_over25        REAL,                -- de-margined P(total goals > 2.5)
+    lam_home        REAL,                -- Poisson goal rates implied by the odds
+    lam_away        REAL,
+    PRIMARY KEY (season, fixture_id)
+);
+
 CREATE TABLE IF NOT EXISTS team_match (
     season       TEXT NOT NULL,
     team_id      INTEGER NOT NULL,
@@ -122,6 +148,8 @@ CREATE TABLE IF NOT EXISTS team_match (
     was_home     INTEGER,
     goals_for    REAL,
     goals_against REAL,
+    xg           REAL,                   -- team xG = sum of its players' FPL xG
+    xga          REAL,                   -- team xGA = opponent's xG
     PRIMARY KEY (season, team_id, fixture_id)
 );
 CREATE INDEX IF NOT EXISTS ix_team_match ON team_match(season, team_id, kickoff_utc);
@@ -197,6 +225,17 @@ def connect(db_path: str | None = None) -> sqlite3.Connection:
 # Columns added after the initial schema. init_db() adds any that are missing so
 # a database created by an earlier version self-heals without a full re-pull.
 _COLUMN_MIGRATIONS = {
+    "team": [
+        ("code", "INTEGER"),
+    ],
+    "player_gw": [
+        ("xg", "REAL"), ("xa", "REAL"), ("xgi", "REAL"), ("xgc", "REAL"),
+        ("price", "REAL"), ("defcon", "REAL"), ("tackles", "REAL"),
+        ("cbi", "REAL"), ("recoveries", "REAL"),
+    ],
+    "team_match": [
+        ("xg", "REAL"), ("xga", "REAL"),
+    ],
     "player": [
         ("now_cost", "REAL"),
         ("status", "TEXT"),
