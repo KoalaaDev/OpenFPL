@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import csv
 import io
+import re
 import json
 import os
 import urllib.request
@@ -28,27 +29,66 @@ from .. import db, progress
 from ..http import get_text
 from ..xpts import odds_model
 
-# football-data.co.uk name -> FPL short name (identity where omitted)
-FD_TO_FPL = {
-    "Man United": "Man Utd",
-    "Tottenham": "Spurs",
+# Club names differ per source and the promoted clubs change every summer, so
+# names are resolved against the season's *actual* FPL teams rather than a
+# frozen list. Only genuinely irregular renderings need an explicit override —
+# the ones a token match cannot reach (abbreviations, nicknames).
+NAME_OVERRIDES = {
+    # football-data.co.uk
+    "man united": "Man Utd",
+    "tottenham": "Spurs",
+    "nott'm forest": "Nott'm Forest",
+    # The Odds API
+    "manchester united": "Man Utd",
+    "tottenham hotspur": "Spurs",
+    "nottingham forest": "Nott'm Forest",
+    "wolverhampton wanderers": "Wolves",
+    "brighton and hove albion": "Brighton",
 }
-# The Odds API full name -> FPL short name
-ODDS_API_TO_FPL = {
-    "Arsenal": "Arsenal", "Aston Villa": "Aston Villa",
-    "AFC Bournemouth": "Bournemouth", "Bournemouth": "Bournemouth",
-    "Brentford": "Brentford", "Brighton and Hove Albion": "Brighton",
-    "Burnley": "Burnley", "Chelsea": "Chelsea",
-    "Crystal Palace": "Crystal Palace", "Everton": "Everton",
-    "Fulham": "Fulham", "Hull City": "Hull", "Ipswich Town": "Ipswich",
-    "Leeds United": "Leeds", "Leicester City": "Leicester",
-    "Liverpool": "Liverpool", "Luton Town": "Luton",
-    "Manchester City": "Man City", "Manchester United": "Man Utd",
-    "Newcastle United": "Newcastle", "Nottingham Forest": "Nott'm Forest",
-    "Sheffield United": "Sheffield Utd", "Southampton": "Southampton",
-    "Sunderland": "Sunderland", "Tottenham Hotspur": "Spurs",
-    "West Ham United": "West Ham", "Wolverhampton Wanderers": "Wolves",
-}
+_STOPWORDS = {"fc", "afc", "the"}
+
+
+def _tokens(name: str) -> list[str]:
+    s = re.sub(r"[^a-z0-9 ]", " ", (name or "").lower().replace("&", " and "))
+    return [t for t in s.split() if t not in _STOPWORDS]
+
+
+def _token_match(a: list[str], b: list[str]) -> bool:
+    """True when the shorter name is a positional prefix of the longer.
+
+    Matches "Newcastle" to "Newcastle United" and "Man City" to "Manchester
+    City", while keeping "Man Utd"/"Manchester City" apart (utd vs city).
+    """
+    if not a or not b:
+        return False
+    if len(a) > len(b):
+        a, b = b, a
+    return all(b[i].startswith(a[i]) or a[i].startswith(b[i])
+               for i in range(len(a)))
+
+
+def resolve_team(name: str, fpl_names: list[str]) -> str:
+    """Map a source's club name onto this season's FPL team name.
+
+    Fails loud on a miss or an ambiguous match — silently dropping a fixture
+    would leave that match without odds and nobody would notice
+    (CLAUDE.md principle #5).
+    """
+    over = NAME_OVERRIDES.get((name or "").strip().lower())
+    if over and over in fpl_names:
+        return over
+    exact = [f for f in fpl_names if f.lower() == (name or "").strip().lower()]
+    if exact:
+        return exact[0]
+    toks = _tokens(name)
+    hits = [f for f in fpl_names if _token_match(toks, _tokens(f))]
+    if len(hits) == 1:
+        return hits[0]
+    raise ValueError(
+        f"odds ingest: cannot resolve club {name!r} to an FPL team "
+        f"({'ambiguous: ' + ', '.join(hits) if hits else 'no match'}) — "
+        "add it to NAME_OVERRIDES")
+
 
 FD_URL = "https://www.football-data.co.uk/mmz4281/{code}/E0.csv"
 
@@ -113,17 +153,14 @@ def ingest_football_data(conn, seasons: list[str], *,
                        use_cache=use_cache)
         rows = list(csv.DictReader(io.StringIO(txt.lstrip("﻿"))))
         ids = _team_ids(conn, season)
+        fpl_names = list(ids)
         fx = _fixture_by_date_home(conn, season)
         out = []
         for m in rows:
-            hname = FD_TO_FPL.get(m.get("HomeTeam"), m.get("HomeTeam"))
-            aname = FD_TO_FPL.get(m.get("AwayTeam"), m.get("AwayTeam"))
-            if not hname or not aname:
+            if not m.get("HomeTeam") or not m.get("AwayTeam"):
                 continue
-            if hname not in ids or aname not in ids:
-                raise ValueError(
-                    f"odds ingest: unmapped team {m.get('HomeTeam')!r}/"
-                    f"{m.get('AwayTeam')!r} for {season} — extend FD_TO_FPL")
+            hname = resolve_team(m["HomeTeam"], fpl_names)
+            aname = resolve_team(m["AwayTeam"], fpl_names)
             date = _fd_date_iso(m.get("Date"))
             fid = fx.get((date, ids[hname]))
             if fid is None:              # future match: no team_match row yet
@@ -166,6 +203,7 @@ def ingest_odds_api(conn, season: str, *, api_key: str | None = None,
         events = json.loads(r.read().decode("utf-8"))
 
     ids = _team_ids(conn, season)
+    fpl_names = list(ids)
     fixtures = {}                        # (date, home_id) -> fixture_id
     for r in conn.execute(
             "SELECT kickoff_utc, team_h, fixture_id FROM fixture "
@@ -179,13 +217,11 @@ def ingest_odds_api(conn, season: str, *, api_key: str | None = None,
     out, skipped = [], []
     for ev in events:
         hn, an = ev.get("home_team"), ev.get("away_team")
-        h = ODDS_API_TO_FPL.get(hn)
-        a = ODDS_API_TO_FPL.get(an)
-        if h is None or a is None:
-            raise ValueError(f"odds ingest: unmapped Odds API team {hn!r}/{an!r}"
-                             " — extend ODDS_API_TO_FPL")
-        if h not in ids or a not in ids:
-            skipped.append(hn)           # club not in this FPL season
+        try:
+            h = resolve_team(hn, fpl_names)
+            a = resolve_team(an, fpl_names)
+        except ValueError:
+            skipped.append(hn)           # club not in this FPL season at all
             continue
         oh, od, oa, o_over, o_under = [], [], [], [], []
         for bk in ev.get("bookmakers", []):

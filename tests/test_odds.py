@@ -34,3 +34,53 @@ def test_implied_rates_without_totals_market():
     lh, la = om.implied_rates(ph, pd_, pa, None)
     assert lh > la                            # ordering preserved
     assert 0.2 <= la <= lh <= 4.0
+
+
+# --- club-name resolution --------------------------------------------------
+# Promoted clubs change every summer and each source spells names its own way,
+# so names resolve against the season's actual FPL teams. A frozen map silently
+# went stale: it held "Hull City" -> "Hull" while FPL called the club
+# "Hull City", so every ingest raised once Hull were promoted.
+
+import pytest
+
+from fpl_engine.ingest.odds import resolve_team
+
+FPL_2026_27 = [
+    'Arsenal', 'Aston Villa', 'Bournemouth', 'Brentford', 'Brighton', 'Chelsea',
+    'Coventry City', 'Crystal Palace', 'Everton', 'Fulham', 'Hull City',
+    'Ipswich Town', 'Leeds', 'Liverpool', 'Man City', 'Man Utd', 'Newcastle',
+    "Nott'm Forest", 'Spurs', 'Sunderland',
+]
+
+
+@pytest.mark.parametrize("src, want", [
+    ("Manchester City", "Man City"),          # token prefix
+    ("Manchester United", "Man Utd"),         # override (utd != united)
+    ("Man United", "Man Utd"),                # football-data spelling
+    ("Tottenham Hotspur", "Spurs"),
+    ("Tottenham", "Spurs"),
+    ("Nottingham Forest", "Nott'm Forest"),
+    ("Brighton and Hove Albion", "Brighton"),
+    ("AFC Bournemouth", "Bournemouth"),       # stopword stripped
+    ("Newcastle United", "Newcastle"),
+    ("Leeds United", "Leeds"),
+    ("Coventry City", "Coventry City"),       # newly promoted, no map entry
+    ("Hull City", "Hull City"),
+    ("Ipswich Town", "Ipswich Town"),
+    ("Sunderland", "Sunderland"),
+])
+def test_resolve_team_maps_every_source_spelling(src, want):
+    assert resolve_team(src, FPL_2026_27) == want
+
+
+def test_man_city_and_man_utd_never_collide():
+    assert resolve_team("Manchester City", FPL_2026_27) == "Man City"
+    assert resolve_team("Manchester United", FPL_2026_27) == "Man Utd"
+
+
+@pytest.mark.parametrize("absent", ["Leicester City", "Southampton", "Watford"])
+def test_resolve_team_fails_loud_for_clubs_outside_the_league(absent):
+    # never silently drop a fixture — that would leave it without odds unnoticed
+    with pytest.raises(ValueError):
+        resolve_team(absent, FPL_2026_27)
