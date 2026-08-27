@@ -38,6 +38,7 @@ NAME_OVERRIDES = {
     "man united": "Man Utd",
     "tottenham": "Spurs",
     "nott'm forest": "Nott'm Forest",
+    "sheffield united": "Sheffield Utd",
     # The Odds API
     "manchester united": "Man Utd",
     "tottenham hotspur": "Spurs",

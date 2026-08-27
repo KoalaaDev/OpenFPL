@@ -98,7 +98,7 @@ def horizon_projections(conn, season: str, gws: list[int], *, bundle=None,
     minutes_bundle = None
     if xpts_w:
         from ..xpts import minutes_model
-        minutes_bundle = minutes_model.load()
+        minutes_bundle = minutes_model.ensure(conn)
         if minutes_bundle[0] is None:
             xpts_w = None      # xpts untrained -> degrade to pure OpenFPL
 

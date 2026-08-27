@@ -222,3 +222,8 @@ web/node_modules/
 app/static/
 data/web_cache/
 app/saved_teams/
+
+# Per-backtest minutes-model caches (models/xpts/*.bt<season>.json).
+# Derived artefacts: a model trained only on the seasons before a replayed
+# one, deliberately kept out of the live cache.
+models/xpts/*.bt*.json

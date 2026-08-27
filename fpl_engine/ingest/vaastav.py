@@ -109,6 +109,10 @@ def ingest_season(conn, season: str, *, use_cache: bool = True) -> dict:
             "tackles": _num(m.get("tackles")),
             "cbi": _num(m.get("clearances_blocks_interceptions")),
             "recoveries": _num(m.get("recoveries")),
+            # crowd signals
+            "selected": _num(m.get("selected")),
+            "transfers_in": _num(m.get("transfers_in")),
+            "transfers_out": _num(m.get("transfers_out")),
         })
     n = db.upsert(conn, "player_gw", rows)
 

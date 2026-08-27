@@ -1,16 +1,44 @@
-"""Minutes model: P(plays 0 / 1-59 / 60+) per player per team-match.
+"""Minutes model: P(plays 0 / 1-59 / 60+) and E[minutes] per player per gameweek.
 
-Most week-to-week prediction error in FPL is minutes, not form. This model
-classifies each player-match into three bands from purely point-in-time
-features (start streaks, recent minutes share, appearance recency), trained on
-full historical seasons where zero-minute rows are present for every squad
-member.
+Most week-to-week prediction error in FPL is minutes, not form. A replay of
+2024-25 and 2025-26 with *perfect* minutes knowledge (everything else
+unchanged) gains +0.21 Spearman and +0.7-0.9 actual points per player across
+the top 30 — several times what any rate-model tuning is worth. This module is
+therefore the highest-leverage component in the engine.
 
-The trained classifier is cached in models/xpts/ (retrain with
-``python -m fpl_engine backtest --retrain-minutes`` or whenever the cache is
-missing). Availability (FPL's status/chance_next) is applied *on top* of the
-model at prediction time: the played-probability mass is scaled by the
-availability and the remainder moved to the 0-minutes class.
+Design notes
+------------
+**One feature builder for training and prediction.** ``_frame`` appends
+synthetic rows for the gameweek being predicted to the history frame, so the
+same shifted rolling transforms produce the serving features. (An earlier
+version re-implemented the rolling features by hand inside ``predict_gw``,
+which is the classic source of train/serve skew.)
+
+**Every prior season trains the model.** The holdout accuracy is measured by a
+probe fitted on all-but-the-last season, and the shipped model is then refitted
+on *all* of them — the most recent season is the most relevant one and must not
+be thrown away.
+
+**Features** are point-in-time by construction (all shift(1) within a player):
+
+* history      trailing minutes/starts/appearances, recency of last outing
+* role/depth   average minutes *when he starts*, consecutive starts, share of
+               his team+position's minutes, minutes volatility, price rank
+               inside the team+position (raw price is deliberately excluded —
+               it adds a "fame" bias that overrides recent-minutes signal for
+               benched stars; the rank alone carries the depth chart)
+* context      days of rest, matches in the previous 14 days, home/away, how
+               many fixtures his team has this gameweek
+* crowd        the previous gameweek's ownership and net transfers — the
+               market's read on who is starting, free and known at the deadline
+
+Availability (FPL's status/chance_next) is applied *on top* at prediction time:
+the played-probability mass is scaled by the availability and the remainder
+moved to the 0-minutes class. Backtests disable it (the stored status is
+today's, not that gameweek's).
+
+The trained classifier is cached in models/xpts/. ``ensure`` trains it on
+demand; a cache built from a different feature set is detected and retrained.
 """
 from __future__ import annotations
 
@@ -24,228 +52,427 @@ from .. import config
 
 MODEL_DIR = os.path.join(config.MODELS_DIR, "xpts")
 MODEL_PATH = os.path.join(MODEL_DIR, "minutes_xgb.json")
+REG_PATH = os.path.join(MODEL_DIR, "minutes_reg.json")
 META_PATH = os.path.join(MODEL_DIR, "minutes_meta.json")
 
-FEATURES = ["starts_l5", "mins_l1", "mins_l3", "mins_l5", "avg_mins_when_played",
-            "apps_l10", "since_last_app", "season_min_share",
-            # depth-chart & context signals (GW1 post-mortem: backups at new
-            # clubs and promoted-club starters were the two biggest miss
-            # classes — price rank inside a team+position encodes the depth
-            # chart, the flags mark when history is least transferable).
-            # Raw price is deliberately NOT a feature: it adds a "fame" bias
-            # that overrides recent-minutes signal for benched stars; the
-            # rank alone carries the depth chart.
-            "price_rank", "new_club", "career_apps", "reserve_flag",
-            "season_idx",
-            "is_gk", "is_def", "is_mid", "is_fwd"]
+
+def _paths(tag: str | None):
+    """Cache file names. ``tag`` keeps a backtest's model (trained only on the
+    seasons before the replayed one) out of the live cache — otherwise running
+    a backtest silently downgrades every subsequent live prediction."""
+    if not tag:
+        return MODEL_PATH, REG_PATH, META_PATH
+    return (MODEL_PATH.replace(".json", f".{tag}.json"),
+            REG_PATH.replace(".json", f".{tag}.json"),
+            META_PATH.replace(".json", f".{tag}.json"))
+
+HISTORY_FEATURES = [
+    "starts_l5", "mins_l1", "mins_l3", "mins_l5", "avg_mins_when_played",
+    "apps_l10", "since_last_app", "season_min_share",
+    "new_club", "career_apps", "reserve_flag", "season_idx",
+    "is_gk", "is_def", "is_mid", "is_fwd",
+]
+ROLE_FEATURES = ["price_rank", "avg_mins_when_started", "start_rate_l10",
+                 "consec_starts", "pos_mins_share_l5", "mins_std_l5", "started_l1"]
+CONTEXT_FEATURES = ["days_rest", "team_matches_14d", "is_home", "team_gw_fixtures"]
+CROWD_FEATURES = ["sel_share_lag", "sel_rank_pos", "net_transfer_frac"]
+
+FEATURES = HISTORY_FEATURES + ROLE_FEATURES + CONTEXT_FEATURES + CROWD_FEATURES
 LABELS = {0: "none", 1: "sub", 2: "full"}   # 0 min / 1-59 / 60+
 
 
-def _frame(conn, seasons: list[str], before: str | None = None) -> pd.DataFrame:
-    """One row per player-fixture with point-in-time features + label.
-
-    Rows are ordered per player by kickoff; every feature uses shifted
-    (strictly prior) values only.
-    """
+# ---------------------------------------------------------------- frame -----
+def _history(conn, seasons: list[str], before: str | None) -> pd.DataFrame:
     q = ("SELECT pg.season, pg.gw, pg.player_id, pg.player_code, pg.fixture_id, "
-         "pg.kickoff_utc, pg.minutes, pg.starts, pg.team_id, "
-         "pg.price price_gw, p.position position, p.now_cost price "
-         "FROM player_gw pg LEFT JOIN player p "
+         "pg.kickoff_utc, pg.minutes, pg.starts, pg.team_id, pg.was_home, "
+         "pg.price price_gw, pg.selected, pg.transfers_in, pg.transfers_out, "
+         "p.position position, p.now_cost * 10.0 price "
+         "FROM player_gw pg JOIN player p "
          "ON p.season=pg.season AND p.player_id=pg.player_id "
-         "WHERE pg.season IN (%s)" % ",".join("?" * len(seasons)))
+         # Assistant Managers are selectable entries that score points and
+         # never play; they are not training rows for a minutes model
+         "WHERE p.position IN ('GK','DEF','MID','FWD') "
+         "AND pg.season IN (%s)" % ",".join("?" * len(seasons)))
     args = list(seasons)
     if before:
         q += " AND pg.kickoff_utc < ?"
         args.append(before)
     df = pd.read_sql_query(q, conn, params=args)
+    # ``player.now_cost`` is in £m and ``player_gw.price`` in tenths of £m —
+    # the query rescales the former so the fallback below never mixes units
+    # inside a team+position group and corrupts the depth-chart rank.
+    # Coerce up front too: an all-NULL numeric column comes back as object,
+    # and concatenating it with the target rows would change dtypes mid-build
+    for c in ("minutes", "starts", "team_id", "was_home", "price_gw", "price",
+              "selected", "transfers_in", "transfers_out"):
+        df[c] = pd.to_numeric(df[c], errors="coerce")
+    return df
+
+
+def _target_rows(conn, season: str, gw: int, as_of: str) -> pd.DataFrame:
+    """Synthetic rows for the gameweek being predicted (no outcome columns)."""
+    fx = pd.read_sql_query(
+        "SELECT fixture_id, gw, kickoff_utc, team_h, team_a FROM fixture "
+        "WHERE season=? AND gw=?", conn, params=(season, gw))
+    if fx.empty:      # historical seasons: fixtures live in team_match only
+        fx = pd.read_sql_query(
+            "SELECT fixture_id, gw, kickoff_utc, team_id team_h, opponent_id team_a "
+            "FROM team_match WHERE season=? AND gw=? AND was_home=1",
+            conn, params=(season, gw))
+    if fx.empty:
+        return pd.DataFrame()
+    tf = pd.concat([
+        fx.rename(columns={"team_h": "team_id", "team_a": "opponent_id"}).assign(was_home=1),
+        fx.rename(columns={"team_a": "team_id", "team_h": "opponent_id"}).assign(was_home=0),
+    ])[["fixture_id", "gw", "kickoff_utc", "team_id", "was_home"]]
+
+    players = pd.read_sql_query(          # now_cost £m -> tenths, see _history
+        "SELECT player_id, code player_code, position, team_id, "
+        "now_cost * 10.0 price FROM player WHERE season=? "
+        "AND position IN ('GK','DEF','MID','FWD')",
+        conn, params=(season,))
+    # point-in-time club: the team of his most recent match THIS season. Only a
+    # player with no rows yet (a summer signing) falls back to the squad list,
+    # which is what makes ``new_club`` mean "arrived since his last match".
+    last_team = pd.read_sql_query(
+        "SELECT player_id, team_id FROM ("
+        "  SELECT player_id, team_id, ROW_NUMBER() OVER "
+        "    (PARTITION BY player_id ORDER BY kickoff_utc DESC) rn "
+        "  FROM player_gw WHERE season=? AND kickoff_utc < ?) WHERE rn=1",
+        conn, params=(season, as_of))
+    players["team_id"] = pd.to_numeric(players["player_id"].map(
+        dict(zip(last_team["player_id"], last_team["team_id"]))
+    ).fillna(players["team_id"]), errors="coerce")
+    # price: the squad-list price, else the last per-gameweek price seen. An
+    # unpriced deep-squad player must not become a NaN branch the training
+    # data never contains.
+    last_price = pd.read_sql_query(
+        "SELECT player_id, price FROM ("
+        "  SELECT player_id, price, ROW_NUMBER() OVER "
+        "    (PARTITION BY player_id ORDER BY kickoff_utc DESC) rn "
+        "  FROM player_gw WHERE season=? AND kickoff_utc < ? AND price IS NOT NULL"
+        ") WHERE rn=1", conn, params=(season, as_of))
+    players["price"] = pd.to_numeric(players["price"], errors="coerce").fillna(
+        players["player_id"].map(dict(zip(last_price["player_id"],
+                                          last_price["price"]))))
+
+    out = players.merge(tf, on="team_id", how="inner")
+    out["season"] = season
+    for c in ("minutes", "starts", "price_gw", "selected", "transfers_in",
+              "transfers_out"):
+        out[c] = np.nan
+    out["_target"] = 1
+    return out
+
+
+def _team_congestion(tm: pd.DataFrame) -> pd.DataFrame:
+    """Days of rest and matches in the previous 14 days, per team-match."""
+    tm = tm.sort_values(["season", "team_id", "kick"]).copy()
+    rest, cong = [], []
+    for _, d in tm.groupby(["season", "team_id"], sort=False):
+        ks = d["kick"].astype("int64").to_numpy() / 86_400e9      # days
+        for i, k in enumerate(ks):
+            prev = ks[:i]
+            rest.append(k - prev[-1] if i else np.nan)
+            cong.append(float((k - prev <= 14).sum()))
+    tm["days_rest"] = rest
+    tm["team_matches_14d"] = cong
+    return tm
+
+
+def _frame(conn, seasons: list[str], before: str | None = None,
+           target: tuple | None = None) -> pd.DataFrame:
+    """One row per player-fixture with point-in-time features + label.
+
+    Rows are ordered per player by kickoff; every feature uses shifted
+    (strictly prior) values only. ``target=(season, gw, as_of)`` appends the
+    rows of the gameweek being predicted, whose label is NaN.
+    """
+    hist = _history(conn, seasons, before)
+    hist["_target"] = 0
+    df = hist
+    if target is not None:
+        tgt = _target_rows(conn, *target)
+        if len(tgt):
+            df = pd.concat([hist, tgt], ignore_index=True, sort=False)
     if df.empty:
         return df
-    # price at that gameweek (vaastav/FPL `value`), falling back to the
-    # season row's now_cost; point-in-time, so a summer price change never
-    # leaks backwards
+
+    # price at that gameweek (vaastav/FPL `value`), falling back to the season
+    # row's now_cost; point-in-time, so a summer price change never leaks back
     df["price"] = pd.to_numeric(df["price_gw"], errors="coerce").fillna(
         pd.to_numeric(df["price"], errors="coerce"))
-    # depth chart: price rank within that gw's team+position (1 = priciest)
+    df["kick"] = pd.to_datetime(df["kickoff_utc"], utc=True, format="ISO8601")
+    df["minutes"] = pd.to_numeric(df["minutes"], errors="coerce")
+    df["played"] = np.where(df["minutes"].notna(),
+                            (df["minutes"] > 0).astype(float), np.nan)
+    df["started"] = pd.to_numeric(df["starts"], errors="coerce")
+    df = df.sort_values(["player_code", "kick"]).reset_index(drop=True)
+
+    # depth chart: price rank within that gameweek's team+position (1 = priciest)
     df["price_rank"] = df.groupby(["season", "gw", "team_id", "position"])[
         "price"].rank(ascending=False, method="min")
-    df["minutes"] = df["minutes"].fillna(0)
-    df["played"] = (df["minutes"] > 0).astype(float)
-    df["started"] = df["starts"].fillna(0).astype(float)
-    df = df.sort_values(["player_code", "kickoff_utc"]).reset_index(drop=True)
 
     g = df.groupby("player_code", sort=False)
     df["starts_l5"] = g["started"].transform(
         lambda s: s.shift(1).rolling(5, min_periods=1).sum())
+    df["start_rate_l10"] = g["started"].transform(
+        lambda s: s.shift(1).rolling(10, min_periods=1).mean())
+    df["started_l1"] = g["started"].transform(lambda s: s.shift(1))
     for n in (1, 3, 5):
         df[f"mins_l{n}"] = g["minutes"].transform(
             lambda s, n=n: s.shift(1).rolling(n, min_periods=1).mean())
-    played_mins = df["minutes"].where(df["played"] > 0)
-    df["_pm"] = played_mins
+    df["mins_std_l5"] = g["minutes"].transform(
+        lambda s: s.shift(1).rolling(5, min_periods=2).std())
+    df["_pm"] = df["minutes"].where(df["played"] > 0)
     df["avg_mins_when_played"] = g["_pm"].transform(
+        lambda s: s.shift(1).expanding().mean())
+    # a 90-minute man and one habitually hooked at 65 are different assets
+    df["_ms"] = df["minutes"].where(df["started"] > 0)
+    df["avg_mins_when_started"] = g["_ms"].transform(
         lambda s: s.shift(1).expanding().mean())
     df["apps_l10"] = g["played"].transform(
         lambda s: s.shift(1).rolling(10, min_periods=1).sum())
-    # matches since last appearance
-    def _since(s):
+
+    def _since(s):          # matches since his last appearance
         out, count = [], 99.0
         for v in s:
             out.append(count)
-            count = 0.0 if v > 0 else min(99.0, count + 1)
+            count = 0.0 if (v is not None and v > 0) else min(99.0, count + 1)
         return pd.Series(out, index=s.index)
     df["since_last_app"] = g["played"].transform(_since)
+
+    def _consec(s):         # length of his current run of starts
+        out, run = [], 0.0
+        for v in s:
+            out.append(run)
+            run = run + 1 if v == 1 else 0.0
+        return pd.Series(out, index=s.index)
+    df["consec_starts"] = g["started"].transform(_consec)
+
     cum_min = g["minutes"].transform(lambda s: s.shift(1).expanding().sum())
     cum_n = g["minutes"].transform(lambda s: s.shift(1).expanding().count())
     df["season_min_share"] = cum_min / (cum_n * 90.0)
-    # context: did the player change club since his last row; how deep is his
-    # history; how far into the current season this match is
     df["new_club"] = (g["team_id"].shift(1) != df["team_id"]).astype(float)
     df["career_apps"] = g.cumcount().astype(float)
     # perennial reserve: long squad tenure without a single appearance. This
     # separates the deep-squad phantom (never plays) from a debut row — both
     # share since_last_app=99, and debuts DO often play.
     _played_before = g["played"].transform(
-        lambda s: s.shift(1, fill_value=0.0).cumsum())
-    df["reserve_flag"] = ((_played_before == 0)
-                          & (df["career_apps"] >= 10)).astype(float)
+        lambda s: s.shift(1).fillna(0.0).cumsum())
+    df["reserve_flag"] = ((_played_before == 0) & (df["career_apps"] >= 10)
+                          ).astype(float)
     df["season_idx"] = df.groupby(["player_code", "season"],
                                   sort=False).cumcount().astype(float)
     for pos, col in (("GK", "is_gk"), ("DEF", "is_def"),
                      ("MID", "is_mid"), ("FWD", "is_fwd")):
         df[col] = (df["position"] == pos).astype(float)
-    df["label"] = np.select([df["minutes"] >= 60, df["minutes"] > 0], [2, 1], 0)
-    return df.drop(columns=["_pm"])
+
+    # fixture context: rotation is driven by the calendar, not only by form
+    tm = df[["season", "team_id", "fixture_id", "kick"]].drop_duplicates(
+        ["season", "team_id", "fixture_id"])
+    df = df.merge(_team_congestion(tm)[["season", "team_id", "fixture_id",
+                                        "days_rest", "team_matches_14d"]],
+                  on=["season", "team_id", "fixture_id"], how="left")
+    df["days_rest"] = df["days_rest"].clip(upper=30).fillna(30.0)
+    df["is_home"] = pd.to_numeric(df["was_home"], errors="coerce").fillna(0.5)
+    df["team_gw_fixtures"] = df.groupby(["season", "gw", "team_id"])[
+        "fixture_id"].transform("nunique")
+
+    # his share of the team+position minutes over the last 5 matches
+    df["_m5"] = g["minutes"].transform(
+        lambda s: s.shift(1).rolling(5, min_periods=1).mean())
+    df["pos_mins_share_l5"] = df["_m5"] / df.groupby(
+        ["season", "gw", "team_id", "position"])["_m5"].transform("sum").replace(0, np.nan)
+
+    # crowd signals, lagged one gameweek so only settled snapshots are used
+    df["sel_lag"] = g["selected"].transform(lambda s: s.shift(1))
+    df["sel_share_lag"] = df["sel_lag"] / df.groupby(["season", "gw"])[
+        "sel_lag"].transform("sum").replace(0, np.nan)
+    df["sel_rank_pos"] = df.groupby(["season", "gw", "team_id", "position"])[
+        "sel_lag"].rank(ascending=False, method="min")
+    ti = g["transfers_in"].transform(lambda s: s.shift(1))
+    to = g["transfers_out"].transform(lambda s: s.shift(1))
+    df["net_transfer_frac"] = ((ti - to) / df["sel_lag"].replace(0, np.nan)
+                               ).clip(-2, 2)
+
+    df["label"] = np.select([df["minutes"] >= 60, df["minutes"] > 0],
+                            [2, 1], 0).astype(float)
+    df.loc[df["minutes"].isna(), "label"] = np.nan
+    return df.drop(columns=["_pm", "_ms", "_m5"])
+
+
+# ---------------------------------------------------------------- train -----
+def _fit(frame: pd.DataFrame, seasons: list[str], device: str | None):
+    import xgboost as xgb
+    tr = frame[frame["label"].notna() & frame["season"].isin(seasons)]
+    clf = xgb.XGBClassifier(
+        objective="multi:softprob", num_class=3, n_estimators=400, max_depth=5,
+        learning_rate=0.06, subsample=0.9, colsample_bytree=0.8,
+        eval_metric="mlogloss", device=device or "cpu")
+    clf.fit(tr[FEATURES], tr["label"].astype(int))
+    return clf, tr
+
+
+def _fit_minutes(tr: pd.DataFrame, device: str | None):
+    """Regressor for E[minutes | the player appears]."""
+    import xgboost as xgb
+    played = tr[tr["minutes"] > 0]
+    m = xgb.XGBRegressor(n_estimators=400, max_depth=5, learning_rate=0.06,
+                         subsample=0.9, colsample_bytree=0.8,
+                         objective="reg:squarederror", device=device or "cpu")
+    m.fit(played[FEATURES], played["minutes"])
+    return m
 
 
 def train(conn, *, seasons: list[str] | None = None,
-          device: str | None = None) -> dict:
-    """Train and cache the classifier; returns metadata with holdout accuracy."""
-    import xgboost as xgb
+          device: str | None = None, tag: str | None = None) -> dict:
+    """Train and cache the classifier; returns metadata with holdout accuracy.
+
+    The holdout number comes from a probe fitted on all-but-the-last season;
+    the cached model is then refitted on every season given, because the most
+    recent one is the most relevant training data there is.
+    """
     seasons = seasons or config.BACKFILL_SEASONS
-    train_seasons, valid_season = seasons[:-1], seasons[-1]
-    tr = _frame(conn, train_seasons)
-    va = _frame(conn, [valid_season])
-    clf = xgb.XGBClassifier(
-        objective="multi:softprob", num_class=3, n_estimators=300, max_depth=5,
-        learning_rate=0.06, subsample=0.9, colsample_bytree=0.8,
-        eval_metric="mlogloss", device=device or "cpu")
-    clf.fit(tr[FEATURES], tr["label"])
-    acc = float((clf.predict(va[FEATURES]) == va["label"]).mean()) if len(va) else None
-    # class-conditional mean minutes (for E[min] reconstruction)
+    frame = _frame(conn, seasons)
+    acc = None
+    valid_season = seasons[-1] if len(seasons) > 1 else None
+    if valid_season:
+        probe, _ = _fit(frame, seasons[:-1], device)
+        va = frame[frame["label"].notna() & (frame["season"] == valid_season)]
+        if len(va):
+            acc = float((probe.predict(va[FEATURES]) == va["label"]).mean())
+    clf, tr = _fit(frame, seasons, device)
+    # E[minutes | he plays], fitted on appearances only. Rebuilding expected
+    # minutes as P(plays) x this beats the class-mean reconstruction it
+    # replaced by 0.43 / 0.47 minutes of MAE across two replayed seasons, and
+    # exposure multiplies every rate in the engine.
+    reg = _fit_minutes(tr, device)
     m_sub = float(tr.loc[tr.label == 1, "minutes"].mean() or 30.0)
     m_full = float(tr.loc[tr.label == 2, "minutes"].mean() or 84.0)
+    model_path, reg_path, meta_path = _paths(tag)
     os.makedirs(MODEL_DIR, exist_ok=True)
-    clf.save_model(MODEL_PATH)
-    meta = {"features": FEATURES, "train_seasons": train_seasons,
+    clf.save_model(model_path)
+    reg.save_model(reg_path)
+    meta = {"features": FEATURES, "train_seasons": seasons,
             "valid_season": valid_season, "holdout_accuracy": acc,
             "mean_minutes": {"sub": m_sub, "full": m_full}}
-    with open(META_PATH, "w", encoding="utf-8") as fh:
+    with open(meta_path, "w", encoding="utf-8") as fh:
         json.dump(meta, fh, indent=2)
     return meta
 
 
-def load():
+def load(tag: str | None = None):
+    """Return (clf, meta), or (None, None) when absent or built on old features.
+
+    ``meta["_reg"]`` carries the loaded E[minutes | plays] regressor. It is a
+    live object, not part of the JSON the trainer writes, so never serialise a
+    loaded meta.
+    """
     import xgboost as xgb
-    if not (os.path.exists(MODEL_PATH) and os.path.exists(META_PATH)):
+    model_path, reg_path, meta_path = _paths(tag)
+    if not all(os.path.exists(p) for p in (model_path, reg_path, meta_path)):
         return None, None
-    clf = xgb.XGBClassifier()
-    clf.load_model(MODEL_PATH)
-    with open(META_PATH, encoding="utf-8") as fh:
+    with open(meta_path, encoding="utf-8") as fh:
         meta = json.load(fh)
+    if meta.get("features") != FEATURES:
+        return None, None      # stale cache: the feature set has changed
+    clf = xgb.XGBClassifier()
+    clf.load_model(model_path)
+    reg = xgb.XGBRegressor()
+    reg.load_model(reg_path)
+    meta = {**meta, "_reg": reg}
     return clf, meta
 
 
-def predict_gw(conn, season: str, as_of: str, clf, meta, *,
-               use_availability: bool = True) -> pd.DataFrame:
-    """P(none/sub/full) for every player of ``season`` from history < as_of.
+def ensure(conn, *, seasons: list[str] | None = None,
+           device: str | None = None, tag: str | None = None):
+    """Load the cached model, training it first if it is missing or stale."""
+    clf, meta = load(tag)
+    if clf is None:
+        train(conn, seasons=seasons, device=device, tag=tag)
+        clf, meta = load(tag)
+    return clf, meta
 
-    Feature rows are built from each player's most recent point-in-time state
-    (cross-season via player_code, so early-season windows reach back).
+
+# -------------------------------------------------------------- predict -----
+def _gw_for(conn, season: str, as_of: str) -> int | None:
+    for table in ("fixture", "team_match"):
+        r = conn.execute(
+            f"SELECT MIN(gw) g FROM {table} WHERE season=? AND kickoff_utc>=?",
+            (season, as_of)).fetchone()
+        if r and r["g"] is not None:
+            return int(r["g"])
+    return None
+
+
+def predict_gw(conn, season: str, as_of: str, clf, meta, *,
+               gw: int | None = None, use_availability: bool = True) -> pd.DataFrame:
+    """P(none/sub/full) and E[minutes] for every player of ``season``.
+
+    Features come from history strictly before ``as_of`` (cross-season via
+    player_code, so early-season windows reach back into last year).
     ``use_availability`` applies the *current* FPL status/chance_next on top —
     right for live predictions, wrong for historical backtests (the stored
     status is today's, not that gameweek's), so backtests disable it.
     """
+    gw = gw if gw is not None else _gw_for(conn, season, as_of)
     seasons = list(dict.fromkeys(config.BACKFILL_SEASONS + [season]))
-    hist = _frame(conn, seasons, before=as_of)
     players = pd.read_sql_query(
-        "SELECT player_id, code player_code, position, status, chance_next, "
-        "team_id, now_cost price FROM player WHERE season=?",
+        "SELECT player_id, position, status, chance_next FROM player "
+        "WHERE season=? AND position IN ('GK','DEF','MID','FWD')",
         conn, params=(season,))
-    if hist.empty:
-        feats = players.assign(**{f: np.nan for f in (
-            "starts_l5", "mins_l1", "mins_l3", "mins_l5",
-            "avg_mins_when_played", "apps_l10", "since_last_app",
-            "season_min_share")})
-    else:
-        # roll each player's state one step forward past their last match
-        last = hist.groupby("player_code", sort=False).tail(1).copy()
-        last["starts_l5"] = hist.groupby("player_code")["started"].apply(
-            lambda s: s.tail(5).sum()).reindex(last["player_code"]).values
-        for n in (1, 3, 5):
-            last[f"mins_l{n}"] = hist.groupby("player_code")["minutes"].apply(
-                lambda s, n=n: s.tail(n).mean()).reindex(last["player_code"]).values
-        pm = hist[hist["played"] > 0].groupby("player_code")["minutes"].mean()
-        last["avg_mins_when_played"] = pm.reindex(last["player_code"]).values
-        last["apps_l10"] = hist.groupby("player_code")["played"].apply(
-            lambda s: s.tail(10).sum()).reindex(last["player_code"]).values
-        # never-played must match training's encoding (99), not the row
-        # count — otherwise a perennial reserve looks like a returning player
-        gap = hist.groupby("player_code")["played"].apply(
-            lambda s: 99.0 if s.sum() == 0 else (
-                0.0 if s.iloc[-1] > 0 else min(
-                    99.0, float((s[::-1] == 0).cummin().sum()))))
-        last["since_last_app"] = gap.reindex(last["player_code"]).values
-        tot = hist.groupby("player_code")["minutes"].agg(["sum", "count"])
-        last["season_min_share"] = (tot["sum"] / (tot["count"] * 90.0)
-                                    ).reindex(last["player_code"]).values
-        hist_feats = ["starts_l5", "mins_l1", "mins_l3", "mins_l5",
-                      "avg_mins_when_played", "apps_l10", "since_last_app",
-                      "season_min_share"]
-        latest = last.set_index("player_code")[hist_feats + ["team_id"]].rename(
-            columns={"team_id": "last_team_id"})
-        feats = players.merge(latest, left_on="player_code", right_index=True,
-                              how="left")
-    # context features from the CURRENT player row (a summer signing's history
-    # rows all sit at his old club — depth chart must come from today's squad).
-    # Fall back to the last per-gw price seen in history: unpriced deep-squad
-    # players must not become NaN branches the training data never contains.
-    feats["price"] = pd.to_numeric(feats["price"], errors="coerce")
-    if not hist.empty and "price" in hist:
-        last_price = hist.groupby("player_code")["price"].last()
-        feats["price"] = feats["price"].fillna(
-            feats["player_code"].map(last_price))
-    feats["price_rank"] = feats.groupby(["team_id", "position"])["price"].rank(
-        ascending=False, method="min")
-    if "last_team_id" in feats:
-        feats["new_club"] = (feats["last_team_id"] != feats["team_id"]
-                             ).astype(float)
-    else:
-        feats["new_club"] = 1.0
-    counts = (hist.groupby("player_code").size() if not hist.empty
-              else pd.Series(dtype=float))
-    feats["career_apps"] = feats["player_code"].map(counts).fillna(0.0)
-    played_tot = (hist.groupby("player_code")["played"].sum() if not hist.empty
-                  else pd.Series(dtype=float))
-    feats["reserve_flag"] = ((feats["player_code"].map(played_tot).fillna(0.0) == 0)
-                             & (feats["career_apps"] >= 10)).astype(float)
-    in_season = (hist[hist["season"] == season].groupby("player_code").size()
-                 if not hist.empty else pd.Series(dtype=float))
-    feats["season_idx"] = feats["player_code"].map(in_season).fillna(0.0)
-    for pos, col in (("GK", "is_gk"), ("DEF", "is_def"),
-                     ("MID", "is_mid"), ("FWD", "is_fwd")):
-        feats[col] = (feats["position"] == pos).astype(float)
 
-    proba = clf.predict_proba(feats[FEATURES].astype(float))
-    out = players[["player_id", "position"]].copy()
-    out["p_none"], out["p_sub"], out["p_full"] = proba[:, 0], proba[:, 1], proba[:, 2]
+    t = feat_rows = pd.DataFrame()
+    if gw is not None:
+        df = _frame(conn, seasons, before=as_of, target=(season, gw, as_of))
+        if len(df):
+            t = feat_rows = df[df["_target"] == 1]
+    if len(t):
+        proba = clf.predict_proba(t[meta["features"]].astype(float))
+        t = t.assign(p_none=proba[:, 0], p_sub=proba[:, 1], p_full=proba[:, 2])
+        # a double gameweek gives one row per fixture; the engine scales
+        # exposure per fixture itself, so hand it the per-fixture average
+        t = t.groupby("player_id", as_index=False).agg(
+            p_none=("p_none", "mean"), p_sub=("p_sub", "mean"),
+            p_full=("p_full", "mean"),
+            m_started=("avg_mins_when_started", "mean"))
+    else:                      # blank gameweek, or no fixture list yet
+        t = pd.DataFrame(columns=["player_id", "p_none", "p_sub", "p_full",
+                                  "m_started"])
+
+    # players whose club has no fixture this gameweek still need a row: the
+    # engine finds no fixtures for them and scores 0, but they must not vanish
+    out = players.merge(t, on="player_id", how="left")
+    out["p_sub"] = out["p_sub"].fillna(0.0)
+    out["p_full"] = out["p_full"].fillna(0.0)
+    out["p_none"] = out["p_none"].fillna(1.0)
 
     if use_availability:
         # availability overlay: scale played mass, dump remainder on p_none
-        avail = feats["chance_next"].where(
-            feats["chance_next"].notna(),
-            feats["status"].isin([None, "a"]).astype(float)).clip(0, 1).fillna(1.0)
+        chance = pd.to_numeric(out["chance_next"], errors="coerce")
+        avail = chance.where(
+            chance.notna(),
+            out["status"].isin([None, "a"]).astype(float)).clip(0, 1).fillna(1.0)
         out["p_sub"] *= avail
         out["p_full"] *= avail
         out["p_none"] = 1.0 - out["p_sub"] - out["p_full"]
-    out["e_min"] = (out["p_sub"] * meta["mean_minutes"]["sub"]
-                    + out["p_full"] * meta["mean_minutes"]["full"])
-    return out
+
+    ms, mf = meta["mean_minutes"]["sub"], meta["mean_minutes"]["full"]
+    reg = meta.get("_reg")
+    if reg is not None and len(feat_rows):
+        # hybrid: P(plays) x E[minutes | plays]
+        cond = pd.Series(reg.predict(feat_rows[meta["features"]].astype(float)),
+                         index=feat_rows.index).clip(1, 95)
+        cond = cond.groupby(feat_rows["player_id"]).mean()
+        cm = out["player_id"].map(cond)
+        out["m_played"] = cm.fillna(out["m_started"].fillna(mf).clip(60, 90))
+        out["e_min"] = (out["p_sub"] + out["p_full"]) * out["m_played"]
+    else:                       # no regressor cached: class-mean fallback
+        out["m_played"] = out["m_started"].fillna(mf).clip(60, 90)
+        out["e_min"] = out["p_sub"] * ms + out["p_full"] * out["m_played"]
+    # ``m_played`` is E[minutes | he appears]. It is published because the
+    # simulator needs it directly: E[minutes] can no longer be inverted back
+    # into a per-class minutes figure now that it is P(plays) x this.
+    return out[["player_id", "position", "p_none", "p_sub", "p_full", "e_min",
+                "m_played"]]

@@ -26,6 +26,15 @@ XG_BLEND = 0.5             # target = (1-b)*goals + b*xg (where xg present)
 SHRINK_MATCHES = 6.0       # effective matches at which ratings are half-trusted
 PROMOTED_PRIOR = -0.18     # attack/defence prior for clubs with no PL history
 N_ITER = 40
+RIDGE_GOALS = 3.0          # pseudo-goals added to both sides of every
+                           # multiplicative update. Without it a club with no
+                           # goals yet (a promoted side in August, whose only
+                           # match finished 0-x and has no xG) drives
+                           # log(0/den) -> -inf: its rating diverges, drags the
+                           # mean-centring with it, and `league_rate` collapses
+                           # — which pins every fixture's attack scaler at its
+                           # cap and silently deletes the fixture signal for
+                           # the whole league.
 DEFAULT_MU = math.log(1.35)    # league scoring rate when no data at all
 DEFAULT_HOME_ADV = 0.20
 
@@ -95,19 +104,26 @@ def fit(conn, as_of: str, *, seasons: list[str] | None = None) -> TeamModel:
     mu = math.log(max(1e-6, float(np.average(y, weights=w))))
     home_adv = 0.15
 
+    eff = np.bincount(team, weights=w, minlength=n)     # effective matches
+    cw = eff / max(1e-9, eff.sum())      # centre on the clubs that actually play
+    k = RIDGE_GOALS
     for _ in range(N_ITER):
+        # Attack: with lam_ij = exp(att_i) * base_ij, the Poisson MLE for
+        # exp(att_i) is (goals for i) / (base for i). Under a Gamma prior with
+        # mean 1 worth k pseudo-goals the posterior mode adds k to both — a
+        # fixed point, not a nudge, so a club with no goals settles at the
+        # prior instead of drifting toward -inf one iteration at a time.
         lam = np.exp(mu + home_adv * home + att[team] - dfc[opp])
-        # attack updates: multiplicative Poisson MLE per team
         num = np.bincount(team, weights=w * y, minlength=n)
-        den = np.bincount(team, weights=w * lam, minlength=n)
-        att += np.log(np.clip(num, 1e-9, None) / np.clip(den, 1e-9, None))
-        att -= att.mean()
+        base = np.bincount(team, weights=w * lam, minlength=n) * np.exp(-att)
+        att = np.log((num + k) / np.clip(base + k, 1e-9, None))
+        att -= float(att @ cw)
+        # Defence: goals conceded by j are the goals scored against j.
         lam = np.exp(mu + home_adv * home + att[team] - dfc[opp])
-        # defence updates: goals conceded by j are goals scored against j
         num = np.bincount(opp, weights=w * y, minlength=n)
-        den = np.bincount(opp, weights=w * lam, minlength=n)
-        dfc -= np.log(np.clip(num, 1e-9, None) / np.clip(den, 1e-9, None))
-        dfc -= dfc.mean()
+        base = np.bincount(opp, weights=w * lam, minlength=n) * np.exp(dfc)
+        dfc = -np.log((num + k) / np.clip(base + k, 1e-9, None))
+        dfc -= float(dfc @ cw)
         # home advantage + intercept
         lam = np.exp(mu + home_adv * home + att[team] - dfc[opp])
         h = home == 1
@@ -117,7 +133,6 @@ def fit(conn, as_of: str, *, seasons: list[str] | None = None) -> TeamModel:
         mu += math.log(max(1e-9, (w * y).sum()) / max(1e-9, (w * lam).sum()))
 
     # shrink low-data teams toward the promoted prior
-    eff = np.bincount(team, weights=w, minlength=n)
     for c, i in idx.items():
         trust = eff[i] / (eff[i] + SHRINK_MATCHES)
         model.attack[c] = trust * att[i] + (1 - trust) * PROMOTED_PRIOR
@@ -125,5 +140,8 @@ def fit(conn, as_of: str, *, seasons: list[str] | None = None) -> TeamModel:
         model.weight[c] = float(eff[i])
     model.mu = mu
     model.home_adv = home_adv
-    model.league_rate = math.exp(mu + home_adv / 2)
+    # the average goals per team-match, straight from the data. Deriving it as
+    # exp(mu + home_adv/2) makes it hostage to the intercept, which is only
+    # identified up to the attack/defence centring.
+    model.league_rate = float(np.average(y, weights=w))
     return model

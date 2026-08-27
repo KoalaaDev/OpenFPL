@@ -52,6 +52,10 @@ def ingest_bootstrap(conn, season: str | None = None, *, use_cache: bool = False
     } for t in boot["teams"]])
 
     players = []
+    # INSERT OR REPLACE would blank understat_id on every pull, silently
+    # undoing the Understat resolution; carry the existing value through.
+    existing = {r["player_id"]: r["understat_id"] for r in conn.execute(
+        "SELECT player_id, understat_id FROM player WHERE season=?", (season,))}
     for e in boot["elements"]:
         players.append({
             "season": season,
@@ -61,11 +65,15 @@ def ingest_bootstrap(conn, season: str | None = None, *, use_cache: bool = False
             "full_name": f"{e.get('first_name','')} {e.get('second_name','')}".strip(),
             "team_id": e.get("team"),
             "position": config.ELEMENT_TYPE_TO_POSITION.get(e.get("element_type")),
-            "understat_id": None,
+            "understat_id": existing.get(e["id"]),
             "now_cost": (e.get("now_cost") or 0) / 10.0,  # tenths of £m -> £m
             "status": e.get("status"),
             "chance_next": (e["chance_of_playing_next_round"] / 100.0
                             if e.get("chance_of_playing_next_round") is not None else None),
+            # published set-piece duty (1 = first choice), current season only
+            "penalties_order": e.get("penalties_order"),
+            "corners_order": e.get("corners_and_indirect_freekicks_order"),
+            "freekicks_order": e.get("direct_freekicks_order"),
         })
     db.upsert(conn, "player", players)
     return boot
@@ -191,6 +199,10 @@ def _history_row(season, pid, code, name, h, fx) -> dict:
         "tackles": _f(h.get("tackles")),
         "cbi": _f(h.get("clearances_blocks_interceptions")),
         "recoveries": _f(h.get("recoveries")),
+        # crowd signals (known at the deadline)
+        "selected": _f(h.get("selected")),
+        "transfers_in": _f(h.get("transfers_in")),
+        "transfers_out": _f(h.get("transfers_out")),
     }
 
 

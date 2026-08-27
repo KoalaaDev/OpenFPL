@@ -8,7 +8,8 @@ the data comes from JSON endpoints that answer only to XHR requests:
                                                  dates: [matches], players: [...]}
     one call per season covers every club's per-match xG/xGA/deep/PPDA.
   * ``GET  /getPlayerData/{player_id}``      -> {matches: [...all seasons...]}
-    per-match goals/shots/xG/xA/key passes/xGChain/xGBuildup/minutes.
+    per-match goals/shots/xG/npxG/xA/key passes/xGChain/xGBuildup/
+    minutes, and the position he played.
   * ``POST /main/getPlayersStats/``          -> season aggregates incl. ids,
     names and clubs (used for FPL<->Understat player resolution).
 
@@ -109,6 +110,54 @@ def fetch_player_matches(understat_id: str, *, use_cache: bool = True) -> list[d
     return [m for m in (data.get("matches") or []) if isinstance(m, dict)]
 
 
+def fetch_player_data(understat_id: str, *, use_cache: bool = True) -> dict:
+    """``GET /getPlayerData/{id}`` — matches AND every shot the player took.
+
+    Bigger than ``getPlayerMatches`` but the only endpoint that carries shot
+    ``situation`` (penalty / corner / free kick / open play) and who assisted
+    each shot, which is what identifies set-piece and penalty duty.
+    """
+    try:
+        data = _json(get_text(f"{BASE}/getPlayerData/{understat_id}",
+                              use_cache=use_cache, headers=_XHR))
+    except Exception:  # noqa: BLE001
+        return {}
+    if not isinstance(data, dict):
+        return {}
+    return data.get("response") if isinstance(data.get("response"), dict) else data
+
+
+def shot_rows_from_payload(understat_id: str, data: dict, *,
+                           epl_titles: set[str] | None = None) -> list[dict]:
+    """``understat_shot`` rows from a getPlayerData payload."""
+    rows = []
+    for sh in (data.get("shots") or []):
+        if not isinstance(sh, dict):
+            continue
+        if epl_titles and not ({sh.get("h_team"), sh.get("a_team")} & epl_titles):
+            continue
+        year = sh.get("season")
+        sid = sh.get("id")
+        if not sid:
+            continue
+        rows.append({
+            "shot_id": str(sid),
+            "season": year_to_season(year) if year else None,
+            "understat_id": str(understat_id),
+            "understat_match_id": str(sh.get("match_id")),
+            "match_date": str(sh.get("date") or "")[:10],
+            "minute": _num(sh.get("minute")),
+            "situation": sh.get("situation"),
+            "shot_type": sh.get("shotType"),
+            "result": sh.get("result"),
+            "xg": _num(sh.get("xG")),
+            "assisted_name": sh.get("player_assisted") or None,
+            "last_action": sh.get("lastAction"),
+            "x": _num(sh.get("X")), "y": _num(sh.get("Y")),
+        })
+    return [r for r in rows if r["season"] and r["match_date"]]
+
+
 # --------------------------------------------------------------------------
 # normalisers (pure; unit-tested)
 # --------------------------------------------------------------------------
@@ -168,6 +217,9 @@ def player_rows_from_matches(understat_id: str, matches: list[dict], *,
             "key_passes": _num(m.get("key_passes")), "xa": _num(m.get("xA")),
             "xgchain": _num(m.get("xGChain")), "xgbuildup": _num(m.get("xGBuildup")),
             "minutes": _num(m.get("time")),
+            # non-penalty split + the role he played that match
+            "npg": _num(m.get("npg")), "npxg": _num(m.get("npxG")),
+            "position": (m.get("position") or None),
         })
     return [r for r in rows if r["season"] and r["match_date"]]
 

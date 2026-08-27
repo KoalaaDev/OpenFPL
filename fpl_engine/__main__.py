@@ -79,6 +79,112 @@ def cmd_train(args):
           f"`predict --gw 1 --blend auto`.")
 
 
+def cmd_verify(args):
+    from . import verify
+    db.init_db(args.db)
+    with db.session(args.db) as conn:
+        rep = verify.run(conn)
+    print("Data invariants:")
+    print(verify.format_report(rep))
+    print()
+    if rep.ok():
+        print(f"OK — {len(rep.warnings)} warning(s), no errors.")
+        return 0
+    print(f"FAILED — {len(rep.errors)} error(s). Downstream numbers cannot be "
+          "trusted until these are fixed.")
+    return 1
+
+
+def cmd_prices(args):
+    from . import price_model
+    db.init_db(args.db)
+    with db.session(args.db) as conn:
+        bundle = price_model.ensure(conn)
+        preds = price_model.predict(conn, args.season or config.CURRENT_SEASON,
+                                    gw=args.gw, bundle=bundle)
+        names = {r["player_id"]: r["web_name"] for r in conn.execute(
+            "SELECT player_id, web_name FROM player WHERE season=?",
+            (args.season or config.CURRENT_SEASON,))}
+    if preds.empty:
+        print("No price history yet for this season — run `pull` first.")
+        return 0
+    hold = bundle[1].get("holdout") or {}
+    if hold:
+        print(f"(held out on {hold['season']}: {hold['p_rise_given_top10']:.0%} "
+              f"of the top-10 ranked risers actually rose, against a "
+              f"{hold['base_rate']:.1%} base rate)")
+    preds = preds.assign(player=preds["player_id"].map(names))
+    gw = int(preds["gw"].iloc[0])
+    left = max(0, 38 - gw)
+    preds["pts_value"] = [price_model.points_value(v, left)
+                          for v in preds["e_delta"]]
+    print(f"\nPrice moves out of GW{gw} — most likely RISERS:")
+    _print_df(preds.head(args.top)[["player", "price_m", "p_rise", "p_fall",
+                                    "e_delta", "pts_value"]], args.top)
+    print("\nMost likely FALLERS:")
+    _print_df(preds.tail(args.top).iloc[::-1][["player", "price_m", "p_rise",
+                                               "p_fall", "e_delta",
+                                               "pts_value"]], args.top)
+    print()
+    print("pts_value converts the expected move into points at the measured rate:")
+    print(f"  £1m is worth {price_model.POINTS_PER_MILLION_PER_GW} pts per "
+          f"gameweek, halved by FPL's sell-on rule, over {left} gameweeks left.")
+    print("It is a tie-breaker between transfers you already rate equally, not a "
+          "term\nthat should overturn an expected-points ranking.")
+    if args.out:
+        preds.to_csv(args.out, index=False)
+        print(f"Wrote {args.out}")
+    return 0
+
+
+def cmd_simulate(args):
+    from .xpts import simulate
+    from .pipeline import next_gw
+    db.init_db(args.db)
+    season = args.season or config.CURRENT_SEASON
+    with db.session(args.db) as conn:
+        gw = args.gw if args.gw is not None else next_gw(conn, season)
+        out = simulate.simulate_gw(conn, season, gw, n_sims=args.sims)
+        s = simulate.summarise(out)
+        names = {r["player_id"]: r["web_name"] for r in conn.execute(
+            "SELECT player_id, web_name FROM player WHERE season=?", (season,))}
+        if not s.empty:
+            xi = list(s.nlargest(11, "mean")["player_id"])
+            port = simulate.portfolio(out, xi)
+    if s.empty:
+        print(f"No fixtures to simulate for {season} GW{gw}.")
+        return 0
+    s = s[s["mean"] > 0].assign(player=s["player_id"].map(names))
+    print(f"{season} GW{gw}: {args.sims} simulated matches")
+    print()
+    print("Ranking here is NOT better than `predict` — the distribution is "
+          "for risk, not for choosing.")
+    print()
+    _print_df(s.nlargest(args.top, "mean")[
+        ["player", "mean", "sd", "floor", "median", "ceiling", "p_blank",
+         "p_haul"]].round(3), args.top)
+    if port:
+        print(f"\nTop-11 by mean, as a portfolio: mean {port['mean']:.1f}, "
+              f"floor {port['floor']:.0f}, ceiling {port['ceiling']:.0f}")
+        print(f"  sd {port['sd']:.2f} — treating the players as independent "
+              f"would say {port['independent_sd']:.2f} "
+              f"({100 * (port['sd'] / port['independent_sd'] - 1):+.0f}%)")
+    return 0
+
+
+def cmd_compare_backtests(args):
+    from .backtest import compare
+    res = compare(args.before, args.after, model=args.model)
+    print(f"{res['model']}: {res['gws']} paired gameweeks")
+    print()
+    print(f"{'metric':<18}{'before':>10}{'after':>10}{'delta':>10}{'t':>8}{'p':>9}")
+    for k, m in res["metrics"].items():
+        print(f"{k:<18}{m['before']:>10.4f}{m['after']:>10.4f}"
+              f"{m['delta']:>+10.4f}{m['t']:>8.2f}{m['p']:>9.4f}")
+    print()
+    print("p is a paired t-test over gameweeks; treat p > 0.05 as unproven.")
+
+
 def cmd_predict(args):
     from .pipeline import next_gw, predict_gw
     db.init_db(args.db)
@@ -130,16 +236,19 @@ def cmd_backtest(args):
                               with_openfpl=not args.no_openfpl)
     print(f"\nBacktest {report['season']} "
           f"(minutes-model holdout acc {report['minutes_holdout_accuracy']}):")
-    cols = ["spearman", "p_at_20", "captain", "captain_best", "rmse", "gws"]
-    print(f"{'model':<10}" + "".join(f"{c:>14}" for c in cols))
+    cols = ["spearman", "spearman_played", "p_at_20", "top11", "top30",
+            "captain", "captain_best", "rmse", "gws"]
+    print(f"{'model':<10}" + "".join(f"{c:>16}" for c in cols))
     for name, m in sorted(report["summary"].items()):
-        print(f"{name:<10}" + "".join(f"{m.get(c, float('nan')):>14}" for c in cols))
+        print(f"{name:<10}" + "".join(f"{m.get(c, float('nan')):>16}" for c in cols))
     if report.get("blend"):
         b = report["blend"]
-        print(f"\nBlend fit: w(xpts)={b['weight']}  "
-              f"eval spearman openfpl={b['eval_spearman']['openfpl']:.4f} "
-              f"xpts={b['eval_spearman']['xpts']:.4f} "
-              f"blend={b['eval_spearman']['blend']:.4f}")
+        print(f"\nBlend fit: w(xpts)={b['weight']}  (judged on the held-out "
+              "second half of the season)")
+        for key in ("eval_spearman_played", "eval_top30"):
+            if key in b:
+                vals = "  ".join(f"{k}={v:.4f}" for k, v in b[key].items())
+                print(f"  {key[len('eval_'):]:<16} {vals}")
         print("Saved to models/xpts/blend.json (used automatically by predict/web).")
 
 
@@ -228,6 +337,31 @@ def main(argv=None):
     sp.add_argument("--retrain-minutes", action="store_true",
                     help="force retraining the minutes classifier")
     sp.set_defaults(func=cmd_backtest)
+
+    sp = sub.add_parser("simulate",
+                        help="simulate a gameweek: floors, ceilings, P(haul), joint risk")
+    sp.add_argument("--gw", type=int, default=None)
+    sp.add_argument("--sims", type=int, default=4000)
+    sp.add_argument("--top", type=int, default=20)
+    sp.set_defaults(func=cmd_simulate)
+
+    sp = sub.add_parser("verify",
+                        help="check the data invariants; exits non-zero on error")
+    sp.set_defaults(func=cmd_verify)
+
+    sp = sub.add_parser("prices", help="who is about to rise or fall in price")
+    sp.add_argument("--gw", type=int, default=None,
+                    help="predict the move out of this gw (default: latest with data)")
+    sp.add_argument("--top", type=int, default=15, help="rows each way")
+    sp.add_argument("--out", help="write predictions CSV")
+    sp.set_defaults(func=cmd_prices)
+
+    sp = sub.add_parser("compare-backtests",
+                        help="paired per-gameweek A/B of two saved backtest reports")
+    sp.add_argument("before", help="backtest JSON (or a directory of them) from before the change")
+    sp.add_argument("after", help="backtest JSON (or a directory of them) from after it")
+    sp.add_argument("--model", default="xpts", help="which model's series to compare")
+    sp.set_defaults(func=cmd_compare_backtests)
 
     sp = sub.add_parser("run", help="pull + build + predict")
     sp.add_argument("--gw", type=int, required=True)

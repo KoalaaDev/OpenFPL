@@ -70,6 +70,41 @@ def _needs_refresh(us_latest: str | None, fpl_latest: str | None) -> bool:
     return str(fpl_latest)[:10] > str(us_latest)[:10]
 
 
+def _resolve_backfill_seasons(conn, season: str, *, use_cache: bool) -> None:
+    """Resolve Understat identities for the BACKFILLED seasons too.
+
+    Resolving only the current season leaves ``player.understat_id`` NULL for
+    every historical season, so no Understat feature is testable and the
+    OpenFPL feature builder silently emits NaN for all of them — which is the
+    state this repo was in. Each season costs one cached league-player
+    request; the cross-season fill afterwards is free, because ``player.code``
+    is stable, so an id found in any season is that player's id in all of them.
+    """
+    from .resolve import resolve_players, resolve_teams
+    for s_ in config.BACKFILL_SEASONS:
+        if s_ == season:
+            continue
+        try:
+            resolve_teams(conn, s_)
+            names, clubs = {}, {}
+            for pl in understat.fetch_league_players(s_, use_cache=use_cache):
+                names[str(pl.get("id"))] = pl.get("player_name")
+                if pl.get("team_title"):
+                    clubs[str(pl.get("id"))] = pl["team_title"]
+            if names:
+                r = resolve_players(conn, s_, names, understat_teams=clubs)
+                progress.log(f"    {s_}: {len(r['resolved'])} resolved, "
+                             f"{len(r['unresolved'])} unresolved")
+        except Exception as e:  # noqa: BLE001 - a bad season must not abort
+            progress.log(f"    {s_}: resolution skipped ({e})")
+    conn.execute(
+        "UPDATE player SET understat_id = ("
+        "  SELECT p2.understat_id FROM player p2 "
+        "  WHERE p2.code = player.code AND p2.understat_id IS NOT NULL LIMIT 1) "
+        "WHERE understat_id IS NULL AND code IS NOT NULL")
+    conn.commit()
+
+
 def _pull_understat(conn, season: str, *, use_cache: bool,
                     history_seasons: int = 1, player_limit: int | None = None,
                     refresh_all: bool = False, workers: int = 2) -> dict:
@@ -112,6 +147,7 @@ def _pull_understat(conn, season: str, *, use_cache: bool,
     progress.step(f"Understat: {len(res['resolved'])} players resolved, "
                   f"{len(res['unresolved'])} unresolved, "
                   f"{len(res['ambiguous'])} ambiguous (features stay NaN for those).")
+    _resolve_backfill_seasons(conn, season, use_cache=use_cache)
     rows_ = conn.execute(
         "SELECT p.understat_id AS uid, "
         "       (SELECT MAX(g.kickoff_utc) FROM player_gw g "

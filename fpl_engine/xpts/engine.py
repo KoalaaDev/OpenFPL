@@ -25,7 +25,8 @@ import numpy as np
 import pandas as pd
 
 from .. import scoring
-from . import minutes_model, odds_model, rates as rates_mod, team_model
+from . import (minutes_model, odds_model, rates as rates_mod,
+               set_pieces, team_model)
 
 ATTACK_SCALER_CAP = (0.55, 1.75)
 SAVES_OPP_EXP = 0.35            # saves scale sublinearly with opponent threat
@@ -96,11 +97,11 @@ def xpts_predict_gw(conn, season: str, gw: int, *, as_of: str | None = None,
         return pd.DataFrame()
 
     tm = team_model.fit(conn, as_of)
-    clf, meta = minutes_bundle or minutes_model.load()
+    clf, meta = minutes_bundle or minutes_model.ensure(conn)
     if clf is None:
-        raise RuntimeError("minutes model not trained — run "
-                           "`python -m fpl_engine backtest --retrain-minutes` once")
-    mins = minutes_model.predict_gw(conn, season, as_of, clf, meta,
+        raise RuntimeError("minutes model could not be trained — is player_gw "
+                           "populated? run `python -m fpl_engine pull` first")
+    mins = minutes_model.predict_gw(conn, season, as_of, clf, meta, gw=gw,
                                     use_availability=use_availability)
     rates = rates_mod.fit(conn, season, as_of, rules=rules)
     bonus_coef = rates.attrs.get("bonus_coef", {})   # merge drops attrs
@@ -127,7 +128,17 @@ def xpts_predict_gw(conn, season: str, gw: int, *, as_of: str | None = None,
         team_fixtures.setdefault(f["team_a"], []).append((la, lh))
     league = max(1e-6, tm.league_rate)
 
+    # Penalty duty enters as a CORRECTION toward today's published order, not
+    # as a bonus: the player's trailing xG already contains the penalties he
+    # took while he had the duty, so a flat boost double-counts the incumbent
+    # and does nothing for the player who has just lost it. Zero when the
+    # published duty already matches the history. See xpts/set_pieces.py.
     pen = penalty_takers or {}
+    try:
+        pen_delta = dict(zip(*set_pieces.duty(conn, season, as_of)
+                             [["player_id", "pen_xg90_delta"]].to_numpy().T))
+    except Exception:      # noqa: BLE001 - duty is an enhancement, never a gate
+        pen_delta = {}
     p_goal = rules["goal"]
     p_cs = rules["clean_sheet"]
     p_app_any, p_app_60 = rules["appearance"]["played_any"], rules["appearance"]["played_60"]
@@ -140,7 +151,11 @@ def xpts_predict_gw(conn, season: str, gw: int, *, as_of: str | None = None,
         pos = r.position or "MID"
         exposure = (r.e_min or 0.0) / 90.0
         p_play = (r.p_sub or 0) + (r.p_full or 0)
-        xg90 = (r.xg90 or 0.0) + (0.10 if pen.get(r.player_id) == 1 else 0.0)
+        xg90 = max(0.0, (r.xg90 or 0.0) + pen_delta.get(r.player_id, 0.0))
+        if pen.get(r.player_id) == 1 and not pen_delta:
+            # no shot history to correct against: fall back to the old flat
+            # first-choice boost rather than ignoring duty entirely
+            xg90 += 0.10
         total = 0.0
         e_goals = e_assists = e_cs = 0.0
         for lam_for, lam_against in fx:

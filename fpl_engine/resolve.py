@@ -182,4 +182,22 @@ def resolve_players(conn, season: str, understat_names: dict[str, str],
             resolved.append(r["full_name"])
         else:
             unresolved.append(r["full_name"])
+
+    # Collision guard. Two different FPL players can each match the same
+    # Understat id independently ("Gabriel" vs "Gabriel Jesus", "McConnell" vs
+    # "McDonnell"). Neither is trustworthy, and handing one player another's
+    # shot history is worse than having none, so both are unset.
+    clashes = [row["understat_id"] for row in conn.execute(
+        "SELECT understat_id FROM player WHERE season=? AND understat_id IS NOT NULL "
+        "GROUP BY understat_id HAVING COUNT(*) > 1", (season,))]
+    for uid in clashes:
+        names = [row["full_name"] for row in conn.execute(
+            "SELECT full_name FROM player WHERE season=? AND understat_id=?",
+            (season, uid))]
+        conn.execute("UPDATE player SET understat_id=NULL "
+                     "WHERE season=? AND understat_id=?", (season, uid))
+        for n in names:
+            if n in resolved:
+                resolved.remove(n)
+        ambiguous.extend(names)
     return {"resolved": resolved, "unresolved": unresolved, "ambiguous": ambiguous}

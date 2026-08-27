@@ -8,7 +8,6 @@
     "apps_l10",
     "since_last_app",
     "season_min_share",
-    "price_rank",
     "new_club",
     "career_apps",
     "reserve_flag",
@@ -16,17 +15,32 @@
     "is_gk",
     "is_def",
     "is_mid",
-    "is_fwd"
+    "is_fwd",
+    "price_rank",
+    "avg_mins_when_started",
+    "start_rate_l10",
+    "consec_starts",
+    "pos_mins_share_l5",
+    "mins_std_l5",
+    "started_l1",
+    "days_rest",
+    "team_matches_14d",
+    "is_home",
+    "team_gw_fixtures",
+    "sel_share_lag",
+    "sel_rank_pos",
+    "net_transfer_frac"
   ],
   "train_seasons": [
     "2022-23",
     "2023-24",
-    "2024-25"
+    "2024-25",
+    "2025-26"
   ],
   "valid_season": "2025-26",
-  "holdout_accuracy": 0.8209231182976434,
+  "holdout_accuracy": 0.8251924563821562,
   "mean_minutes": {
-    "sub": 22.21268898988962,
-    "full": 85.34205154376116
+    "sub": 22.221507607192255,
+    "full": 85.33970696204553
   }
 }

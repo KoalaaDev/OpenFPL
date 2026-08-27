@@ -18,6 +18,8 @@ behaviour are unchanged.
 """
 from __future__ import annotations
 
+import math
+
 import warnings
 from dataclasses import dataclass, field
 
@@ -122,6 +124,48 @@ DEFAULT_CHIP_RESERVE: dict[str, float] = {
     "triple_captain": 15.0,
 }
 
+# What a *saved* chip is worth is an option value: holding it pays
+# E[max over the gameweeks left], while playing it now pays this week's value.
+# The reserve is the premium between them, and it shrinks as the season runs
+# out — a flat constant cannot express that, and 15.0 turned out to be roughly
+# twice the truth for Triple Captain at a realistic horizon.
+#
+# Measured by simulating all 74 replayed gameweeks (xpts/simulate.py) and
+# taking E[max] - max E over rolling windows:
+#
+#     gameweeks left        5      10      20
+#     Triple Captain     5.40    7.00    8.06
+#     Bench Boost        8.04   10.54   12.12
+#
+# The fitted curves below reproduce those to within 0.5 pts. The simulator's
+# chip payoffs are themselves calibrated against what the chips actually paid
+# (TC predicted 6.85 / realised 7.45; BB predicted 18.57 / realised 18.81),
+# and E[max] tracks the realised best week (TC 13.7 vs 14.5 over 5 gameweeks).
+#
+# Wildcard and Free Hit have no equivalent measurement — their payoff is a
+# whole-squad rebuild, not a one-week total — so they keep the flat heuristic.
+MEASURED_RESERVE_CURVE: dict[str, tuple[float, float]] = {
+    "triple_captain": (2.31, 1.92),      # premium ~ a + b * ln(gws remaining)
+    "bench_boost": (3.31, 2.94),
+}
+
+
+def chip_reserve_for(chip: str, gws_remaining: int) -> float:
+    """Points a chip is worth kept back, given how much season is left."""
+    curve = MEASURED_RESERVE_CURVE.get(chip)
+    if not curve or gws_remaining is None or gws_remaining < 1:
+        return DEFAULT_CHIP_RESERVE.get(chip, 0.0)
+    a, b = curve
+    return max(0.0, a + b * math.log(max(1, int(gws_remaining))))
+
+
+def default_reserve(gws_remaining: int | None = None) -> dict[str, float]:
+    """The full reserve map, measured where a measurement exists."""
+    if gws_remaining is None:
+        return dict(DEFAULT_CHIP_RESERVE)
+    return {c: chip_reserve_for(c, gws_remaining)
+            for c in DEFAULT_CHIP_RESERVE}
+
 
 @dataclass
 class ChipPlan:
@@ -183,6 +227,7 @@ def optimise_with_chips(
     chip_gws: dict[str, list[int]] | None = None,
     chip_force: dict[str, int] | None = None,
     chip_reserve: dict[str, float] | None = None,
+    gws_remaining: int | None = None,
     locked: set[int] | None = None,
     avoid: set[int] | None = None,
     banned_clubs: set[int] | None = None,
@@ -243,7 +288,11 @@ def optimise_with_chips(
 
     chip_gws = {c: set(v) for c, v in (chip_gws or {}).items() if v}
     chip_force = chip_force or {}
-    reserve = {**DEFAULT_CHIP_RESERVE, **(chip_reserve or {})}
+    # how much season is left decides what a saved chip is worth; with three
+    # gameweeks to go there is almost nothing left to save it for
+    _left = gws_remaining if gws_remaining is not None else (
+        max(0, 38 - max(gws)) + len(gws) if gws else None)
+    reserve = {**default_reserve(_left), **(chip_reserve or {})}
     tc_on = bool(chip_gws.get("triple_captain"))
     bb_on = bool(chip_gws.get("bench_boost"))
     fh_on = bool(chip_gws.get("freehit"))

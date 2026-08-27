@@ -1,0 +1,31 @@
+{
+  "features": [
+    "net_frac",
+    "tin_frac",
+    "tout_frac",
+    "log_selected",
+    "price",
+    "dp_lag1",
+    "dp_lag2",
+    "season_price_change",
+    "is_gk",
+    "is_def",
+    "is_mid",
+    "is_fwd",
+    "gw",
+    "pts_l1",
+    "pts_l3",
+    "mins_l1"
+  ],
+  "train_seasons": [
+    "2022-23",
+    "2023-24",
+    "2024-25",
+    "2025-26"
+  ],
+  "holdout": {
+    "season": "2025-26",
+    "p_rise_given_top10": 0.7432432432432433,
+    "base_rate": 0.019931922658525458
+  }
+}

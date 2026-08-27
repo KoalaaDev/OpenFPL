@@ -200,6 +200,30 @@ CREATE TABLE IF NOT EXISTS samples (
     PRIMARY KEY (season, gw, player_id)
 );
 
+-- Shot-level Understat data. The match-level tables cannot answer "who takes
+-- the penalties / corners", because they aggregate every shot together. Each
+-- row carries the situation it came from and who assisted it, which is what a
+-- set-piece or penalty-duty model needs.
+CREATE TABLE IF NOT EXISTS understat_shot (
+    shot_id       TEXT PRIMARY KEY,       -- Understat's own shot id
+    season        TEXT,
+    understat_id  TEXT NOT NULL,          -- the shooter
+    understat_match_id TEXT,
+    match_date    TEXT,                   -- YYYY-MM-DD (point-in-time key)
+    minute        REAL,
+    situation     TEXT,                   -- OpenPlay|FromCorner|SetPiece|DirectFreekick|Penalty
+    shot_type     TEXT,                   -- LeftFoot|RightFoot|Head|OtherBodyPart
+    result        TEXT,                   -- Goal|SavedShot|MissedShots|BlockedShot|ShotOnPost
+    xg            REAL,
+    assisted_name TEXT,                   -- Understat display name of the assister
+    last_action   TEXT,
+    x             REAL,
+    y             REAL
+);
+CREATE INDEX IF NOT EXISTS idx_shot_player_date
+    ON understat_shot (understat_id, match_date);
+CREATE INDEX IF NOT EXISTS idx_shot_date ON understat_shot (match_date);
+
 -- Manual entity-resolution overrides (checked into version control via export).
 CREATE TABLE IF NOT EXISTS entity_override (
     kind        TEXT NOT NULL,           -- 'player' | 'team'
@@ -232,14 +256,30 @@ _COLUMN_MIGRATIONS = {
         ("xg", "REAL"), ("xa", "REAL"), ("xgi", "REAL"), ("xgc", "REAL"),
         ("price", "REAL"), ("defcon", "REAL"), ("tackles", "REAL"),
         ("cbi", "REAL"), ("recoveries", "REAL"),
+        # crowd signals (free, known at the deadline): squad selection count
+        # and the transfer flow into/out of the player that gameweek
+        ("selected", "REAL"), ("transfers_in", "REAL"), ("transfers_out", "REAL"),
     ],
     "team_match": [
         ("xg", "REAL"), ("xga", "REAL"),
+    ],
+    "understat_player_match": [
+        # non-penalty goals/xG separate a striker's open-play rate from his
+        # penalty duty (FPL's own expected_goals mixes the two), and Understat
+        # records the role he actually played in that match
+        ("npg", "REAL"), ("npxg", "REAL"), ("position", "TEXT"),
     ],
     "player": [
         ("now_cost", "REAL"),
         ("status", "TEXT"),
         ("chance_next", "REAL"),
+        # FPL's published set-piece duty (1 = first choice). A current-only
+        # snapshot with no history, so it cannot be backtested — but it is
+        # ground truth for the live season, and better than anything the shot
+        # log can infer (67% agreement).
+        ("penalties_order", "INTEGER"),
+        ("corners_order", "INTEGER"),
+        ("freekicks_order", "INTEGER"),
     ],
 }
 
