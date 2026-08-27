@@ -14,7 +14,7 @@ import argparse
 import sys
 
 from . import storage, validate
-from .sources import fpl_availability
+from .sources import fpl_availability, fpl_managers
 
 SOURCES = {"fpl": fpl_availability}
 
@@ -47,6 +47,51 @@ def cmd_backfill(args):
         res = fpl_availability.backfill_from_snapshots(conn, season=args.season)
         conn.commit()
     print(f"  replayed archived bootstrap payloads: {res}")
+    return 0
+
+
+def cmd_panel(args):
+    """Grade managers on their PAST seasons and keep the proven ones."""
+    with storage.connect(args.db) as conn:
+        storage.init(conn)
+        res = fpl_managers.build_panel(conn, pages=args.pages,
+                                       progress=lambda m: print(m, flush=True))
+        conn.commit()
+        rows = conn.execute(
+            "SELECT COUNT(*) n, SUM(is_panel) p, MIN(median_rank) b "
+            "FROM acq_manager").fetchone()
+    print(f"  scanned {res['scanned']} entries, graded {res['graded']}, "
+          f"panel = {res['panel']}")
+    print(f"  (panel = finished inside the top "
+          f"{fpl_managers.ELITE_RANK:,} in at least "
+          f"{fpl_managers.ELITE_SEASONS} past seasons)")
+    print("  Selection uses PAST seasons only, so nothing from the season in")
+    print("  progress enters it — which is what keeps the picks out of sample.")
+    return 0
+
+
+def cmd_picks(args):
+    with storage.connect(args.db) as conn:
+        storage.init(conn)
+        if not fpl_managers.panel_entries(conn):
+            print("  no panel yet - run `python -m acquire panel` first")
+            return 1
+        res = fpl_managers.pull_picks(conn, season=args.season, gw=args.gw,
+                                      progress=lambda m: print(m, flush=True))
+        conn.commit()
+        own = fpl_managers.panel_ownership(conn, args.season, args.gw)
+        names = {r["player_id"]: r["web_name"] for r in conn.execute(
+            "SELECT player_id, web_name FROM player WHERE season=?",
+            (args.season,))}
+    print(f"  {res}")
+    if own:
+        size = own[0]["panel_size"] or 1
+        print(f"\n  most-owned by the proven panel (n={size}) in GW{args.gw}:")
+        for r in own[:args.top]:
+            print(f"    {names.get(r['player_id'], r['player_id']):<16}"
+                  f" owned {100*r['owned']/size:5.1f}%"
+                  f"  started {100*r['started']/size:5.1f}%"
+                  f"  captained {100*r['captained']/size:5.1f}%")
     return 0
 
 
@@ -129,6 +174,18 @@ def main(argv=None):
     sp.add_argument("--source", default="fpl")
     sp.add_argument("--season", default="2026-27")
     sp.set_defaults(func=cmd_backfill)
+
+    sp = sub.add_parser("panel",
+                        help="build the proven-manager panel (past seasons only)")
+    sp.add_argument("--pages", type=int, default=20,
+                    help="pages of the Overall table to enumerate (50 each)")
+    sp.set_defaults(func=cmd_panel)
+
+    sp = sub.add_parser("picks", help="snapshot the panel's squads for a gameweek")
+    sp.add_argument("--season", default="2026-27")
+    sp.add_argument("--gw", type=int, required=True)
+    sp.add_argument("--top", type=int, default=12)
+    sp.set_defaults(func=cmd_picks)
 
     sp = sub.add_parser("validate", help="run the invariants; non-zero on error")
     sp.set_defaults(func=cmd_validate)

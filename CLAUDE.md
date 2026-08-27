@@ -896,6 +896,49 @@ decomposition and game state. **Any effect measured in realised outcomes is
 already absorbed by rates estimated from realised outcomes.** Four independent
 confirmations now; treat it as a standing rule before building the fifth.
 
+### Tracking elite managers: buildable, not yet testable
+
+The hypothesis is that skilled managers collectively hold forward-looking
+information the model cannot derive from history — team news, the eye test,
+something a beat reporter said on Friday. It is the same shape as the betting
+market, which was measured to *encompass* our team model outright, so it
+deserves a test rather than an assumption.
+
+**Backtestable? No.** `entry/{id}/event/{gw}/picks/` takes no season parameter
+and serves only the season in progress; previous seasons 404.
+`entry/{id}/history/` keeps past seasons as totals and ranks, never squads. So
+2024-25 and 2025-26 picks are gone, and the current season has one finished
+gameweek. Forward collection is the only route — the third time this wall has
+appeared, after availability and expected lineups.
+
+**"The top 1000" is the wrong panel.** Sampled after one gameweek, the Overall
+top 250 had a **median past-season rank of 2.6 million**; 78% had a career
+median worse than a million, only 19% had *ever* finished inside the top 100k,
+and 15% were brand-new accounts. That table ranks luck, not skill. The panel is
+therefore graded on **past seasons only** — top 100k in at least two of them —
+which found 59 proven managers among the 700 enumerated, or 8.4%.
+
+**And the first result off it was an artefact of my own search.** The panel's
+GW1 differentials looked spectacular: ownership correlating +0.44 with points
+against +0.28 for overall ownership, and the 30 biggest differentials averaging
+8.2 points against 2.0 for the most avoided. Then the obvious check: those 59
+managers scored **103-116 in GW1, mean 107.1, against an FPL average of 50**.
+Of course they did — they were found by walking the Overall table, and after
+one gameweek you only sit there if that gameweek went well. The filter never
+looked at the current season, but the *enumeration* did, and the sample is
+conditioned on the very outcome being measured.
+
+The fix is that the panel is fixed once built. From GW2 onward these managers
+are followed regardless of results, so their picks precede the outcome and are
+out of sample. Rebuild it in **pre-season only** — a mid-season rebuild would
+re-introduce exactly this conditioning.
+
+    python -m acquire panel --pages 20    # grade on past seasons, pre-season only
+    python -m acquire picks --gw 2        # snapshot the panel, after each deadline
+
+Roughly 10-15 gameweeks of collection before the differential signal can be
+tested against the model at all.
+
 ## Optimiser
 
 `optimise/milp.py` is a multi-period mixed-integer program (PuLP + bundled CBC,
