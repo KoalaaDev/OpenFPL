@@ -169,12 +169,50 @@ def _pk_share(order) -> float:
     return 0.0
 
 
+def _model_start_probs(season: str | None = None) -> dict[int, float]:
+    """Calibrated P(starts) per player, from the engine's minutes model.
+
+    The UI has been showing ``start_rate`` — the share of his last ten matches
+    a player started. That heuristic carries more than twice the log-loss of
+    the model the engine already runs (0.57/0.54 against 0.28/0.25 on the two
+    replayed seasons; AUC 0.90 against 0.95), so the number on screen was
+    materially worse than what the pipeline already knew.
+
+    Cached for the lifetime of the process; a failure here must not take the
+    page down, so it degrades to the heuristic.
+    """
+    season = season or config.CURRENT_SEASON
+    hit = _mem.get("_start_probs")
+    if hit and hit[0] == season and time.time() - hit[1] < 900:
+        return hit[2]
+    out: dict[int, float] = {}
+    try:
+        from fpl_engine.xpts import engine as _eng, minutes_model as _mm
+        from fpl_engine.pipeline import next_gw
+        conn = db.connect()
+        try:
+            gw = next_gw(conn, season)
+            as_of = _eng.first_kickoff(conn, season, gw)
+            clf, meta = _mm.ensure(conn)
+            mins = _mm.predict_gw(conn, season, as_of, clf, meta, gw=gw)
+            if "p_start" in mins:
+                out = {int(r.player_id): float(r.p_start)
+                       for r in mins.itertuples()}
+        finally:
+            conn.close()
+    except Exception:  # noqa: BLE001 - the page must render regardless
+        out = {}
+    _mem["_start_probs"] = (season, time.time(), out)
+    return out
+
+
 def players_payload() -> dict:
     """Static player + team info merged from live bootstrap (ownership, codes,
     injury status, per-90 rates) and the local DB (recent-minutes form used
     for expected minutes)."""
     bs = bootstrap()
     hist = _history_rates()
+    start_p = _model_start_probs()
     teams = {t["id"]: {"id": t["id"], "name": t["name"], "short": t["short_name"],
                        "code": t["code"]} for t in bs["teams"]}
     pos_map = config.ELEMENT_TYPE_TO_POSITION
@@ -219,6 +257,9 @@ def players_payload() -> dict:
                 round(min(90.0, mins / (e.get("starts") or 1)), 1)
                 if mins else 0.0),
             "start_rate": h.get("start_rate"),
+            # calibrated P(he is in the starting XI) from the minutes model;
+            # start_rate above is the trailing heuristic, kept for comparison
+            "p_start": start_p.get(int(e["id"])),
             "recent_mins": h.get("recent_mins") or [],
         })
     events = [{"id": ev["id"], "name": ev["name"],

@@ -830,6 +830,72 @@ Per the brief, the modelling engine is untouched. The first integration, when
 there is enough history to judge it, is availability → xMins — and it must clear
 the same bar as everything else: a paired backtest, or it does not ship.
 
+### Round 8b: a predicted-lineup model of our own
+
+Building P(start) from our own team-sheet history, rather than scraping
+somebody else's prediction. The squad-state features not previously tried:
+days since he last **started** (distinct from last appeared), the calendar
+*ahead* (days to next match, matches in the next ten days), rest relative to
+the opponent, and his share of the club's starts at his position.
+
+| model | AUC 24-25 | AUC 25-26 |
+|---|---|---|
+| three-class proxy (already shipped) | 0.9446 | 0.9538 |
+| dedicated P(start) | 0.9441 | 0.9529 |
+| **+ the new squad-state features** | 0.9441 | 0.9536 |
+| new features alone | 0.9144 | 0.9280 |
+
+The new features carry real signal on their own and **nothing incremental**.
+That is the sixth independent attempt at sharpening this model, all returning
+≤0.25%. P(start) from this data is saturated at AUC ~0.95, and Round 8's
+explanation still holds: the residual sits in the ambiguous middle, where the
+model is already calibrated because the manager has not decided.
+
+**What did ship is a reporting fix.** The web UI was displaying `start_rate` —
+the share of a player's last ten matches he started. Against the model the
+engine already runs:
+
+| signal | AUC | log-loss | Brier |
+|---|---|---|---|
+| UI's trailing start rate | 0.901 / 0.905 | 0.574 / 0.535 | 0.116 / 0.111 |
+| the engine's own model | 0.945 / 0.954 | **0.277 / 0.250** | 0.086 / 0.078 |
+
+More than twice the log-loss. The number on screen was materially worse than
+what the pipeline already knew — Tanaka Ao showed 70% (seven of his last ten)
+against a model probability of 14%.
+
+`p_start` is now published by the minutes model, carried through the engine's
+per-player frame and shown in the UI. It is calibrated (predicted 0.503 →
+realised 0.507 in the coin-flip band) and the availability overlay scales it,
+so a player ruled out reads 0. It is **not** claimed to be more accurate than
+the 60-minute class it sits beside; it answers the question people actually
+ask, on a scale they can read.
+
+### Do substitutes score differently per minute?
+
+Yes, and it still must not be used. Within player, controlling for who gets
+picked to start:
+
+| | ratio, sub vs starting |
+|---|---|
+| points per 90 | 1.259 |
+| …but appearance points inflate short outings, so **G+A per 90** | 1.233 |
+| late-match minutes simply contain more goals | 1.105 |
+| **residual role effect** | **1.116** |
+
+A real ~12% edge in attacking output per minute, after controlling for both
+squad quality and the clock. Applied to the engine as a multiplier on the
+substitute share of expected attacking output it makes decisions **worse**:
+`spearman_played` −0.0006 (p=0.0002) at 1.116x, −0.0011 (p=0.0005) at 1.25x.
+
+The reason is the one this project keeps rediscovering: `xg90` is estimated
+from *all* of a player's minutes, his substitute minutes included, so the
+higher productivity is already inside the rate. Adding a multiplier
+double-counts it — the same failure as Understat rates, the set-piece
+decomposition and game state. **Any effect measured in realised outcomes is
+already absorbed by rates estimated from realised outcomes.** Four independent
+confirmations now; treat it as a standing rule before building the fifth.
+
 ## Optimiser
 
 `optimise/milp.py` is a multi-period mixed-integer program (PuLP + bundled CBC,

@@ -183,7 +183,7 @@ export default function PlayerModal({ pid, draft, plan, actions, close }) {
                 }}>{m}′</span>
               ))}
               <span style={{ fontSize: 10.5, color: 'var(--muted-2)' }}>
-                newest first{p.start_rate != null ? ` · started ${Math.round(p.start_rate * 100)}% of last 10` : ''}
+                newest first{p.p_start != null ? ` · ${Math.round(p.p_start * 100)}% to start` : ''}{p.start_rate != null ? ` · started ${Math.round(p.start_rate * 100)}% of last 10` : ''}
               </span>
             </div>
           )}

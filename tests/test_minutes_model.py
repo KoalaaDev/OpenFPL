@@ -28,6 +28,15 @@ class _StubClf:
         return np.tile(np.array(self.proba, float), (len(X), 1))
 
 
+class _StubStart:
+    """Fixed P(start)."""
+    def __init__(self, p=0.8):
+        self.p = p
+
+    def predict_proba(self, X):
+        return np.tile(np.array([1 - self.p, self.p], float), (len(X), 1))
+
+
 class _StubReg:
     """Fixed E[minutes | plays]."""
     def __init__(self, value=70.0):
@@ -207,3 +216,49 @@ def test_load_rejects_a_cache_without_the_regressor(tmp_path, monkeypatch):
         json.dumps({"features": mm.FEATURES, "mean_minutes": {}}),
         encoding="utf-8")
     assert mm.load() == (None, None)      # reg.json missing
+
+
+def test_p_start_is_published_for_every_player(conn):
+    """The question people actually ask is "will he start", not "will he reach
+    60 minutes". The engine had the signal and only exposed the latter."""
+    meta = {"features": mm.FEATURES, "mean_minutes": {"sub": 30.0, "full": 84.0},
+            "_start": _StubStart(0.77)}
+    out = mm.predict_gw(conn, SEASON, AS_OF, _StubClf(), meta, gw=6,
+                        use_availability=False).set_index("player_id")
+    assert "p_start" in out.columns
+    assert out.loc[1, "p_start"] == pytest.approx(0.77)
+    # a club with no fixture this gameweek cannot field anyone
+    assert out.loc[3, "p_start"] == 0.0
+
+
+def test_p_start_falls_back_when_no_start_model_is_cached(conn):
+    meta = {"features": mm.FEATURES, "mean_minutes": {"sub": 30.0, "full": 84.0}}
+    out = mm.predict_gw(conn, SEASON, AS_OF, _StubClf((0.1, 0.2, 0.7)), meta,
+                        gw=6, use_availability=False).set_index("player_id")
+    assert out.loc[1, "p_start"] == pytest.approx(0.7)
+
+
+def test_availability_scales_p_start_too(conn):
+    """A player ruled out cannot start, and the overlay must reach that column
+    as well as the minutes ones."""
+    meta = {"features": mm.FEATURES, "mean_minutes": {"sub": 30.0, "full": 84.0},
+            "_start": _StubStart(0.9)}
+    on = mm.predict_gw(conn, SEASON, AS_OF, _StubClf(), meta, gw=6,
+                       use_availability=True).set_index("player_id")
+    assert on.loc[4, "p_start"] == pytest.approx(0.45)   # chance_next = 0.5
+    assert on.loc[1, "p_start"] == pytest.approx(0.9)
+
+
+def test_a_stale_two_model_cache_is_rejected(tmp_path, monkeypatch):
+    """Adding the start model must invalidate caches that predate it."""
+    import json
+    monkeypatch.setattr(mm, "META_PATH", str(tmp_path / "meta.json"))
+    monkeypatch.setattr(mm, "MODEL_PATH", str(tmp_path / "model.json"))
+    monkeypatch.setattr(mm, "REG_PATH", str(tmp_path / "reg.json"))
+    monkeypatch.setattr(mm, "START_PATH", str(tmp_path / "start.json"))
+    for f in ("model.json", "reg.json"):
+        (tmp_path / f).write_text("{}", encoding="utf-8")
+    (tmp_path / "meta.json").write_text(
+        json.dumps({"features": mm.FEATURES, "mean_minutes": {}}),
+        encoding="utf-8")
+    assert mm.load() == (None, None)      # start.json missing

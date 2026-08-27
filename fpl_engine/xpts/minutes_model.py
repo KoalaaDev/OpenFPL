@@ -53,6 +53,7 @@ from .. import config
 MODEL_DIR = os.path.join(config.MODELS_DIR, "xpts")
 MODEL_PATH = os.path.join(MODEL_DIR, "minutes_xgb.json")
 REG_PATH = os.path.join(MODEL_DIR, "minutes_reg.json")
+START_PATH = os.path.join(MODEL_DIR, "minutes_start.json")
 META_PATH = os.path.join(MODEL_DIR, "minutes_meta.json")
 
 
@@ -61,9 +62,10 @@ def _paths(tag: str | None):
     seasons before the replayed one) out of the live cache — otherwise running
     a backtest silently downgrades every subsequent live prediction."""
     if not tag:
-        return MODEL_PATH, REG_PATH, META_PATH
+        return MODEL_PATH, REG_PATH, START_PATH, META_PATH
     return (MODEL_PATH.replace(".json", f".{tag}.json"),
             REG_PATH.replace(".json", f".{tag}.json"),
+            START_PATH.replace(".json", f".{tag}.json"),
             META_PATH.replace(".json", f".{tag}.json"))
 
 HISTORY_FEATURES = [
@@ -325,6 +327,26 @@ def _fit_minutes(tr: pd.DataFrame, device: str | None):
     return m
 
 
+def _fit_start(tr: pd.DataFrame, device: str | None):
+    """P(he is in the starting XI).
+
+    Not more accurate than the three-class model's 60+ class — measured at AUC
+    0.944/0.953 against 0.945/0.954, and six attempts at sharpening it have all
+    returned nothing. It is trained because it answers the question people
+    actually ask, on a scale they can read, and because the alternative on
+    display was a trailing average of the last ten starts, which carries more
+    than twice the log-loss (0.57/0.54 against 0.28/0.25).
+    """
+    import xgboost as xgb
+    y = (tr["starts"].fillna(0) > 0).astype(int)
+    m = xgb.XGBClassifier(objective="binary:logistic", n_estimators=400,
+                          max_depth=5, learning_rate=0.06, subsample=0.9,
+                          colsample_bytree=0.8, eval_metric="logloss",
+                          device=device or "cpu")
+    m.fit(tr[FEATURES], y)
+    return m
+
+
 def train(conn, *, seasons: list[str] | None = None,
           device: str | None = None, tag: str | None = None) -> dict:
     """Train and cache the classifier; returns metadata with holdout accuracy.
@@ -348,12 +370,14 @@ def train(conn, *, seasons: list[str] | None = None,
     # replaced by 0.43 / 0.47 minutes of MAE across two replayed seasons, and
     # exposure multiplies every rate in the engine.
     reg = _fit_minutes(tr, device)
+    start = _fit_start(tr, device)
     m_sub = float(tr.loc[tr.label == 1, "minutes"].mean() or 30.0)
     m_full = float(tr.loc[tr.label == 2, "minutes"].mean() or 84.0)
-    model_path, reg_path, meta_path = _paths(tag)
+    model_path, reg_path, start_path, meta_path = _paths(tag)
     os.makedirs(MODEL_DIR, exist_ok=True)
     clf.save_model(model_path)
     reg.save_model(reg_path)
+    start.save_model(start_path)
     meta = {"features": FEATURES, "train_seasons": seasons,
             "valid_season": valid_season, "holdout_accuracy": acc,
             "mean_minutes": {"sub": m_sub, "full": m_full}}
@@ -365,13 +389,14 @@ def train(conn, *, seasons: list[str] | None = None,
 def load(tag: str | None = None):
     """Return (clf, meta), or (None, None) when absent or built on old features.
 
-    ``meta["_reg"]`` carries the loaded E[minutes | plays] regressor. It is a
-    live object, not part of the JSON the trainer writes, so never serialise a
+    ``meta["_reg"]`` and ``meta["_start"]`` carry loaded models. They are live
+    objects, not part of the JSON the trainer writes, so never serialise a
     loaded meta.
     """
     import xgboost as xgb
-    model_path, reg_path, meta_path = _paths(tag)
-    if not all(os.path.exists(p) for p in (model_path, reg_path, meta_path)):
+    model_path, reg_path, start_path, meta_path = _paths(tag)
+    if not all(os.path.exists(p)
+               for p in (model_path, reg_path, start_path, meta_path)):
         return None, None
     with open(meta_path, encoding="utf-8") as fh:
         meta = json.load(fh)
@@ -381,7 +406,9 @@ def load(tag: str | None = None):
     clf.load_model(model_path)
     reg = xgb.XGBRegressor()
     reg.load_model(reg_path)
-    meta = {**meta, "_reg": reg}
+    start = xgb.XGBClassifier()
+    start.load_model(start_path)
+    meta = {**meta, "_reg": reg, "_start": start}
     return clf, meta
 
 
@@ -433,13 +460,19 @@ def predict_gw(conn, season: str, as_of: str, clf, meta, *,
         t = t.assign(p_none=proba[:, 0], p_sub=proba[:, 1], p_full=proba[:, 2])
         # a double gameweek gives one row per fixture; the engine scales
         # exposure per fixture itself, so hand it the per-fixture average
+        sm = meta.get("_start")
+        if sm is not None:
+            t = t.assign(p_start=sm.predict_proba(
+                t[meta["features"]].astype(float))[:, 1])
+        else:
+            t = t.assign(p_start=t["p_full"])
         t = t.groupby("player_id", as_index=False).agg(
             p_none=("p_none", "mean"), p_sub=("p_sub", "mean"),
-            p_full=("p_full", "mean"),
+            p_full=("p_full", "mean"), p_start=("p_start", "mean"),
             m_started=("avg_mins_when_started", "mean"))
     else:                      # blank gameweek, or no fixture list yet
         t = pd.DataFrame(columns=["player_id", "p_none", "p_sub", "p_full",
-                                  "m_started"])
+                                  "p_start", "m_started"])
 
     # players whose club has no fixture this gameweek still need a row: the
     # engine finds no fixtures for them and scores 0, but they must not vanish
@@ -447,6 +480,7 @@ def predict_gw(conn, season: str, as_of: str, clf, meta, *,
     out["p_sub"] = out["p_sub"].fillna(0.0)
     out["p_full"] = out["p_full"].fillna(0.0)
     out["p_none"] = out["p_none"].fillna(1.0)
+    out["p_start"] = out["p_start"].fillna(0.0)
 
     if use_availability:
         # availability overlay: scale played mass, dump remainder on p_none
@@ -456,6 +490,7 @@ def predict_gw(conn, season: str, as_of: str, clf, meta, *,
             out["status"].isin([None, "a"]).astype(float)).clip(0, 1).fillna(1.0)
         out["p_sub"] *= avail
         out["p_full"] *= avail
+        out["p_start"] *= avail
         out["p_none"] = 1.0 - out["p_sub"] - out["p_full"]
 
     ms, mf = meta["mean_minutes"]["sub"], meta["mean_minutes"]["full"]
@@ -474,5 +509,5 @@ def predict_gw(conn, season: str, as_of: str, clf, meta, *,
     # ``m_played`` is E[minutes | he appears]. It is published because the
     # simulator needs it directly: E[minutes] can no longer be inverted back
     # into a per-class minutes figure now that it is P(plays) x this.
-    return out[["player_id", "position", "p_none", "p_sub", "p_full", "e_min",
-                "m_played"]]
+    return out[["player_id", "position", "p_none", "p_sub", "p_full",
+                "p_start", "e_min", "m_played"]]

@@ -38,7 +38,7 @@
     "2025-26"
   ],
   "valid_season": "2025-26",
-  "holdout_accuracy": 0.8251924563821562,
+  "holdout_accuracy": 0.8242511849934447,
   "mean_minutes": {
     "sub": 22.221507607192255,
     "full": 85.33970696204553
