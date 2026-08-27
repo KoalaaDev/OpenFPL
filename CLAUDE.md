@@ -758,6 +758,78 @@ unbacktestable minutes feature is worth very little — the current start model
 is already calibrated at AUC 0.95, so a new source has to be demonstrated
 better, not assumed.
 
+## Data acquisition (`acquire/`)
+
+An independent collector. It writes raw responses and normalised observations
+into the same SQLite file and stops there — it imports no model code, computes
+no features, and a test enforces that (`test_the_acquirer_does_not_import_the_model`).
+The modelling engine reads these tables; nothing reads back.
+
+    python -m acquire pull --source fpl --season 2026-27
+    python -m acquire backfill --source fpl     # replay archived payloads
+    python -m acquire validate                  # non-zero exit on error
+    python -m acquire status
+    python -m acquire as-of --season 2026-27 --at 2026-08-28T17:00:00Z
+
+### What the source survey actually found
+
+Checked against the sites, not the documentation:
+
+| source | finding |
+|---|---|
+| **FBref / Sports Reference** | returns **403 to `robots.txt` itself** for non-browser agents. Actively refusing automated access. Not scraped. |
+| **Understat** | `robots.txt` is `User-agent: * / Disallow: /`. The repo **already** depends on it (`ingest/understat.py`), which predates this work — flagged here rather than quietly extended. No new Understat scraping was added. |
+| **Transfermarkt** | permissive `robots.txt`, but its terms prohibit automated extraction. robots.txt is not a licence. Not scraped. |
+| **Premier League official** | crawlable (24 disallow rules, almost all query-string patterns). Viable if a need appears. |
+| **FPL API** | `robots.txt` present, no disallow rules, already used by the pipeline. |
+
+### Why FPL's own feed was the thing to build first
+
+The modelling rounds established that expected minutes is the ceiling, that the
+start model is already calibrated at AUC ~0.95, and that **the one unexploited
+lever is team news**. FPL publishes exactly that, before the deadline, and the
+pipeline was throwing it away — `status` and `chance_next` were overwritten on
+every pull, which is why backtests must disable the availability overlay.
+
+`elements[]` carries `status`, `chance_of_playing_next_round`, `news` (the text:
+*"Thigh injury - 75% chance of playing"*) and **`news_added`, a source-side
+publication timestamp**. No scraping, no third party, no terms question.
+
+It is stored as a **change log**, not snapshots: a row is written only when a
+player's state moves, so `as-of` is one indexed lookup and re-ingesting a
+payload writes nothing. `news` is kept verbatim — *"75% chance of playing"* must
+never be flattened to *"available"* on the way in.
+
+Two timestamps, and the distinction is the whole design:
+
+* `observed_utc` — when we saw it. Always safe for a backtest.
+* `source_published_utc` — FPL's `news_added`. Because it survives, a snapshot
+  taken later still dates a standing item, which recovers *some* of the past
+  without having been there.
+
+`backfill` replays the bootstrap payloads `raw_snapshot` had been archiving all
+along without anyone parsing them: **864 observations over 614 players, back to
+2026-07-26**, from data already on disk.
+
+### The limitation, stated plainly
+
+**This is not backtestable yet, and no amount of scraping fixes that.**
+Availability for 2024-25 and 2025-26 was overwritten and is gone; nobody can
+recover it. The change log becomes testable roughly a season after it starts
+running. Until then it is a live-only signal, exactly like the availability
+overlay it feeds.
+
+What it already shows is why archiving matters: **140 of 614 players changed
+state within one month**, and the text moves too — J. Timber went from
+*"Expected back 21 Aug"* to *"Unknown return date"*, which is a real signal that
+a snapshot table destroys.
+
+### Not integrated
+
+Per the brief, the modelling engine is untouched. The first integration, when
+there is enough history to judge it, is availability → xMins — and it must clear
+the same bar as everything else: a paired backtest, or it does not ship.
+
 ## Optimiser
 
 `optimise/milp.py` is a multi-period mixed-integer program (PuLP + bundled CBC,
