@@ -16,7 +16,8 @@ import time
 
 import pandas as pd
 
-from fpl_engine import config, db, manager, predict as predict_mod
+from fpl_engine import (config, db, manager, predict as predict_mod,
+                        price_model)
 from fpl_engine.http import get_text
 from fpl_engine.optimise import chips, project
 from fpl_engine.pipeline import next_gw, resolve_blend
@@ -34,7 +35,7 @@ FPL_BASE = "https://fantasy.premierleague.com/api"
 _TTL = 600.0
 # bumped whenever the API contract changes; the frontend compares it with
 # its own build so a stale `python -m app` process is flagged, not puzzling
-API_VERSION = "2026-08-21.4"
+API_VERSION = "2026-08-27.1"
 
 _mem: dict[str, tuple[float, object]] = {}
 _bundle = None
@@ -243,6 +244,9 @@ def players_payload() -> dict:
             "mins": mins, "starts": e.get("starts") or 0,
             "form": fnum(e.get("form")), "ppg": fnum(e.get("points_per_game")),
             "total_points": e.get("total_points") or 0,
+            # last completed gameweek's actual score - what a
+            # "best XI in hindsight" has to be built from
+            "event_points": e.get("event_points") or 0,
             "g90": round(fnum(e.get("expected_goals_per_90")), 2)
                    if use_live else h.get("g90", 0.0),
             "a90": round(fnum(e.get("expected_assists_per_90")), 2)
@@ -316,6 +320,123 @@ def _team_form_strengths() -> dict[tuple[str, int], dict]:
     return out
 
 
+def prices_payload(limit: int = 30) -> dict:
+    """Who is about to rise or fall, and what that is actually worth.
+
+    The model discriminates strongly - held out forward in time, the top-10
+    ranked risers actually rose 67% / 75% of the time against a 2% base rate.
+    But a signal is only worth what it converts to, and the conversion is
+    deliberately deflating: a rise is realised only on sale, FPL returns the
+    purchase price plus HALF the profit, and that half then buys a better
+    squad for whatever season is left. The strongest riser in a week is worth
+    about 0.2 points with 37 gameweeks to go.
+
+    So `points` is reported next to every row. It belongs beside the solver's
+    recommendation as a tie-breaker, not inside its objective.
+    """
+    try:
+        with db.connect() as conn:
+            d = price_model.predict(conn, config.CURRENT_SEASON)
+            nxt = next_gw(conn, config.CURRENT_SEASON) or 1
+    except Exception as exc:                      # untrained model, empty DB
+        return {"ok": False, "error": str(exc), "risers": [], "fallers": []}
+    if d is None or d.empty:
+        return {"ok": False, "error": "no price data for the current season",
+                "risers": [], "fallers": []}
+    left = max(0, 38 - int(nxt) + 1)
+
+    def rows(frame):
+        out = []
+        for r in frame.itertuples():
+            out.append({
+                "player_id": int(r.player_id),
+                "price": round(float(r.price_m), 1),
+                "p_rise": round(float(r.p_rise), 3),
+                "p_fall": round(float(r.p_fall), 3),
+                "score": round(float(r.score), 3),
+                "e_delta": round(float(r.e_delta), 3),
+                "points": round(price_model.points_value(
+                    float(r.e_delta), left), 3),
+            })
+        return out
+
+    return {"ok": True, "gw": int(d["gw"].iloc[0]), "gws_remaining": left,
+            "pts_per_million_per_gw": price_model.POINTS_PER_MILLION_PER_GW,
+            "risers": rows(d.head(limit)),
+            "fallers": rows(d.tail(limit).iloc[::-1])}
+
+
+def _fixture_odds() -> dict[int, dict]:
+    """Bookmaker prices for this season's fixtures, keyed by FPL fixture id.
+
+    Only fixtures a source has actually priced appear. The free Odds API tier
+    covers upcoming matches only, so early in a season most of the grid has no
+    entry - the UI must show that as "no price yet" rather than inventing one.
+    """
+    try:
+        with db.connect() as conn:
+            rows = conn.execute(
+                "SELECT fixture_id, source, p_home, p_draw, p_away, p_over25, "
+                "lam_home, lam_away FROM match_odds WHERE season=?",
+                (config.CURRENT_SEASON,)).fetchall()
+    except Exception:
+        return {}
+    out = {}
+    for r in rows:
+        if r["fixture_id"] is None or r["p_home"] is None:
+            continue
+        out[int(r["fixture_id"])] = dict(r)
+    return out
+
+
+def _market_quotes() -> dict[int, dict]:
+    """Prediction-market prices per fixture, for DISPLAY only.
+
+    Deliberately separate from `_fixture_odds`: these never reach the model.
+    Every Polymarket EPL market is team level, and the team-level odds channel
+    is measured to be second order for player points. What they are good for is
+    showing a human where a prediction market and a sportsbook disagree.
+    """
+    try:
+        with db.connect() as conn:
+            rows = conn.execute(
+                "SELECT fixture_id, source, p_home, p_draw, p_away, volume, "
+                "liquidity, observed_utc FROM market_quote WHERE season=?",
+                (config.CURRENT_SEASON,)).fetchall()
+    except Exception:
+        return {}
+    return {int(r["fixture_id"]): dict(r) for r in rows if r["p_home"] is not None}
+
+
+def _odds_status(odds: dict[int, dict]) -> dict:
+    """Whether the market view can actually say anything.
+
+    Coverage here is normally poor and the reasons are structural, not a bug:
+    football-data publishes odds for matches that have already been played, and
+    The Odds API's free tier serves upcoming fixtures only if a key is set. The
+    UI has to be told the difference, because a fixture with no price silently
+    falling back to FDR looks exactly like a working market view.
+    """
+    out = {"key_set": bool(os.environ.get("ODDS_API_KEY")),
+           "priced": len(odds), "sources": sorted(
+               {r.get("source") for r in odds.values() if r.get("source")}),
+           "upcoming": 0, "priced_upcoming": 0}
+    try:
+        with db.connect() as conn:
+            row = conn.execute(
+                "SELECT COUNT(*) n, SUM(CASE WHEN o.fixture_id IS NOT NULL "
+                "  THEN 1 ELSE 0 END) p "
+                "FROM fixture f LEFT JOIN match_odds o "
+                "  ON o.season=f.season AND o.fixture_id=f.fixture_id "
+                "WHERE f.season=? AND f.finished=0", (config.CURRENT_SEASON,)
+            ).fetchone()
+            out["upcoming"] = int(row["n"] or 0)
+            out["priced_upcoming"] = int(row["p"] or 0)
+    except Exception:
+        pass
+    return out
+
+
 def fixtures_payload() -> dict:
     """Team-centric fixture grid for the heatmap.
 
@@ -368,12 +489,35 @@ def fixtures_payload() -> dict:
             d_att = round(6.0 - s_ga(opp_form["ga"]), 1)
             # opponent scoring a lot -> hard to keep a clean sheet
             d_def = s_gf(opp_form["gf"])
+        o = odds.get(f.get("id"))
+        q = quotes.get(f.get("id"))
         return {"opp": opp, "home": home, "fdr": fdr,
                 "diff": blend(s_ovr(ovr.get((opp, venue), 0))),
                 "diff_att": blend(d_att),
                 "diff_def": blend(d_def),
+                # the market's own view, de-margined, when a bookmaker price
+                # exists for this fixture. `p_win` is from THIS team's side.
+                "odds": None if not o else {
+                    "p_win": round(o["p_home"] if home else o["p_away"], 3),
+                    "p_draw": round(o["p_draw"], 3),
+                    "p_lose": round(o["p_away"] if home else o["p_home"], 3),
+                    "p_over25": (round(o["p_over25"], 3)
+                                 if o["p_over25"] is not None else None),
+                    "xg": round(o["lam_home"] if home else o["lam_away"], 2),
+                    "xg_against": round(o["lam_away"] if home else o["lam_home"], 2),
+                    "source": o["source"]},
+                # a prediction market's view of the same fixture, shown
+                # beside the bookmaker's and never mixed into the model
+                "market": None if not q else {
+                    "p_win": round(q["p_home"] if home else q["p_away"], 3),
+                    "p_draw": round(q["p_draw"], 3),
+                    "p_lose": round(q["p_away"] if home else q["p_home"], 3),
+                    "liquidity": q["liquidity"], "volume": q["volume"],
+                    "source": q["source"]},
                 "kickoff": f.get("kickoff_time"), "finished": f.get("finished")}
 
+    odds = _fixture_odds()
+    quotes = _market_quotes()
     fx = live_fixtures()
     grid: dict[int, dict[int, list]] = {}
     for f in fx:
@@ -384,7 +528,8 @@ def fixtures_payload() -> dict:
         grid.setdefault(h, {}).setdefault(gw, []).append(cell(a, True, f))
         grid.setdefault(a, {}).setdefault(gw, []).append(cell(h, False, f))
     return {"grid": {str(t): {str(g): v for g, v in gws.items()}
-                     for t, gws in grid.items()}}
+                     for t, gws in grid.items()},
+            "odds_status": {**_odds_status(odds), "market_quotes": len(quotes)}}
 
 
 def entry_payload(entry_id: int) -> dict:
@@ -611,7 +756,14 @@ def build_projections(job_id: str | None, gws: list[int], *,
                     rec["price"] = float(r.price)
                     rec["available"] = float(r.available)
                     xm = getattr(r, "xmins", None)
-                    rec["xmins"] = None if xm is None or pd.isna(xm) else float(xm)
+                    xm = None if xm is None or pd.isna(xm) else float(xm)
+                    # per gameweek, not one scalar: this loop runs once per gw,
+                    # so a single field was simply the last gameweek's value
+                    # overwriting the rest — which is part of why the player
+                    # card looked identical down every row.
+                    rec.setdefault("xm", {})[str(g)] = (
+                        None if xm is None else round(xm, 1))
+                    rec["xmins"] = xm          # kept: older callers read this
                     rec["ep"][str(g)] = round(float(getattr(r, f"ep_gw{g}")), 3)
                 cache["gws"][str(g)] = {"built_at": time.time()}
             cache["updated_at"] = time.time()
@@ -720,6 +872,14 @@ def run_solve(job_id: str, params: dict) -> dict:
                        for p in entry_state["squad"]}
             bank = entry_state["bank"]
             fts = entry_state["free_transfers"]
+    # An explicit squad overrides the live entry. The Planner needs this: to
+    # ask "what is the best Free Hit in GW9" the solver has to start from the
+    # squad the DRAFT reaches by GW9, not from the fifteen currently owned.
+    seed = params.get("initial_squad")
+    if seed:
+        initial = {int(k): float(v) for k, v in seed.items()}
+        if params.get("bank") is not None:
+            bank = float(params["bank"])
     if params.get("free_transfers") is not None:
         fts = int(params["free_transfers"])
 

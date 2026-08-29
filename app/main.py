@@ -10,12 +10,13 @@ import warnings
 warnings.filterwarnings("ignore")  # sklearn pickle version chatter
 
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from fpl_engine import config, db
 
-from . import jobs, services
+from . import images, jobs, services
 
 app = FastAPI(title="OpenFPL Planner", docs_url="/api/docs",
               openapi_url="/api/openapi.json")
@@ -30,6 +31,13 @@ app.add_middleware(
 @app.on_event("startup")
 def _ensure_db() -> None:
     db.init_db(config.DB_PATH)
+    # Pull every club's shirt and badge into the local cache in the background,
+    # so the first pitch view is not 15 cross-origin requests deep.
+    try:
+        codes = [t["code"] for t in services.bootstrap()["teams"] if t.get("code")]
+        images.prewarm(codes)
+    except Exception:
+        pass          # art is cosmetic; never let it block startup
 
 
 # --- meta / data ----------------------------------------------------------
@@ -42,6 +50,32 @@ def status():
 @app.get("/api/players")
 def players():
     return services.players_payload()
+
+
+@app.get("/api/img/{kind}/{code}")
+def api_img(kind: str, code: str):
+    """Club shirt or badge, cached on disk after the first fetch.
+
+    Pointing the UI at this instead of the Premier League CDN turns 15 shirts
+    on the pitch and a badge per table row into local reads.
+    """
+    # `code` is a string on purpose: a declared int makes FastAPI answer a
+    # stray "undefined" with a 422 validation error, which is noise in the
+    # console for what is simply a missing image.
+    try:
+        code_i = int(code)
+    except (TypeError, ValueError):
+        raise HTTPException(404, "no such image")
+    path = images.path_for(kind, code_i)
+    if not path:
+        raise HTTPException(404, "image unavailable")
+    return FileResponse(path, media_type=images.media_type(kind),
+                        headers={"Cache-Control": "public, max-age=604800, immutable"})
+
+
+@app.get("/api/prices")
+def api_prices(limit: int = 30):
+    return services.prices_payload(limit=limit)
 
 
 @app.get("/api/fixtures")
