@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import json
 import os
+from itertools import permutations
 
 import numpy as np
 import pandas as pd
@@ -38,9 +39,12 @@ from .xpts.rank_utility import (MeanFieldRankUtility, autosub_points,
                                 effective_ownership, legal_xis, POS_MIN,
                                 SQUAD_SHAPE)
 
-GAMMAS = (-0.3, -0.15, 0.15, 0.3)
+GAMMAS = (-1.0, -0.5, -0.3, -0.15, 0.15, 0.3, 0.5, 1.0)
+OBJECTIVES = ("p_beat", "cvar20", "q80")   # rank functionals beyond mean±sd
 N_SIMS = 3000
 MAX_PER_CLUB = 3
+N_RANDOM = 20               # random-valid decisions averaged per gameweek
+PREMIUM_TENTHS = 90         # the human captain bias: £9.0m+ is "a premium"
 
 
 # ---------------------------------------------------------------- template
@@ -121,6 +125,151 @@ def _mean_decision(squad: list[int], mean_of: dict[int, float],
             "bench": [squad[i] for i in bench_gk + outfield]}
 
 
+_SITE_EP_CACHE: dict[str, dict[tuple[int, int], float]] = {}
+
+
+def _site_ep(season: str) -> dict[tuple[int, int], float]:
+    """FPL's own published expected points (ep_this), as archived per
+    gameweek by the vaastav dataset's ``xP`` column.
+
+    This is the strongest *publicly available* projection benchmark that is
+    archived season-long for past seasons: it is the number the official
+    site shows every manager before the deadline. Caveat, stated rather than
+    hidden: the archive is collected by a third party around the deadline,
+    so its capture time is theirs, not ours — it benchmarks the site's
+    model, it does not feed ours. Returns {} when unreachable (arm skipped).
+    """
+    if season not in _SITE_EP_CACHE:
+        from .ingest.vaastav import RAW, _csv_rows
+        try:
+            rows = _csv_rows(f"{RAW}/{season}/gws/merged_gw.csv", True)
+        except Exception:      # noqa: BLE001 - benchmark arm, never a gate
+            rows = []
+        out: dict[tuple[int, int], float] = {}
+        for m in rows:
+            try:
+                key = (int(m["GW"]), int(m["element"]))
+                out[key] = out.get(key, 0.0) + float(m.get("xP") or 0.0)
+            except (KeyError, TypeError, ValueError):
+                continue
+        _SITE_EP_CACHE[season] = out
+    return _SITE_EP_CACHE[season]
+
+
+def _human_scores(conn, season: str, gw: int, squad: list[int],
+                  fixtures: list) -> tuple[dict[int, float], dict[int, float]]:
+    """The competent-human signal: form x nailedness + fixture ease + home.
+
+    Deliberately built only from what a person reads off public sites at the
+    deadline — trailing points, who has been starting, the opponent's
+    leakiness (their FDR proxy), venue — and NOT from the simulator, the
+    minutes model or the rates. Returns (score, price) per player.
+    """
+    hist = pd.read_sql_query(
+        "SELECT player_id, gw, minutes, total_points, starts, price "
+        "FROM player_gw WHERE season=? AND gw<? AND gw>=?",
+        conn, params=(season, gw, gw - 5))
+    conceded = pd.read_sql_query(
+        "SELECT team_id, AVG(goals_against) c FROM (SELECT team_id, "
+        "goals_against FROM team_match WHERE season=? AND gw<? "
+        "ORDER BY gw DESC) GROUP BY team_id", conn, params=(season, gw))
+    conc_of = dict(zip(conceded["team_id"], conceded["c"]))
+    league_c = float(np.mean(list(conc_of.values()))) if conc_of else 1.3
+
+    opp_ease: dict[int, float] = {}
+    home_of: dict[int, float] = {}
+    for f in fixtures:
+        for team, opp, home in ((f["team_h"], f["team_a"], 1.0),
+                                (f["team_a"], f["team_h"], 0.0)):
+            opp_ease[team] = opp_ease.get(team, 0.0) + (
+                conc_of.get(opp, league_c) - league_c)
+            home_of[team] = max(home_of.get(team, 0.0), home)
+    team_of = {r["player_id"]: r["team_id"] for r in conn.execute(
+        "SELECT player_id, team_id FROM player WHERE season=?", (season,))}
+
+    scores, prices = {}, {}
+    by_p = hist.groupby("player_id")
+    for pid in squad:
+        try:
+            h = by_p.get_group(pid)
+        except KeyError:
+            scores[pid], prices[pid] = 0.0, 0.0
+            continue
+        played = h[h["minutes"] > 0]
+        form = float(played["total_points"].mean()) if len(played) else 0.0
+        n_gws = max(1, h["gw"].nunique())
+        nailed = min(1.0, float(h["starts"].fillna(
+            (h["minutes"] > 60)).sum()) / n_gws)
+        t = team_of.get(pid)
+        scores[pid] = (form * (0.4 + 0.6 * nailed)
+                       + 0.8 * opp_ease.get(t, 0.0)
+                       + 0.2 * home_of.get(t, 0.0))
+        prices[pid] = float(h.sort_values("gw")["price"].iloc[-1] or 0.0)
+    return scores, prices
+
+
+def _human_decision(conn, season: str, gw: int, squad: list[int],
+                    fixtures: list,
+                    positions_of: dict[int, str]) -> dict:
+    """The competent-human arm: heuristic XI, obvious-premium captain."""
+    scores, prices = _human_scores(conn, season, gw, squad, fixtures)
+    d = _mean_decision(squad, scores, positions_of)
+    premiums = [p for p in d["xi"] if prices.get(p, 0.0) >= PREMIUM_TENTHS]
+    pool = premiums or d["xi"]
+    cap = max(pool, key=lambda p: scores.get(p, 0.0))
+    vice = max((p for p in d["xi"] if p != cap),
+               key=lambda p: scores.get(p, 0.0))
+    return {**d, "captain": cap, "vice": vice}
+
+
+def _random_decisions(squad: list[int], positions_of: dict[int, str],
+                      seed: int, n: int = N_RANDOM) -> list[dict]:
+    """Uniform random legal decisions — the floor every model must clear."""
+    rng = np.random.default_rng(seed)
+    positions = [positions_of.get(p, "MID") for p in squad]
+    by_pos = {p: [i for i, q in enumerate(positions) if q == p]
+              for p in POS_MIN}
+    xis = legal_xis(by_pos)
+    out = []
+    for _ in range(n):
+        xi = list(xis[rng.integers(len(xis))])
+        cap, vice = rng.choice(xi, size=2, replace=False)
+        bench = [i for i in range(15) if i not in xi]
+        bench_gk = [i for i in bench if positions[i] == "GK"]
+        outfield = [i for i in bench if positions[i] != "GK"]
+        rng.shuffle(outfield)
+        out.append({"xi": [squad[i] for i in xi],
+                    "captain": squad[int(cap)], "vice": squad[int(vice)],
+                    "bench": [squad[i] for i in bench_gk + outfield]})
+    return out
+
+
+def _rebench(decision: dict, model: MeanFieldRankUtility) -> dict:
+    """Keep the XI and captain, re-order the bench by rank utility.
+
+    Isolates the bench-order/autosub channel from the XI and captain
+    channels: if mfru_g0's edge is real, this shows which lever carries it.
+    """
+    squad = decision["xi"] + decision["bench"]
+    cols = [model.col[p] for p in squad]
+    sub = model.draws[:, cols]
+    played = model.played[:, cols]
+    positions = [model.position[c] for c in cols]
+    xi_idx = list(range(11))
+    cap = squad.index(decision["captain"])
+    vice = squad.index(decision["vice"])
+    bench_gk = [i for i in range(11, 15) if positions[i] == "GK"]
+    outfield = [i for i in range(11, 15) if positions[i] != "GK"]
+    best, best_border = -np.inf, None
+    for perm in permutations(outfield):
+        border = bench_gk + list(perm)
+        s = autosub_points(sub, played, positions, xi_idx, cap, vice, border)
+        u = model.utility(s)
+        if u > best:
+            best, best_border = u, border
+    return {**decision, "bench": [squad[i] for i in best_border]}
+
+
 # ---------------------------------------------------------------- realised
 def realised_score(decision: dict, actual: pd.DataFrame,
                    positions_of: dict[int, str]) -> float:
@@ -159,8 +308,14 @@ def run(conn, season: str = "2025-26", *, gws: list[int] | None = None,
     positions_of = dict(zip(players_all["player_id"], players_all["position"]))
 
     per_gw: dict[str, dict[int, dict]] = {}
-    arms = (["crowd", "xp", "xp_sim", "mfru_g0"]
-            + [f"mfru_g{g:+g}" for g in gammas])
+    site_ep = _site_ep(season)
+    arms = (["random", "human", "crowd", "site_ep", "xp", "xp_sim",
+             "xp_bench", "mfru_g0"]
+            + [f"mfru_g{g:+g}" for g in gammas]
+            + [f"mfru_{o}" for o in OBJECTIVES])
+    if not site_ep:
+        arms.remove("site_ep")
+    squads: dict[int, list[int]] = {}
     for g in gws:
         progress.step(f"GW{g}…")
         as_of = xpts_engine.first_kickoff(conn, season, g)
@@ -212,13 +367,33 @@ def run(conn, season: str = "2025-26", *, gws: list[int] | None = None,
         sim_mean = dict(zip(sim["players"],
                             np.asarray(sim["points"]).mean(axis=0)))
         decisions["xp_sim"] = _mean_decision(squad, sim_mean, positions_of)
+        decisions["xp_bench"] = _rebench(decisions["xp"], m0)
         decisions["mfru_g0"] = m0.decide(squad)
         for gam in gammas:
             mg = MeanFieldRankUtility(sim["points"], sim["mins"], sim_players,
                                       eo, gamma=gam)
             decisions[f"mfru_g{gam:+g}"] = mg.decide(squad)
+        for obj in OBJECTIVES:
+            mo = MeanFieldRankUtility(sim["points"], sim["mins"], sim_players,
+                                      eo, objective=obj)
+            decisions[f"mfru_{obj}"] = mo.decide(squad)
+        fixtures = xpts_engine._gw_fixtures(conn, season, g)
+        decisions["human"] = _human_decision(conn, season, g, squad, fixtures,
+                                             positions_of)
+        if site_ep:
+            decisions["site_ep"] = _mean_decision(
+                squad, {p: site_ep.get((g, p), 0.0) for p in squad},
+                positions_of)
+        squads[g] = squad
 
         for arm in arms:
+            if arm == "random":
+                rand = _random_decisions(squad, positions_of, seed=1000 + g)
+                pts = float(np.mean([realised_score(r, act_g, positions_of)
+                                     for r in rand]))
+                per_gw.setdefault(arm, {})[g] = {
+                    "pts": pts, "delta": pts - field_actual, "captain": -1}
+                continue
             d = decisions[arm]
             pts = realised_score(d, act_g, positions_of)
             rec = {"pts": pts, "delta": pts - field_actual,
@@ -232,6 +407,7 @@ def run(conn, season: str = "2025-26", *, gws: list[int] | None = None,
                      for k in ("pts", "delta")} | {"gws": len(res)}
                for arm, res in per_gw.items()}
     report = {"season": season, "n_sims": n_sims, "summary": summary,
+              "squads": {str(g): s for g, s in squads.items()},
               "per_gw": {a: {str(g): v for g, v in res.items()}
                          for a, res in per_gw.items()}}
     out_path = os.path.join(config.DATA_DIR, f"rank_backtest_{season}.json")
@@ -254,7 +430,9 @@ def compare(paths: list[str], *, baseline: str = "xp") -> dict:
                 per.setdefault(arm, {})[f"{r['season']}:{g}"] = v
     if baseline not in per:
         raise ValueError(f"baseline arm {baseline!r} not in reports")
-    out = {"baseline": baseline, "arms": {}}
+    n_arms = len(per) - 1
+    out = {"baseline": baseline, "n_comparisons": n_arms,
+           "bonferroni_alpha": round(0.05 / max(1, n_arms), 4), "arms": {}}
     for arm, res in per.items():
         if arm == baseline:
             continue
@@ -263,13 +441,33 @@ def compare(paths: list[str], *, baseline: str = "xp") -> dict:
         for k in ("pts", "delta"):
             x = np.array([per[baseline][q][k] for q in keys], float)
             y = np.array([res[q][k] for q in keys], float)
+            d = y - x
             t, p = ttest_rel(y, x)
-            stats[k] = {"baseline": round(float(x.mean()), 3),
-                        "arm": round(float(y.mean()), 3),
-                        "delta": round(float((y - x).mean()), 3),
-                        "t": round(float(t), 3), "p": round(float(p), 4)}
+            se = float(d.std(ddof=1) / np.sqrt(len(d))) if len(d) > 1 else 0.0
+            by_season: dict[str, float] = {}
+            for q, dv in zip(keys, d):
+                s = q.split(":")[0]
+                by_season.setdefault(s, []).append(dv)
+            stats[k] = {
+                "baseline": round(float(x.mean()), 3),
+                "arm": round(float(y.mean()), 3),
+                "delta": round(float(d.mean()), 3),
+                "median": round(float(np.median(d)), 3),
+                "sd": round(float(d.std(ddof=1)), 3),
+                "ci95": [round(float(d.mean() - 1.96 * se), 3),
+                         round(float(d.mean() + 1.96 * se), 3)],
+                "t": round(float(t), 3), "p": round(float(p), 4),
+                "per_season": {s: round(float(np.mean(v)), 3)
+                               for s, v in sorted(by_season.items())},
+            }
+        # rank proxy: how often each arm's realised score beat the field
+        beat = float(np.mean([res[q]["delta"] > 0 for q in keys]))
+        beat_base = float(np.mean(
+            [per[baseline][q]["delta"] > 0 for q in keys]))
         same_cap = float(np.mean(
             [res[q]["captain"] == per[baseline][q]["captain"] for q in keys]))
         out["arms"][arm] = {"gws": len(keys), "same_captain": round(same_cap, 3),
+                            "beat_field": round(beat, 3),
+                            "beat_field_baseline": round(beat_base, 3),
                             **stats}
     return out

@@ -177,10 +177,25 @@ class MeanFieldRankUtility:
     eo : Series player_id -> effective ownership (missing ids read as 0)
     gamma : risk price on sd(Delta); 0 = risk-neutral (max expected rank
         return, provably = max xP up to the autosub/armband channels)
+    objective : which functional of the per-draw differential to maximise —
+        "mean_sd"  E[Delta] + gamma sd(Delta)          (default)
+        "p_beat"   P(Delta > 0), the beat-the-field frequency (a tiny mean
+                   tiebreak resolves the 1/n_sims granularity)
+        "cvar20"   mean of the worst 20% of Delta      (downside protection)
+        "q80"      80th percentile of Delta            (upside chasing)
+    The non-default objectives exist to test the rank question directly:
+    points are a proxy, rank return is the game, and these are the honest
+    candidates for "optimise rank, not points" that per-draw samples allow.
     """
 
+    OBJECTIVES = ("mean_sd", "p_beat", "cvar20", "q80")
+
     def __init__(self, draws: np.ndarray, mins: np.ndarray,
-                 players: pd.DataFrame, eo: pd.Series, gamma: float = 0.0):
+                 players: pd.DataFrame, eo: pd.Series, gamma: float = 0.0,
+                 objective: str = "mean_sd"):
+        if objective not in self.OBJECTIVES:
+            raise ValueError(f"unknown objective {objective!r}")
+        self.objective = objective
         self.draws = np.asarray(draws, dtype=np.float32)
         self.played = np.asarray(mins) > 0
         self.ids = players["player_id"].to_numpy()
@@ -194,9 +209,19 @@ class MeanFieldRankUtility:
         self.field = self.draws @ eo_vec
 
     # -- utility over per-draw squad scores --------------------------------
+    def _obj(self, delta: np.ndarray) -> np.ndarray:
+        """Objective per candidate; ``delta`` is (n_sims, n_candidates)."""
+        if self.objective == "p_beat":
+            return (delta > 0).mean(axis=0) + 1e-6 * delta.mean(axis=0)
+        if self.objective == "cvar20":
+            k = max(1, int(0.2 * delta.shape[0]))
+            return np.partition(delta, k - 1, axis=0)[:k].mean(axis=0)
+        if self.objective == "q80":
+            return np.quantile(delta, 0.8, axis=0)
+        return delta.mean(axis=0) + self.gamma * delta.std(axis=0)
+
     def utility(self, score: np.ndarray) -> float:
-        delta = score - self.field
-        return float(delta.mean() + self.gamma * delta.std())
+        return float(self._obj((score - self.field)[:, None])[0])
 
     def decide(self, squad_ids: list[int]) -> dict:
         """Full decision for a given 15: XI, captain, vice, bench order."""
@@ -223,8 +248,7 @@ class MeanFieldRankUtility:
             A[k, list(xi)] = 1.0
             caps[k] = xi[int(np.argmax(mean[list(xi)]))]
         totals = sub @ A.T + sub[:, caps]                    # (n_sims, n_cand)
-        delta = totals - self.field[:, None]
-        u = delta.mean(axis=0) + self.gamma * delta.std(axis=0)
+        u = self._obj(totals - self.field[:, None])
         order = np.argsort(-u)[:min(FINE_TOP_K, len(xis))]
 
         # fine pass: exact autosubs, every armband, every bench order — the

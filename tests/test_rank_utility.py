@@ -192,3 +192,52 @@ def test_gamma_prices_the_differential():
     assert chase["captain"] == players["player_id"][8]     # differential
     assert protect["captain"] == players["player_id"][7]   # shadow the crowd
     assert chase["sd_delta"] > protect["sd_delta"]
+
+def test_objectives_rank_candidates_differently_but_legally():
+    """cvar20 must prefer the low-variance twin, q80 the high-variance one,
+    and p_beat must stay within the legal decision space."""
+    n = 6000
+    rng = np.random.default_rng(3)
+    players = _players()
+    draws = np.full((n, 15), 2.0)
+    mins = np.full((n, 15), 90.0)
+    draws[:, 7] = 5.0 + rng.normal(0, 1, n)         # steady premium
+    draws[:, 8] = 5.0 + rng.normal(0, 4, n)         # volatile twin
+    eo = pd.Series(0.0, index=players["player_id"])
+    ids = players["player_id"]
+    safe = MeanFieldRankUtility(draws, mins, players, eo,
+                                objective="cvar20").decide(ids.tolist())
+    wild = MeanFieldRankUtility(draws, mins, players, eo,
+                                objective="q80").decide(ids.tolist())
+    assert safe["captain"] == ids[7]
+    assert wild["captain"] == ids[8]
+    pb = MeanFieldRankUtility(draws, mins, players, eo,
+                              objective="p_beat").decide(ids.tolist())
+    assert len(pb["xi"]) == 11 and pb["captain"] in pb["xi"]
+
+
+def test_unknown_objective_is_rejected():
+    players = _players()
+    eo = pd.Series(0.0, index=players["player_id"])
+    with pytest.raises(ValueError):
+        MeanFieldRankUtility(np.zeros((10, 15)), np.zeros((10, 15)),
+                             players, eo, objective="sharpe")
+
+
+def test_random_decisions_are_legal_and_deterministic():
+    from fpl_engine.rank_backtest import _random_decisions
+    squad = list(range(100, 115))
+    positions_of = dict(zip(squad, POSITIONS))
+    a = _random_decisions(squad, positions_of, seed=7)
+    b = _random_decisions(squad, positions_of, seed=7)
+    assert [d["xi"] for d in a] == [d["xi"] for d in b]
+    for d in a:
+        assert len(d["xi"]) == 11 and len(d["bench"]) == 4
+        assert d["captain"] in d["xi"] and d["vice"] in d["xi"]
+        assert d["captain"] != d["vice"]
+        counts = {}
+        for p in d["xi"]:
+            counts[positions_of[p]] = counts.get(positions_of[p], 0) + 1
+        assert counts["GK"] == 1 and counts["DEF"] >= 3 and counts["FWD"] >= 1
+        assert positions_of[d["bench"][0]] == "GK"
+        assert set(d["xi"]) | set(d["bench"]) == set(squad)

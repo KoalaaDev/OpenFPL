@@ -270,17 +270,25 @@ def cmd_rank_backtest(args):
 def cmd_compare_rank_backtests(args):
     from .rank_backtest import compare
     res = compare(args.paths, baseline=args.baseline)
-    print(f"baseline: {res['baseline']}")
-    hdr = (f"{'arm':<12}{'gws':>5}{'same cap':>9}"
-           f"{'pts base':>10}{'pts arm':>9}{'d pts':>8}{'p':>8}"
-           f"{'d delta':>9}{'p':>8}")
+    print(f"baseline: {res['baseline']}   "
+          f"({res['n_comparisons']} comparisons; Bonferroni alpha "
+          f"{res['bonferroni_alpha']})")
+    hdr = (f"{'arm':<14}{'gws':>5}{'same cap':>9}{'beat fld':>9}"
+           f"{'pts arm':>9}{'d pts':>8}{'ci95':>17}{'p':>8}  per-season")
     print(hdr)
     for arm, m in res["arms"].items():
-        print(f"{arm:<12}{m['gws']:>5}{m['same_captain']:>9.2f}"
-              f"{m['pts']['baseline']:>10.2f}{m['pts']['arm']:>9.2f}"
-              f"{m['pts']['delta']:>+8.2f}{m['pts']['p']:>8.4f}"
-              f"{m['delta']['delta']:>+9.2f}{m['delta']['p']:>8.4f}")
-    print("\np is a paired t-test over gameweeks; treat p > 0.05 as unproven.")
+        seasons = "  ".join(f"{s[2:]}:{v:+.2f}"
+                            for s, v in m["pts"]["per_season"].items())
+        ci = f"[{m['pts']['ci95'][0]:+.2f},{m['pts']['ci95'][1]:+.2f}]"
+        print(f"{arm:<14}{m['gws']:>5}{m['same_captain']:>9.2f}"
+              f"{m['beat_field']:>9.2f}"
+              f"{m['pts']['arm']:>9.2f}{m['pts']['delta']:>+8.2f}"
+              f"{ci:>17}{m['pts']['p']:>8.4f}  {seasons}")
+    print(f"\nbaseline beat-the-field share: "
+          f"{next(iter(res['arms'].values()))['beat_field_baseline']:.2f}"
+          f"   |   p is a paired t over gameweeks; with "
+          f"{res['n_comparisons']} arms, only p < "
+          f"{res['bonferroni_alpha']} survives multiple testing.")
 
 
 def cmd_run(args):
