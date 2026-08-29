@@ -1,0 +1,489 @@
+{
+ "built_utc": "2026-08-29T14:30:13.197088+00:00",
+ "criterion": "top 100k overall in >= 2 PAST seasons; current season never consulted",
+ "caveat": "enumerated from the 2026-27 overall table after GW2, so reachability is conditioned on a good GW1-2 start; GW1-2 picks are archived but excluded from differential analyses (RESEARCH_LOG E5); evaluation begins GW4",
+ "entries": [
+  7133,
+  12315,
+  15748,
+  23702,
+  43242,
+  51749,
+  75019,
+  78714,
+  79172,
+  79671,
+  82796,
+  83229,
+  146633,
+  147030,
+  209335,
+  241700,
+  325638,
+  404530,
+  468137,
+  565086,
+  576881,
+  679374,
+  916625,
+  940477,
+  964751,
+  1024308,
+  1030142,
+  1228262,
+  1267190,
+  1490744,
+  1564313,
+  1614153,
+  1687579,
+  2003932,
+  2071968,
+  2212828,
+  2222035,
+  2237954,
+  2413003,
+  2494481,
+  2498578,
+  2535247,
+  2654663,
+  2857253,
+  3381298,
+  3690779,
+  3774699,
+  3907126,
+  3952680,
+  4490908,
+  5056968,
+  5594273,
+  5951629,
+  6058298,
+  6672404,
+  6825348,
+  6966764,
+  7975769,
+  8347145,
+  8560605
+ ],
+ "detail": {
+  "7133": {
+   "seasons_played": 10,
+   "best_rank": 3819,
+   "median_rank": 1194616,
+   "elite_seasons": 2,
+   "discovered_rank": 184
+  },
+  "12315": {
+   "seasons_played": 15,
+   "best_rank": 1477,
+   "median_rank": 65220,
+   "elite_seasons": 11,
+   "discovered_rank": 142
+  },
+  "15748": {
+   "seasons_played": 14,
+   "best_rank": 362,
+   "median_rank": 143594,
+   "elite_seasons": 5,
+   "discovered_rank": 602
+  },
+  "23702": {
+   "seasons_played": 13,
+   "best_rank": 9434,
+   "median_rank": 1457429,
+   "elite_seasons": 4,
+   "discovered_rank": 425
+  },
+  "43242": {
+   "seasons_played": 12,
+   "best_rank": 30516,
+   "median_rank": 172570,
+   "elite_seasons": 5,
+   "discovered_rank": 6
+  },
+  "51749": {
+   "seasons_played": 5,
+   "best_rank": 31252,
+   "median_rank": 175245,
+   "elite_seasons": 2,
+   "discovered_rank": 602
+  },
+  "75019": {
+   "seasons_played": 14,
+   "best_rank": 31255,
+   "median_rank": 1033046,
+   "elite_seasons": 2,
+   "discovered_rank": 741
+  },
+  "78714": {
+   "seasons_played": 11,
+   "best_rank": 27094,
+   "median_rank": 170389,
+   "elite_seasons": 4,
+   "discovered_rank": 184
+  },
+  "79172": {
+   "seasons_played": 8,
+   "best_rank": 501,
+   "median_rank": 939620,
+   "elite_seasons": 2,
+   "discovered_rank": 142
+  },
+  "79671": {
+   "seasons_played": 12,
+   "best_rank": 2447,
+   "median_rank": 157207,
+   "elite_seasons": 5,
+   "discovered_rank": 741
+  },
+  "82796": {
+   "seasons_played": 18,
+   "best_rank": 10187,
+   "median_rank": 452311,
+   "elite_seasons": 4,
+   "discovered_rank": 894
+  },
+  "83229": {
+   "seasons_played": 9,
+   "best_rank": 21853,
+   "median_rank": 420648,
+   "elite_seasons": 2,
+   "discovered_rank": 839
+  },
+  "146633": {
+   "seasons_played": 7,
+   "best_rank": 8091,
+   "median_rank": 310157,
+   "elite_seasons": 3,
+   "discovered_rank": 839
+  },
+  "147030": {
+   "seasons_played": 15,
+   "best_rank": 1204,
+   "median_rank": 125854,
+   "elite_seasons": 7,
+   "discovered_rank": 690
+  },
+  "209335": {
+   "seasons_played": 4,
+   "best_rank": 2323,
+   "median_rank": 271895,
+   "elite_seasons": 2,
+   "discovered_rank": 510
+  },
+  "241700": {
+   "seasons_played": 14,
+   "best_rank": 82,
+   "median_rank": 46542,
+   "elite_seasons": 8,
+   "discovered_rank": 340
+  },
+  "325638": {
+   "seasons_played": 16,
+   "best_rank": 49075,
+   "median_rank": 1245255,
+   "elite_seasons": 2,
+   "discovered_rank": 602
+  },
+  "404530": {
+   "seasons_played": 18,
+   "best_rank": 20056,
+   "median_rank": 879667,
+   "elite_seasons": 2,
+   "discovered_rank": 221
+  },
+  "468137": {
+   "seasons_played": 8,
+   "best_rank": 41557,
+   "median_rank": 183491,
+   "elite_seasons": 3,
+   "discovered_rank": 142
+  },
+  "565086": {
+   "seasons_played": 15,
+   "best_rank": 35856,
+   "median_rank": 351546,
+   "elite_seasons": 3,
+   "discovered_rank": 741
+  },
+  "576881": {
+   "seasons_played": 17,
+   "best_rank": 470,
+   "median_rank": 214068,
+   "elite_seasons": 4,
+   "discovered_rank": 510
+  },
+  "679374": {
+   "seasons_played": 5,
+   "best_rank": 454,
+   "median_rank": 274674,
+   "elite_seasons": 2,
+   "discovered_rank": 741
+  },
+  "916625": {
+   "seasons_played": 20,
+   "best_rank": 11612,
+   "median_rank": 1045070,
+   "elite_seasons": 2,
+   "discovered_rank": 209
+  },
+  "940477": {
+   "seasons_played": 6,
+   "best_rank": 20665,
+   "median_rank": 251179,
+   "elite_seasons": 2,
+   "discovered_rank": 510
+  },
+  "964751": {
+   "seasons_played": 12,
+   "best_rank": 10584,
+   "median_rank": 235539,
+   "elite_seasons": 3,
+   "discovered_rank": 94
+  },
+  "1024308": {
+   "seasons_played": 9,
+   "best_rank": 1179,
+   "median_rank": 40521,
+   "elite_seasons": 6,
+   "discovered_rank": 184
+  },
+  "1030142": {
+   "seasons_played": 13,
+   "best_rank": 3658,
+   "median_rank": 606288,
+   "elite_seasons": 2,
+   "discovered_rank": 894
+  },
+  "1228262": {
+   "seasons_played": 15,
+   "best_rank": 13233,
+   "median_rank": 827958,
+   "elite_seasons": 2,
+   "discovered_rank": 602
+  },
+  "1267190": {
+   "seasons_played": 16,
+   "best_rank": 29572,
+   "median_rank": 556518,
+   "elite_seasons": 2,
+   "discovered_rank": 839
+  },
+  "1490744": {
+   "seasons_played": 6,
+   "best_rank": 20425,
+   "median_rank": 363130,
+   "elite_seasons": 3,
+   "discovered_rank": 602
+  },
+  "1564313": {
+   "seasons_played": 13,
+   "best_rank": 11877,
+   "median_rank": 514922,
+   "elite_seasons": 4,
+   "discovered_rank": 142
+  },
+  "1614153": {
+   "seasons_played": 20,
+   "best_rank": 6647,
+   "median_rank": 574718,
+   "elite_seasons": 6,
+   "discovered_rank": 107
+  },
+  "1687579": {
+   "seasons_played": 12,
+   "best_rank": 12089,
+   "median_rank": 604234,
+   "elite_seasons": 3,
+   "discovered_rank": 425
+  },
+  "2003932": {
+   "seasons_played": 18,
+   "best_rank": 27831,
+   "median_rank": 1257130,
+   "elite_seasons": 2,
+   "discovered_rank": 221
+  },
+  "2071968": {
+   "seasons_played": 14,
+   "best_rank": 2029,
+   "median_rank": 411412,
+   "elite_seasons": 4,
+   "discovered_rank": 142
+  },
+  "2212828": {
+   "seasons_played": 14,
+   "best_rank": 5113,
+   "median_rank": 97941,
+   "elite_seasons": 8,
+   "discovered_rank": 66
+  },
+  "2222035": {
+   "seasons_played": 13,
+   "best_rank": 58261,
+   "median_rank": 884140,
+   "elite_seasons": 2,
+   "discovered_rank": 209
+  },
+  "2237954": {
+   "seasons_played": 13,
+   "best_rank": 53176,
+   "median_rank": 648282,
+   "elite_seasons": 3,
+   "discovered_rank": 94
+  },
+  "2413003": {
+   "seasons_played": 12,
+   "best_rank": 7113,
+   "median_rank": 1196362,
+   "elite_seasons": 3,
+   "discovered_rank": 602
+  },
+  "2494481": {
+   "seasons_played": 10,
+   "best_rank": 28341,
+   "median_rank": 557603,
+   "elite_seasons": 2,
+   "discovered_rank": 425
+  },
+  "2498578": {
+   "seasons_played": 15,
+   "best_rank": 57025,
+   "median_rank": 699094,
+   "elite_seasons": 3,
+   "discovered_rank": 602
+  },
+  "2535247": {
+   "seasons_played": 15,
+   "best_rank": 18141,
+   "median_rank": 615827,
+   "elite_seasons": 5,
+   "discovered_rank": 562
+  },
+  "2654663": {
+   "seasons_played": 16,
+   "best_rank": 22653,
+   "median_rank": 206577,
+   "elite_seasons": 5,
+   "discovered_rank": 690
+  },
+  "2857253": {
+   "seasons_played": 13,
+   "best_rank": 19802,
+   "median_rank": 174630,
+   "elite_seasons": 5,
+   "discovered_rank": 602
+  },
+  "3381298": {
+   "seasons_played": 15,
+   "best_rank": 53409,
+   "median_rank": 1072906,
+   "elite_seasons": 2,
+   "discovered_rank": 741
+  },
+  "3690779": {
+   "seasons_played": 17,
+   "best_rank": 12253,
+   "median_rank": 549851,
+   "elite_seasons": 2,
+   "discovered_rank": 340
+  },
+  "3774699": {
+   "seasons_played": 13,
+   "best_rank": 5785,
+   "median_rank": 569046,
+   "elite_seasons": 4,
+   "discovered_rank": 562
+  },
+  "3907126": {
+   "seasons_played": 18,
+   "best_rank": 20857,
+   "median_rank": 377275,
+   "elite_seasons": 4,
+   "discovered_rank": 602
+  },
+  "3952680": {
+   "seasons_played": 13,
+   "best_rank": 19892,
+   "median_rank": 611796,
+   "elite_seasons": 2,
+   "discovered_rank": 602
+  },
+  "4490908": {
+   "seasons_played": 20,
+   "best_rank": 745,
+   "median_rank": 112223,
+   "elite_seasons": 10,
+   "discovered_rank": 741
+  },
+  "5056968": {
+   "seasons_played": 13,
+   "best_rank": 16723,
+   "median_rank": 675263,
+   "elite_seasons": 2,
+   "discovered_rank": 94
+  },
+  "5594273": {
+   "seasons_played": 6,
+   "best_rank": 48719,
+   "median_rank": 5157864,
+   "elite_seasons": 2,
+   "discovered_rank": 340
+  },
+  "5951629": {
+   "seasons_played": 18,
+   "best_rank": 38353,
+   "median_rank": 395653,
+   "elite_seasons": 2,
+   "discovered_rank": 221
+  },
+  "6058298": {
+   "seasons_played": 17,
+   "best_rank": 10450,
+   "median_rank": 186016,
+   "elite_seasons": 5,
+   "discovered_rank": 602
+  },
+  "6672404": {
+   "seasons_played": 15,
+   "best_rank": 1351,
+   "median_rank": 36807,
+   "elite_seasons": 13,
+   "discovered_rank": 221
+  },
+  "6825348": {
+   "seasons_played": 12,
+   "best_rank": 36467,
+   "median_rank": 434058,
+   "elite_seasons": 3,
+   "discovered_rank": 271
+  },
+  "6966764": {
+   "seasons_played": 15,
+   "best_rank": 7031,
+   "median_rank": 928672,
+   "elite_seasons": 2,
+   "discovered_rank": 221
+  },
+  "7975769": {
+   "seasons_played": 19,
+   "best_rank": 7808,
+   "median_rank": 420189,
+   "elite_seasons": 5,
+   "discovered_rank": 602
+  },
+  "8347145": {
+   "seasons_played": 11,
+   "best_rank": 30235,
+   "median_rank": 1404730,
+   "elite_seasons": 2,
+   "discovered_rank": 894
+  },
+  "8560605": {
+   "seasons_played": 17,
+   "best_rank": 1859,
+   "median_rank": 649790,
+   "elite_seasons": 6,
+   "discovered_rank": 894
+  }
+ }
+}

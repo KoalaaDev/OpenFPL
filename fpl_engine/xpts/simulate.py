@@ -273,6 +273,12 @@ def _run(x, fixtures, team_lams, rules, bps_coef, bps_resid, bps_sd, *,
     ids = x["player_id"].to_numpy()
     idx = {p: i for i, p in enumerate(ids)}
     pts = np.zeros((n_sims, len(ids)), dtype=np.float32)
+    # per-draw minutes, accumulated alongside points: the rank-utility layer
+    # needs "did he get on the pitch in THIS draw" to apply FPL's automatic
+    # substitutions and the vice-captain armband inside each sample, and a
+    # separate independent draw would break the joint structure the simulator
+    # exists to preserve
+    mins_mat = np.zeros((n_sims, len(ids)), dtype=np.float32)
 
     p_goal, p_cs = rules["goal"], rules["clean_sheet"]
     p_app1 = rules["appearance"]["played_any"]
@@ -400,6 +406,7 @@ def _run(x, fixtures, team_lams, rules, bps_coef, bps_resid, bps_sd, *,
                 s = side[team]
                 cols = np.array([idx[i] for i in s["d"]["player_id"]])
                 pts[:, cols] += s["pts"]
+                mins_mat[:, cols] += s["mins"]
             continue
 
         # bonus: the top three BPS in this simulated match, across both teams
@@ -432,9 +439,10 @@ def _run(x, fixtures, team_lams, rules, bps_coef, bps_resid, bps_sd, *,
             s = side[team]
             cols = np.array([idx[i] for i in s["d"]["player_id"]])
             pts[:, cols] += s["pts"] + bonus[:, off:off + s["n"]]
+            mins_mat[:, cols] += s["mins"]
             off += s["n"]
 
-    return {"players": ids, "points": pts}
+    return {"players": ids, "points": pts, "mins": mins_mat}
 
 
 def summarise(out: dict) -> pd.DataFrame:

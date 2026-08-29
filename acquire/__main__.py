@@ -13,7 +13,7 @@ from __future__ import annotations
 import argparse
 import sys
 
-from . import storage, validate
+from . import actions, storage, validate
 from .sources import fpl_availability, fpl_managers
 
 SOURCES = {"fpl": fpl_availability}
@@ -47,6 +47,19 @@ def cmd_backfill(args):
         res = fpl_availability.backfill_from_snapshots(conn, season=args.season)
         conn.commit()
     print(f"  replayed archived bootstrap payloads: {res}")
+    return 0
+
+
+def cmd_actions_collect(args):
+    res = actions.collect(args.out)
+    print(f"  collected: {res}")
+    return 0
+
+
+def cmd_actions_import(args):
+    with storage.connect(args.db) as conn:
+        res = actions.import_collected(conn, args.out)
+    print(f"  imported: {res}")
     return 0
 
 
@@ -186,6 +199,18 @@ def main(argv=None):
     sp.add_argument("--gw", type=int, required=True)
     sp.add_argument("--top", type=int, default=12)
     sp.set_defaults(func=cmd_picks)
+
+    sp = sub.add_parser("actions-collect",
+                        help="scheduled file-based collection into "
+                             "data/collected (used by GitHub Actions)")
+    sp.add_argument("--out", default=actions.OUT_DIR)
+    sp.set_defaults(func=cmd_actions_collect)
+
+    sp = sub.add_parser("actions-import",
+                        help="replay data/collected into the SQLite "
+                             "change-log tables")
+    sp.add_argument("--out", default=actions.OUT_DIR)
+    sp.set_defaults(func=cmd_actions_import)
 
     sp = sub.add_parser("validate", help="run the invariants; non-zero on error")
     sp.set_defaults(func=cmd_validate)

@@ -733,7 +733,119 @@ switchable: the effect is real, and the conclusion is specific to a lambda
 estimated from goals. A team model built on a basis that does not already
 absorb it would need this test re-run.
 
-### Sportmonks: audited, not usable
+#### Round 13: MFRU — the rank objective, priced and measured
+
+The projection side is saturated (Rounds 8/8b), so this round formalised the
+*decision* side: what expected points are worth to a manager's **rank**.
+`xpts/rank_utility.py` (MFRU, Mean-Field Rank Utility) scores a full decision
+— XI, captain, vice, bench order — on the differential against the ownership
+mean-field inside each of the simulator's correlated draws:
+
+    Delta = S(d) - sum_i eo_i X_i,     U_gamma(d) = E[Delta] + gamma sd(Delta)
+
+with FPL's automatic substitutions and the armband transfer applied per draw.
+Three structural facts, the first a theorem rather than a finding:
+
+1. **E[Delta] does not depend on effective ownership** — the mean-field term
+   is decision-free, so a risk-neutral manager maximising expected rank
+   return should pick exactly the max-xP team. Every "EO edge" lives in the
+   variance term: gamma > 0 buys rank variance (differentials), gamma < 0
+   shadows the template. Chasing differentials for their own sake costs
+   points in expectation, provably.
+2. The only channels where a risk-neutral decision can legally differ from
+   max-xP are the **autosub branch** (a fringe starter is insured by a nailed
+   first sub) and the **vice-captain branch**. Both are nonlinear in the
+   joint minutes draw, which is what the simulator exists to price.
+3. gamma reshapes the rank *distribution*, not its mean — so a realised-mean
+   backtest cannot validate it even in principle, only bound its cost.
+
+`rank-backtest` replays a season with the squad held fixed to the lagged-
+ownership template — the same controlled design as the captaincy study — so
+arms differ only in the objective; realised scoring applies the real autosub
+rules. Over 74 paired gameweeks (2024-25 + 2025-26, `compare-rank-backtests`):
+
+| arm vs the crowd's own XI+captain | pts/gw | p |
+|---|---|---|
+| max-xP (the current rule) | **+2.11** | 0.027 |
+| MFRU gamma=0 | **+2.38** | 0.008 |
+| MFRU gamma=+0.3 / -0.3 | +2.39 / +1.82 | 0.012 / 0.036 |
+
+| arm vs max-xP | pts/gw | p |
+|---|---|---|
+| MFRU gamma=0 (autosub+armband channels) | +0.27 | 0.63 |
+| every gamma in ±{0.15, 0.3} | -0.28 … +0.28 | ≥ 0.51 |
+| sim-mean instead of analytic mean | -0.30 | 0.58 |
+
+Read it plainly: **the decision layer's edge over the crowd is real,
+replicated and now measured at the full-XI level** (~+2.1-2.4 pts/week, or
+~80-90 points a season, consistent with the captaincy study's +0.7-1.1 from
+the armband alone). **The incremental edge of MFRU over max-xP is unproven**:
++0.27/week pooled, sign flips between seasons (+1.6 in 2024-25, -1.1 in
+2025-26). The autosub channel changes the XI or bench in a quarter of
+gameweeks and the captain in ~28%, yet the realised means cannot separate it
+from the current rule at n=74 — the same wall as captaincy criteria and chip
+timing. And the gamma result is the theorem working as stated: risk pricing
+is not supposed to move the mean. Validating a nonzero gamma needs rank
+distributions over thousands of gameweeks, which this repo does not have.
+
+So the model ships as measurement infrastructure and as the formal answer to
+"where is the remaining edge": it is in playing the decision layer at all
+(which max-xP already does), not in EO-adjusting it. MFRU's gamma stays 0 —
+i.e. behaviourally the current rule — until a rank-tail objective can be
+tested honestly. Unit tests pin the autosub operator's FPL rules
+(like-for-like GK, formation-blocked subs, bench-order priority, armband)
+and the gamma=0 = max-xP equivalence (`tests/test_rank_utility.py`).
+
+### Round 14: the decision layer at n=111 — max-xP survives everything
+
+Round 13 scaled up per the research mandate: a third replay season
+(2023-24, minutes model trained on 2022-23 only), the full baseline battery
+(random-valid, a competent-human heuristic from deadline-public information
+only, the crowd template), gamma widened to ±1, and three direct rank
+functionals — maximise P(beat the field), CVaR20 (downside), Q80 (upside) —
+since points are a proxy and rank is the game. `RESEARCH_LOG.md` carries the
+pre-registered hypotheses and every number; the short version, 111 paired
+gameweeks vs the max-xP baseline:
+
+| arm | pts/gw vs xp | p |
+|---|---|---|
+| random valid decision | **−6.08** | <0.0001 |
+| competent-human heuristic | **−1.77** | 0.041 (same sign every season) |
+| crowd template | **−2.17** | 0.0027 |
+| mfru_g0 | +0.13 | 0.78 |
+| every gamma in ±{0.15, 0.3, 0.5, 1} | −0.41 … +0.23 | ≥ 0.32 |
+| P(beat field) / CVaR20 / Q80 objectives | −0.61 / −0.58 / −0.37 | ≥ 0.33 |
+| bench-order channel alone (`xp_bench`) | −0.05 | 0.60 |
+
+Three conclusions worth pinning:
+
+1. **mfru_g0's +0.27 was noise** — it shrank to +0.13 (CI −0.76…+1.01) when
+   n grew from 74 to 111. The autosub/armband channels are real mechanics
+   with no measurable realised value at the weekly fixed-squad layer.
+2. **No implementable rank objective beats the mean.** Combined with the
+   Round 13 theorem (E[Delta] is EO-free), "maximise expected points" ≈
+   "maximise expected rank return" holds both structurally and now
+   empirically at this layer. The remaining rank question — tail objectives
+   over a season — needs rank distributions no free data provides.
+3. **The leak audit earns its keep.** vaastav's archived `xP` (FPL's own
+   published ep_this) looked like the one season-long public benchmark and
+   "beat" the engine by +2.6/gw — then failed the audit: spearman_played
+   0.58/0.51 in 2023-24/2024-25, which is this repo's *perfect-minutes
+   oracle* level, and 89-94% precision at zeroing exact non-players. It
+   embeds realised minutes (and is near-random in 2025-26), so it is
+   excluded; a benchmark that looks too good gets audited before it gets
+   believed. No deadline-honest historical commercial archive exists
+   (theFPLkiwi's stops Dec 2023 with 4 files) — the forward-collected elite
+   panel remains the only honest external benchmark.
+
+So the production decision rule stays **max-xP on the analytic engine**, now
+defended at n=111 against seventeen challengers and three human-shaped
+baselines rather than assumed. The measured hierarchy — random −6.1, human
+−1.8, crowd −2.2 per week against it — is the honest answer to "would this
+make a manager's decisions better": yes, by about 2 points a week over a
+competent manual pick, roughly 80 points a season, before transfers.
+
+## Sportmonks: audited, not usable
 
 Two independent hard blockers on the free plan, both verified against the API
 rather than inferred from documentation:
@@ -829,6 +941,39 @@ a snapshot table destroys.
 Per the brief, the modelling engine is untouched. The first integration, when
 there is enough history to judge it, is availability → xMins — and it must clear
 the same bar as everything else: a paired backtest, or it does not ship.
+
+### The repository is now the archive (scheduled collection)
+
+The SQLite file is gitignored and rebuilt from free sources, so anything
+collected only into it dies with the clone — which is how two seasons of
+availability history were lost. `acquire/actions.py` +
+`.github/workflows/collect.yml` fix the class of problem: a scheduled
+GitHub Actions run (4x daily, stdlib-only, no secrets) fetches the official
+bootstrap and commits to `data/collected/`:
+
+* `availability.jsonl` — append-only team-news change log (status,
+  chance_next, verbatim news, FPL's `news_added`), a line only when a
+  player's state actually changed. This is the Phase-2 Priority-2 dataset
+  accruing forward.
+* `snapshots/<utc>.csv.gz` — one compact per-run market snapshot (price,
+  ownership, transfers, ep_next, form) for the deadline-decay question
+  ("how much is each hour of information worth?").
+* `ownership/gw<n>.csv` — overwritten until that gameweek's deadline
+  passes, then frozen: the last pre-deadline ownership, i.e. the lagged-EO
+  input collected forward instead of reconstructed.
+* `picks/<season>/gw<n>.csv` — the proven-manager panel's squads, fetched
+  once per passed deadline (picks lock at the deadline, so post-deadline
+  collection is point-in-time valid).
+* `panel.json` — the fixed panel. Graded on PAST seasons only; the 2026-27
+  panel was enumerated after GW2, so its GW1-2 picks are conditioned and
+  excluded from any differential analysis (see RESEARCH_LOG).
+
+`python -m acquire actions-import` replays the file archive into the
+`acq_*` change-log tables so research keeps one query surface. Scheduled
+workflows fire only on the default branch — the workflow must be merged to
+`main` before the cron runs. Tests: `tests/test_acquire_actions.py`
+(append-only idempotence, ownership freeze, importer idempotence, and the
+no-model-import rule).
 
 ### Round 8b: a predicted-lineup model of our own
 
