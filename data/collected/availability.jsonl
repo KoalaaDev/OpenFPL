@@ -620,3 +620,5 @@
 {"chance_next": null, "code": 437505, "news": null, "news_added": null, "observed_utc": "2026-08-29T14:36:55.087406+00:00", "player_id": 553, "season": "2026-27", "status": "a", "web_name": "Isidor"}
 {"chance_next": 0.0, "code": 638411, "news": "Suspended until 5 Sep", "news_added": "2026-08-28T13:00:08.950445Z", "observed_utc": "2026-08-29T14:36:55.087406+00:00", "player_id": 612, "season": "2026-27", "status": "s", "web_name": "Methalie"}
 {"chance_next": null, "code": 696104, "news": null, "news_added": null, "observed_utc": "2026-08-29T14:36:55.087406+00:00", "player_id": 613, "season": "2026-27", "status": "a", "web_name": "Ahoka"}
+{"chance_next": 1.0, "code": 575901, "news": null, "news_added": "2026-08-15T16:30:07.021055Z", "observed_utc": "2026-08-29T16:26:45.022663+00:00", "player_id": 66, "season": "2026-27", "status": "a", "web_name": "Soler"}
+{"chance_next": 0.75, "code": 101282, "news": "Thigh injury - 75% chance of playing", "news_added": "2026-08-29T15:00:08.569326Z", "observed_utc": "2026-08-29T16:26:45.022663+00:00", "player_id": 289, "season": "2026-27", "status": "d", "web_name": "Crooks"}
