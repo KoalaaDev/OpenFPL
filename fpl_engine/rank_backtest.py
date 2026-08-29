@@ -132,12 +132,18 @@ def _site_ep(season: str) -> dict[tuple[int, int], float]:
     """FPL's own published expected points (ep_this), as archived per
     gameweek by the vaastav dataset's ``xP`` column.
 
-    This is the strongest *publicly available* projection benchmark that is
-    archived season-long for past seasons: it is the number the official
-    site shows every manager before the deadline. Caveat, stated rather than
-    hidden: the archive is collected by a third party around the deadline,
-    so its capture time is theirs, not ours — it benchmarks the site's
-    model, it does not feed ours. Returns {} when unreachable (arm skipped).
+    **Measured as leaky — excluded from the default arms.** The hope was a
+    season-long public projection benchmark; the measurement killed it. In
+    2023-24 / 2024-25 the archived column reaches spearman_played 0.58 /
+    0.51 — the level of this repo's *perfect-minutes oracle* (~0.59, see
+    CLAUDE.md) — and assigns xP <= 0.05 to players who then played 0 minutes
+    with 89-94% precision. No deadline-honest projection can know who will
+    not play that well; the archive embeds realised minutes (its capture
+    time is the archiver's, after the fact). In 2025-26 the same column is
+    near-random among players who played (spearman_played 0.07). Either way
+    it cannot benchmark a deadline decision. Kept only so the leak test in
+    the research log stays reproducible; do not re-add it to the arms
+    without new provenance. Returns {} when unreachable.
     """
     if season not in _SITE_EP_CACHE:
         from .ingest.vaastav import RAW, _csv_rows
@@ -308,13 +314,11 @@ def run(conn, season: str = "2025-26", *, gws: list[int] | None = None,
     positions_of = dict(zip(players_all["player_id"], players_all["position"]))
 
     per_gw: dict[str, dict[int, dict]] = {}
-    site_ep = _site_ep(season)
-    arms = (["random", "human", "crowd", "site_ep", "xp", "xp_sim",
+    site_ep: dict = {}      # measured leaky — see _site_ep; not an arm
+    arms = (["random", "human", "crowd", "xp", "xp_sim",
              "xp_bench", "mfru_g0"]
             + [f"mfru_g{g:+g}" for g in gammas]
             + [f"mfru_{o}" for o in OBJECTIVES])
-    if not site_ep:
-        arms.remove("site_ep")
     squads: dict[int, list[int]] = {}
     for g in gws:
         progress.step(f"GW{g}…")

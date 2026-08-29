@@ -56,7 +56,46 @@ pooled with `compare-rank-backtests`.
   question, out of scope for this controlled design); public benchmark =
   `site_ep` (FPL's own published ep_this, archived by vaastav; capture
   timing is the archiver's — benchmark only, never an input).
-* **Result.** See CLAUDE.md Round 14 (filled after the run).
+* **Result** (111 paired gameweeks; vs the `xp` baseline, pts/gw, 95% CI):
+  `random` −6.08 [−7.65,−4.50] p<0.0001; `human` −1.77 [−3.44,−0.10]
+  p=0.041, same sign all three seasons; `crowd` −2.17 [−3.56,−0.78]
+  p=0.0027 (survives Bonferroni). `mfru_g0` +0.13 [−0.76,+1.01] p=0.78 —
+  the +0.27 seen at n=74 *shrank* with more data. `xp_bench` −0.05 p=0.60:
+  the bench-order channel alone is worthless. Every gamma in ±{0.15…1}:
+  |Δ| ≤ 0.41, p ≥ 0.32. Rank functionals: `p_beat` −0.61 p=0.33,
+  `cvar20` −0.58 p=0.36, `q80` −0.37 p=0.56 — all flat-to-worse.
+  Realised beat-the-field share is 0.95–0.99 for every non-random arm: the
+  EO-weighted field proxy sits below any real XI, so that metric cannot
+  discriminate — noted as a limitation, not evidence.
+* **Verdict.** (a) mfru_g0's edge over max-xP is **dead**, not merely
+  unproven — it shrank toward zero as n grew. (b) No implementable rank
+  functional beats the mean at the weekly fixed-squad layer; combined with
+  the E1 theorem, max-xP ≈ max expected rank return empirically *and*
+  structurally here. (c) The model clears random by ~6 pts/gw, the
+  competent-human heuristic by ~1.8, the crowd template by ~2.2
+  (Bonferroni-proof) — the mandate's "minimum" tier is met with evidence;
+  "strong" is met trivially because max-xP *is* the champion and no
+  challenger displaced it.
+* **Status.** max-xP stays the production decision rule. MFRU retained as
+  measurement infrastructure only.
+
+## E4. The site_ep benchmark is leaky — excluded
+
+* **Hypothesis.** vaastav's archived `xP` (FPL's published ep_this) is a
+  deadline-honest public benchmark.
+* **Test.** spearman(xP, actual) among players who played, and the
+  precision of xP ≤ 0.05 at predicting 0 minutes, per season.
+* **Result.** 2023-24 / 2024-25: spearman_played 0.581 / 0.511 — at the
+  repo's measured perfect-minutes-oracle ceiling (~0.59) — and 93.5% / 89.3%
+  of xP≈0 rows are exact non-players. That is post-hoc knowledge of who
+  played, not a deadline projection. 2025-26: spearman_played 0.074 —
+  near-random among starters. The arm "beat" xp by +2.6/gw pooled
+  (+5.5 in 2024-25) — an artifact of the leak, and the reason a benchmark
+  that looks too good gets audited before it gets believed.
+* **Verdict.** Excluded from the arms. No season-long, deadline-honest,
+  legally accessible public projection archive exists for these seasons
+  (E3); the forward-collected elite-manager panel remains the only honest
+  external benchmark, testable ~10-15 gameweeks after collection begins.
 
 ## E3. Commercial benchmark search
 

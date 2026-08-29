@@ -796,6 +796,55 @@ tested honestly. Unit tests pin the autosub operator's FPL rules
 (like-for-like GK, formation-blocked subs, bench-order priority, armband)
 and the gamma=0 = max-xP equivalence (`tests/test_rank_utility.py`).
 
+### Round 14: the decision layer at n=111 — max-xP survives everything
+
+Round 13 scaled up per the research mandate: a third replay season
+(2023-24, minutes model trained on 2022-23 only), the full baseline battery
+(random-valid, a competent-human heuristic from deadline-public information
+only, the crowd template), gamma widened to ±1, and three direct rank
+functionals — maximise P(beat the field), CVaR20 (downside), Q80 (upside) —
+since points are a proxy and rank is the game. `RESEARCH_LOG.md` carries the
+pre-registered hypotheses and every number; the short version, 111 paired
+gameweeks vs the max-xP baseline:
+
+| arm | pts/gw vs xp | p |
+|---|---|---|
+| random valid decision | **−6.08** | <0.0001 |
+| competent-human heuristic | **−1.77** | 0.041 (same sign every season) |
+| crowd template | **−2.17** | 0.0027 |
+| mfru_g0 | +0.13 | 0.78 |
+| every gamma in ±{0.15, 0.3, 0.5, 1} | −0.41 … +0.23 | ≥ 0.32 |
+| P(beat field) / CVaR20 / Q80 objectives | −0.61 / −0.58 / −0.37 | ≥ 0.33 |
+| bench-order channel alone (`xp_bench`) | −0.05 | 0.60 |
+
+Three conclusions worth pinning:
+
+1. **mfru_g0's +0.27 was noise** — it shrank to +0.13 (CI −0.76…+1.01) when
+   n grew from 74 to 111. The autosub/armband channels are real mechanics
+   with no measurable realised value at the weekly fixed-squad layer.
+2. **No implementable rank objective beats the mean.** Combined with the
+   Round 13 theorem (E[Delta] is EO-free), "maximise expected points" ≈
+   "maximise expected rank return" holds both structurally and now
+   empirically at this layer. The remaining rank question — tail objectives
+   over a season — needs rank distributions no free data provides.
+3. **The leak audit earns its keep.** vaastav's archived `xP` (FPL's own
+   published ep_this) looked like the one season-long public benchmark and
+   "beat" the engine by +2.6/gw — then failed the audit: spearman_played
+   0.58/0.51 in 2023-24/2024-25, which is this repo's *perfect-minutes
+   oracle* level, and 89-94% precision at zeroing exact non-players. It
+   embeds realised minutes (and is near-random in 2025-26), so it is
+   excluded; a benchmark that looks too good gets audited before it gets
+   believed. No deadline-honest historical commercial archive exists
+   (theFPLkiwi's stops Dec 2023 with 4 files) — the forward-collected elite
+   panel remains the only honest external benchmark.
+
+So the production decision rule stays **max-xP on the analytic engine**, now
+defended at n=111 against seventeen challengers and three human-shaped
+baselines rather than assumed. The measured hierarchy — random −6.1, human
+−1.8, crowd −2.2 per week against it — is the honest answer to "would this
+make a manager's decisions better": yes, by about 2 points a week over a
+competent manual pick, roughly 80 points a season, before transfers.
+
 ## Sportmonks: audited, not usable
 
 Two independent hard blockers on the free plan, both verified against the API
