@@ -1084,6 +1084,300 @@ re-introduce exactly this conditioning.
 Roughly 10-15 gameweeks of collection before the differential signal can be
 tested against the model at all.
 
+### Round 13: the optimiser itself, finally replayed
+
+Every round so far measured the *projections*. The machinery that turns them
+into decisions — the multi-period MILP, free-transfer accrual, the -4 hit
+price, the horizon decay — had never been scored against what actually
+happened. A model that ranks players well can still be given away by a
+transfer policy that churns, or hoards, or plans into fixtures it cannot see.
+
+The replay is point-in-time throughout: projections for gameweek *t* are built
+with `as_of` = the first kickoff of the **decision** gameweek, so a plan made in
+GW7 for GW11 sees only GW1-6 form. Prices move as they moved, selling prices
+follow FPL's rule (purchase plus half the profit, rounded down), free transfers
+accrue +1 and bank to 5, and points are realised points with auto-substitutions
+and the vice-captain fallback applied. Chips are off, so what is measured is
+transfers alone. **Every policy starts from the same opening squad**, so the
+comparison is not decided by the luck of an opening fifteen.
+
+| policy | pts/season | transfers | hits | end squad value |
+|---|---|---|---|---|
+| never transfer | 1815 | 0 | 0 | £99.2m |
+| horizon 1 (greedy) | 2091 | 44.0 | 7.0 | £98.1m |
+| horizon 3 | 2118 | 47.0 | 10.0 | £99.9m |
+| horizon 5 (the default) | 2132 | 52.0 | 15.0 | £100.0m |
+| horizon 8 | 2160 | 49.5 | 12.5 | £100.2m |
+
+**Transferring earns its keep, decisively** (74 paired gameweeks):
+
+| | pts/season | t | p | 95% CI |
+|---|---|---|---|---|
+| horizon 1 vs never | **+283** | 4.44 | <0.0001 | [+158, +409] |
+| horizon 3 vs never | **+311** | 4.32 | <0.0001 | [+170, +452] |
+| horizon 5 vs never | **+326** | 4.51 | <0.0001 | [+184, +468] |
+| horizon 8 vs never | **+354** | 4.83 | <0.0001 | [+210, +497] |
+
+Two different mechanisms, one per season, and both favour transferring. In
+2024-25 a strong opening squad decayed (62.3 -> 48.0 pts/gw across the halves)
+and transfers held it up (61.8 -> 56.8). In 2025-26 the opening squad was
+simply weak and never decayed at all (42.5 -> 43.7); transfers rebuilt it to
+~56. Squad rot and squad error are separate failure modes and the solver
+repairs both.
+
+**Whether the multi-period machinery beats a greedy one-week solve is not
+resolvable here**, which is the deflating half:
+
+| vs horizon 1 | pts/season | t | p | 95% CI |
+|---|---|---|---|---|
+| horizon 3 | +28 | 0.46 | 0.65 | [-91, +147] |
+| horizon 5 | +43 | 0.73 | 0.47 | [-71, +157] |
+| horizon 8 | +70 | 1.19 | 0.24 | [-46, +186] |
+
+Read the CIs before concluding anything. This design cannot resolve less than
+about **120 points a season**; separating +70 from zero at 80% power would need
+roughly **11 seasons**. So this is emphatically *not* "the horizon does not
+matter" — it is "two seasons cannot tell".
+
+What the point estimates do is line up monotonically in the horizon, and the
+*mechanism* is visible in the columns that are not the outcome: a longer
+horizon finishes with a **more valuable squad** (£98.1m -> £100.2m) while
+taking **no more hits** than horizon 5. That is exactly what planning ahead is
+supposed to buy — seeing the transfer coming and rolling a free transfer to it
+rather than paying four points for it. Direction, mechanism and structural
+argument all agree; only the significance is missing, and it is missing for a
+power reason rather than a null one. **The default horizon of 5 stays.**
+
+**Why this test is so much weaker than the others in this file.** Once two
+policies make different transfers they own different players, so their weekly
+outcomes decorrelate and the paired design stops pairing. Every earlier
+comparison here — rate estimators, chip reserves, bench weight — held the
+squad nearly fixed and differenced a small perturbation. A policy comparison
+cannot, which puts a hard floor under what any two-season replay of a
+*decision rule* can show. Expect it again for anything that changes what the
+squad owns.
+
+### Auto-substitution: the bench is priced correctly
+
+FPL replaces a starter who plays no minutes with the first eligible bench
+player. Over 74 replayed gameweeks with a model-picked XI, 0.53 starters blank
+a gameweek, 43% of gameweeks have at least one, and auto-subs recover **2.26
+pts/gw (~86 a season)**. The optimiser assigns the bench almost nothing
+(`bench_weight` 0.05-0.15), so it minimises bench spend by construction — which
+looks like a large blind spot.
+
+It is not, and comparing whole-squad points cannot show why: a ~0.5 point
+effect under a 15-point standard deviation is invisible. Measuring the
+**channel** instead — the auto-sub points the squad actually recovered, whose
+paired sd is 3.5 rather than 15:
+
+| bench valued | bench spend | auto-sub pts recovered |
+|---|---|---|
+| zero | £15.74m | 0.553/gw |
+| half | £17.18m | 0.789/gw |
+
+**+0.237 pts/gw** recovered, for **£1.43m** diverted from the XI, which costs
+**0.234 pts/gw** at the budget exchange rate measured in Round 7. Net
+**+0.003**. The two sides cancel because a £4.0m bench player scores about as
+well as a £5.5m one *given* he is called upon, and the 86 pts/season accrues
+either way. The benefit side is noisy (±0.56), so this is centred on zero
+rather than proven zero — but the shipped defaults already sit in the flat
+region, so nothing changes.
+
+### DefCon: the convexity is real and the fix is worse
+
+Crossing a threshold of 10-12 defensive actions is convex in minutes, and the
+engine models it as a per-90 crossing rate times exposure, which is linear. The
+first diagnostic looked damning — 134 predicted crossings against 1 realised
+for 1-45 minute cameos — but it bucketed by **realised** minutes, i.e.
+conditioned on the outcome. Re-bucketed on predicted P(60+), which is what the
+model actually knew, against a Negative-Binomial posterior that carries the
+uncertainty in the rate into the tail:
+
+| P(60+) | realised | shipped | ratio | posterior | ratio |
+|---|---|---|---|---|---|
+| < 0.10 | 51 | 60.3 | 0.845 | 34.0 | 1.501 |
+| 0.40-0.70 | 283 | 224.4 | 1.261 | 221.8 | 1.276 |
+| 0.70-0.90 | 748 | 635.9 | 1.176 | 577.0 | 1.296 |
+| **TOTAL** | **1418** | **1254.1** | **1.131** | **1122.4** | **1.263** |
+
+The shipped form is better calibrated everywhere. The residual 13% under-
+prediction is real but traces to an in-season upward trend in crossings
+(0.111 -> 0.134 per appearance) that any trailing estimator lags, worth about
+0.011 pts per player-gameweek. Not shipped.
+
+### Round 14: pricing information, and closing the decision layer
+
+Two questions: is the model at its ceiling because the *information* is
+exhausted, and is maximising expected points the wrong objective? The first
+turns out to be answerable in points; the second turns out to be answerable in
+algebra.
+
+**What a predicted-lineup feed is worth.** Round 8 located the minutes error in
+the band where the model says P(start) is 0.30-0.70 — 11.5% of rows, where it
+is *correctly calibrated* because the manager has not decided. Resolving only
+that band, and nothing else, over 74 paired gameweeks:
+
+| resolved | share of rows | spearman_played | top11 | top30 |
+|---|---|---|---|---|
+| band, 25% | 2.8% | +0.0229*** | +0.09 | +0.07* |
+| band, 50% | 5.6% | +0.0445*** | +0.24** | +0.16*** |
+| band, 75% | 8.4% | +0.0625*** | +0.24* | +0.21*** |
+| **band, 100%** | **11.5%** | **+0.0814*** | **+0.36** | **+0.26*** |
+| everything outside the band | 88.5% | +0.1308*** | +0.62*** | +0.56*** |
+| full oracle | 100% | +0.2029*** | +0.73*** | +0.67*** |
+
+The full oracle reproduces the known +0.21, so the harness is sound. The band
+is **40% of the entire minutes ceiling from 11% of rows** — 3.6x the average
+value density — and the value is **linear** in the fraction resolved, so a feed
+that is half-useful is worth half. There is no threshold to clear.
+
+Replayed through the Round 13 harness, with the feed modelled honestly (it
+resolves the imminent gameweek's XI and says nothing about GW+3, because that
+information does not exist):
+
+| | baseline | with a perfect rotation feed | gain |
+|---|---|---|---|
+| 2024-25 | 2192 | 2298 | +106 |
+| 2025-26 | 2073 | 2141 | +68 |
+| pooled | | | **+2.35 pts/gw = +89/season** (p=0.055) |
+
+Read the two layers separately. The *information* gain is proven — p<0.001 on
+the rank metrics, replicated per season. The *points* conversion is the best
+available estimate with a CI of [-1, +180], because of the Round 13 wall: once
+the feed changes a transfer the arms own different players and the pairing
+collapses. A metric over 600 players is well powered; the same effect seen
+through 11 squad slots is not.
+
+**Therefore: judge a feed on its band accuracy, not on a decision backtest.**
+Because value is linear in resolution, a vendor is priced by its hit rate on
+~90 ambiguous rows a gameweek — five gameweeks gives ~450 observations and a
+tight estimate, against the season-plus a decision backtest would need. The bar
+is the model's own ~55% in that band, and each point above it is worth roughly
+`(accuracy - 0.55)/0.45 x 89` points a season.
+
+**The crowd's transfer flow is not team news.** The obvious free substitute —
+un-lagging the crowd features, since transfers into gameweek G close at G's
+deadline — was checked before being built:
+
+| | 2024-25 | 2025-26 |
+|---|---|---|
+| corr(net flow into GW, points in GW-1) | +0.367 | +0.390 |
+| corr(net flow into GW, points in GW) | +0.146 | +0.175 |
+| **among players who did NOT start GW-1: corr(flow, starts now)** | **-0.002** | **+0.010** |
+
+The first two rows confirm the timing is legal (the flow is backward-looking,
+so using it would not leak). The third says it is worthless for the only
+population that needs help. Twelve million managers chase last week's hauls;
+they do not relay team news. `shift(1)` stays.
+
+### The decision layer is closed, and mostly by algebra
+
+Maximising expected margin over the crowd is **identical** to maximising
+expected points. With `m` your multiplier and `EO` effective ownership,
+
+    E[margin] = sum (m_i - EO_i) * ep_i = sum m_i * ep_i - sum EO_i * ep_i
+
+and the second term does not depend on what you pick. So every
+differential-aware objective that is linear in ownership — value a player at
+`ep x (1 - EO)`, penalise template picks, any of it — provably changes nothing.
+This is the simulator's "the mean is sufficient" arriving from a second
+direction.
+
+Rank-awareness can therefore only bite through nonlinearity, and the only one
+the engine can see is that players from a club share a fixture. `concentration`
+prices it exactly (see `optimise/chips.py`); pooled over 74 gameweeks:
+
+| lambda | pts/season | margin sd | beat crowd | excess club stacking |
+|---|---|---|---|---|
+| -1.0 concentrate | 2108 | 13.36 | 61% | 5.95 |
+| -0.5 | 2160 | 13.86 | 68% | 5.03 |
+| **0.0 ships** | 2132 | 13.54 | 65% | 3.97 |
+| +0.5 | 2147 | 13.04 | 70% | 2.61 |
+| +1.0 spread out | 2084 | 14.86 | 61% | 1.14 |
+
+Every arm is inside noise (p > 0.32) and — the actual finding — **margin sd is
+flat while stacking varies five-fold**, in both seasons. The lever moves
+composition and not risk, because FPL's rules already cap the achievable
+concentration: at most 3 per club and 11 starters across 5+ clubs leaves too
+little room for correlation to matter. The +1.0 arm even has the *highest*
+variance, since forcing a spread pushes into worse and more volatile players.
+The knob stays at 0.0 and is kept only because it is tested and free.
+
+**One implementation note, because the bug was silent.** A one-sided
+`z >= n - 1` prices a penalty correctly but leaves the objective **unbounded**
+as soon as the weight goes negative — CBC returns garbage, not an error, and
+every solve produced an empty frame rather than raising. The excess is now
+pinned exactly with two-sided indicators (`n >= k*y_k`, `n <= (k-1) + M*y_k`),
+and `tests/test_concentration.py` asserts the negative arm stays bounded.
+
+### The model against the field
+
+The concentration harness needed the crowd's realised score, which turns out to
+be directly computable from `player_gw.selected` and validates cleanly:
+ownership sums to **15.00** players, the implied manager counts are 10.74m and
+12.32m (the real FPL populations), and the crowd scores 52.2 / 51.5 a gameweek
+against a published average of ~50-55. No synthetic field is needed.
+
+Against that field, the engine's own squad under a horizon-5 policy:
+
+| | margin | per gameweek | weeks beating the crowd |
+|---|---|---|---|
+| 2024-25 | **+263** | +7.11 | 65% |
+| 2025-26 | **+171** | +4.61 | 65% |
+
+About **+224 points a season over the average manager**, with an identical 65%
+weekly hit rate in both seasons — the first end-to-end validation of the whole
+system against the field rather than against its own projections. It is
+conservative in one respect: this arm plays **no chips**, while the crowd
+baseline includes theirs.
+
+### Polymarket: shown, not modelled
+
+Free, keyless, `robots.txt` carries no disallow rules, and coverage is real —
+**18 EPL fixtures** a gameweek with 1-cent spreads and seven-figure liquidity
+(Palace-City: $595k traded, $2.76m in the book). Ingested by
+`ingest/polymarket.py`, refreshed on every `pull`.
+
+**Every EPL market it offers is team level**: match result, exact score,
+halftime, second half, first *team* to score, corners. There is no
+anytime-goalscorer or assist market — checked, not assumed. So nothing here
+reaches a player except through the fixture attack scaler, and that channel is
+already measured to be second order: `ODDS_WEIGHT` at 0 / 0.5 / 0.85 / 1.0 is
+indistinguishable. We also already carry bookmaker prices for the same
+fixtures, Pinnacle included. A second team-level source is therefore redundant
+with something worth ~nothing at the player level, and it is **not wired into
+the model**.
+
+It earns its place on screen instead, the same way the price model does:
+reported next to the recommendation, never inside the objective. A prediction
+market disagreeing with a sportsbook is worth a human's attention on a
+captaincy call even when it moves no model output, so the Fixtures grid marks
+the fixtures where the two part company by 4+ points.
+
+**Quotes live in `market_quote`, not `match_odds`, and that is load-bearing.**
+`odds_model.fixture_odds_map` selects every row for a fixture and builds a dict
+keyed by `fixture_id`, so the last row silently wins. Writing a second source
+into that table would move lambda depending on row order — a model change with
+no backtest behind it.
+
+*One parsing trap, recorded because it produced plausible-looking wrong
+numbers.* Polymarket splits a three-way match into separate Yes/No markets, and
+the draw's label is `"Draw (Crystal Palace FC vs. Manchester City FC)"` — it
+contains **both** club names. Matching a team name as a substring therefore also
+matches the draw, and the away side inherits the draw's price. Every row still
+summed to 1.0; the only symptom was `p_draw == p_away` on all 18 fixtures. Legs
+are now classified on an exact cleaned label, with the draw tested first
+(`tests/test_polymarket.py`).
+
+**The one genuinely new thing it has is the Exact Score market.** The engine
+currently inverts 1X2 plus over/under 2.5 into (lambda_home, lambda_away) — two
+parameters fitted to four numbers. An exact-score market prices the full
+scoreline distribution directly, which pins the joint structure rather than the
+marginals. That is strictly more information than we use, and it would feed the
+simulator's correlation rather than the ranking. Untested, and expected small
+for the usual reason: it improves the fixture channel, which is second order.
+
 ## Optimiser
 
 `optimise/milp.py` is a multi-period mixed-integer program (PuLP + bundled CBC,
