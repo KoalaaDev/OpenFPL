@@ -1,0 +1,12 @@
+{
+ "availability_changes": 622,
+ "next_gw": 3,
+ "observed_utc": "2026-08-29T14:36:55.087406+00:00",
+ "ownership": "gw03.csv",
+ "picks": [
+  "gw01.csv",
+  "gw02.csv"
+ ],
+ "season": "2026-27",
+ "snapshot": "20260829T1436_gw03.csv.gz"
+}
