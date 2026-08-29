@@ -733,7 +733,70 @@ switchable: the effect is real, and the conclusion is specific to a lambda
 estimated from goals. A team model built on a basis that does not already
 absorb it would need this test re-run.
 
-### Sportmonks: audited, not usable
+#### Round 13: MFRU — the rank objective, priced and measured
+
+The projection side is saturated (Rounds 8/8b), so this round formalised the
+*decision* side: what expected points are worth to a manager's **rank**.
+`xpts/rank_utility.py` (MFRU, Mean-Field Rank Utility) scores a full decision
+— XI, captain, vice, bench order — on the differential against the ownership
+mean-field inside each of the simulator's correlated draws:
+
+    Delta = S(d) - sum_i eo_i X_i,     U_gamma(d) = E[Delta] + gamma sd(Delta)
+
+with FPL's automatic substitutions and the armband transfer applied per draw.
+Three structural facts, the first a theorem rather than a finding:
+
+1. **E[Delta] does not depend on effective ownership** — the mean-field term
+   is decision-free, so a risk-neutral manager maximising expected rank
+   return should pick exactly the max-xP team. Every "EO edge" lives in the
+   variance term: gamma > 0 buys rank variance (differentials), gamma < 0
+   shadows the template. Chasing differentials for their own sake costs
+   points in expectation, provably.
+2. The only channels where a risk-neutral decision can legally differ from
+   max-xP are the **autosub branch** (a fringe starter is insured by a nailed
+   first sub) and the **vice-captain branch**. Both are nonlinear in the
+   joint minutes draw, which is what the simulator exists to price.
+3. gamma reshapes the rank *distribution*, not its mean — so a realised-mean
+   backtest cannot validate it even in principle, only bound its cost.
+
+`rank-backtest` replays a season with the squad held fixed to the lagged-
+ownership template — the same controlled design as the captaincy study — so
+arms differ only in the objective; realised scoring applies the real autosub
+rules. Over 74 paired gameweeks (2024-25 + 2025-26, `compare-rank-backtests`):
+
+| arm vs the crowd's own XI+captain | pts/gw | p |
+|---|---|---|
+| max-xP (the current rule) | **+2.11** | 0.027 |
+| MFRU gamma=0 | **+2.38** | 0.008 |
+| MFRU gamma=+0.3 / -0.3 | +2.39 / +1.82 | 0.012 / 0.036 |
+
+| arm vs max-xP | pts/gw | p |
+|---|---|---|
+| MFRU gamma=0 (autosub+armband channels) | +0.27 | 0.63 |
+| every gamma in ±{0.15, 0.3} | -0.28 … +0.28 | ≥ 0.51 |
+| sim-mean instead of analytic mean | -0.30 | 0.58 |
+
+Read it plainly: **the decision layer's edge over the crowd is real,
+replicated and now measured at the full-XI level** (~+2.1-2.4 pts/week, or
+~80-90 points a season, consistent with the captaincy study's +0.7-1.1 from
+the armband alone). **The incremental edge of MFRU over max-xP is unproven**:
++0.27/week pooled, sign flips between seasons (+1.6 in 2024-25, -1.1 in
+2025-26). The autosub channel changes the XI or bench in a quarter of
+gameweeks and the captain in ~28%, yet the realised means cannot separate it
+from the current rule at n=74 — the same wall as captaincy criteria and chip
+timing. And the gamma result is the theorem working as stated: risk pricing
+is not supposed to move the mean. Validating a nonzero gamma needs rank
+distributions over thousands of gameweeks, which this repo does not have.
+
+So the model ships as measurement infrastructure and as the formal answer to
+"where is the remaining edge": it is in playing the decision layer at all
+(which max-xP already does), not in EO-adjusting it. MFRU's gamma stays 0 —
+i.e. behaviourally the current rule — until a rank-tail objective can be
+tested honestly. Unit tests pin the autosub operator's FPL rules
+(like-for-like GK, formation-blocked subs, bench-order priority, armband)
+and the gamma=0 = max-xP equivalence (`tests/test_rank_utility.py`).
+
+## Sportmonks: audited, not usable
 
 Two independent hard blockers on the free plan, both verified against the API
 rather than inferred from documentation:
