@@ -942,6 +942,39 @@ Per the brief, the modelling engine is untouched. The first integration, when
 there is enough history to judge it, is availability → xMins — and it must clear
 the same bar as everything else: a paired backtest, or it does not ship.
 
+### The repository is now the archive (scheduled collection)
+
+The SQLite file is gitignored and rebuilt from free sources, so anything
+collected only into it dies with the clone — which is how two seasons of
+availability history were lost. `acquire/actions.py` +
+`.github/workflows/collect.yml` fix the class of problem: a scheduled
+GitHub Actions run (4x daily, stdlib-only, no secrets) fetches the official
+bootstrap and commits to `data/collected/`:
+
+* `availability.jsonl` — append-only team-news change log (status,
+  chance_next, verbatim news, FPL's `news_added`), a line only when a
+  player's state actually changed. This is the Phase-2 Priority-2 dataset
+  accruing forward.
+* `snapshots/<utc>.csv.gz` — one compact per-run market snapshot (price,
+  ownership, transfers, ep_next, form) for the deadline-decay question
+  ("how much is each hour of information worth?").
+* `ownership/gw<n>.csv` — overwritten until that gameweek's deadline
+  passes, then frozen: the last pre-deadline ownership, i.e. the lagged-EO
+  input collected forward instead of reconstructed.
+* `picks/<season>/gw<n>.csv` — the proven-manager panel's squads, fetched
+  once per passed deadline (picks lock at the deadline, so post-deadline
+  collection is point-in-time valid).
+* `panel.json` — the fixed panel. Graded on PAST seasons only; the 2026-27
+  panel was enumerated after GW2, so its GW1-2 picks are conditioned and
+  excluded from any differential analysis (see RESEARCH_LOG).
+
+`python -m acquire actions-import` replays the file archive into the
+`acq_*` change-log tables so research keeps one query surface. Scheduled
+workflows fire only on the default branch — the workflow must be merged to
+`main` before the cron runs. Tests: `tests/test_acquire_actions.py`
+(append-only idempotence, ownership freeze, importer idempotence, and the
+no-model-import rule).
+
 ### Round 8b: a predicted-lineup model of our own
 
 Building P(start) from our own team-sheet history, rather than scraping

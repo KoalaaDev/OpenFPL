@@ -125,3 +125,52 @@ pooled with `compare-rank-backtests`.
   acquire change log existed; the overlay stays live-only.
 * Everything in CLAUDE.md "Tested and rejected" and Rounds 8/8b (projection
   sharpening) stands.
+
+---
+
+# Phase 2 — information over objectives
+
+Mandate: max-xP is the immutable champion; every change is a challenger
+needing robust out-of-sample evidence. The identified bottleneck is minutes
+uncertainty, and the ledger says the model is saturated on *historical*
+features (six attempts ≤0.25% log-loss, Rounds 8/8b) — so the lever is new
+information at the deadline, which must first be archived point-in-time.
+
+## E5. Scheduled collection: the repo as the archive
+
+* **What.** `acquire/actions.py` + `.github/workflows/collect.yml`: 4x-daily
+  stdlib-only Actions runs committing to `data/collected/` — availability
+  change log (P2 dataset), per-run market snapshots (deadline-decay, §8 of
+  the mandate), frozen pre-deadline ownership per gw, panel picks per
+  deadline. Importer replays files into the `acq_*` tables.
+* **Why files, not the DB.** The SQLite is gitignored; two seasons of
+  availability died with it once already. Files in git survive clones,
+  diff cleanly, and timestamp themselves through commit history as a
+  secondary audit trail.
+* **Panel caveat (pre-registered).** The 2026-27 panel was enumerated from
+  the overall table after GW2; membership is graded on past seasons only,
+  but reachability through today's table is conditioned on a good GW1-2.
+  Therefore: GW1-2 picks are archived but excluded from differential
+  analyses; panel-vs-model evaluation starts at GW4 and needs ~10-15
+  gameweeks of picks to be testable at all (E10-style power caveats apply).
+* **What unlocks when.** Deadline-decay curves and the late-news change
+  engine: after a few gameweeks of snapshots. Availability -> xMins
+  challenger: needs roughly a season of change-log history to backtest
+  honestly (the stored FPL status is only "today's"). Elite-manager
+  disagreement signal: ~10-15 gws. Each will be run as champion/challenger
+  with paired tests when its data exists — not before.
+
+## Phase-2 priority gating (what is NOT being done yet, and why)
+
+* Press conferences / journalist lineups: no free archived, timestamped
+  source found (Sportmonks free tier 403s expectedLineups — audited in
+  CLAUDE.md); revisit only with a source whose historical predictions are
+  archived per fixture with timestamps.
+* Bookmaker info beyond what ships: already measured — market encompasses
+  the team model at team level, ODDS_WEIGHT insensitive at player level;
+  anytime-scorer/clean-sheet player props have no free historical archive.
+  Do not re-run without new data.
+* Transfer-layer optimisation (§16): explicitly deferred by the mandate
+  until the weekly layer is stable; the MILP already handles the
+  mechanics, and decision-layer evidence says its projections are the
+  binding input.
