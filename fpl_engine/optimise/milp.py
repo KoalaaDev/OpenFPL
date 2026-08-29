@@ -215,8 +215,11 @@ def _extract(prob, ids, gws, name, pos, ep, squad, xi, cap, tin, tout,
         squad_ids = [p for p in ids if _val(squad[p][t])]
         xi_ids = [p for p in ids if _val(xi[p][t])]
         cap_id = next((p for p in ids if _val(cap[p][t])), None)
-        ins = [name[p] for p in ids if _val(tin[p][t])]
-        outs = [name[p] for p in ids if _val(tout[p][t])]
+        # ordered by position so the IN and OUT lines pair up line-for-line;
+        # unsorted they are two id-ordered sets and read as illegal swaps
+        _k = lambda p: (["GK", "DEF", "MID", "FWD"].index(pos[p]), name[p])
+        ins = [name[p] for p in sorted((p for p in ids if _val(tin[p][t])), key=_k)]
+        outs = [name[p] for p in sorted((p for p in ids if _val(tout[p][t])), key=_k)]
         xi_pts = sum(ep[g][p] for p in xi_ids) + (ep[g][cap_id] if cap_id else 0)
         plan.per_gw.append({
             "gw": g,

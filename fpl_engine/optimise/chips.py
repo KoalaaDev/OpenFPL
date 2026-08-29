@@ -233,6 +233,7 @@ def optimise_with_chips(
     banned_clubs: set[int] | None = None,
     sell_clubs: set[int] | None = None,
     allow_hits: bool = True,
+    concentration: float = 0.0,
     forced_in: dict[int, list[int]] | None = None,
     forced_out: dict[int, list[int]] | None = None,
     min_ft: dict[int, int] | None = None,
@@ -372,6 +373,33 @@ def optimise_with_chips(
             if chip_gws.get(c) and reserve.get(c):
                 obj.append(-float(reserve[c]) * chip[c][t])
     obj.append(ft_value * ftv[T[-1]])
+    # --- portfolio concentration (experimental; 0.0 is an exact no-op) ---
+    # Players from one club share a fixture, so their returns are correlated:
+    # independence understates a one-club triple-up's spread by 6% and a whole
+    # XI's by 8%. A positive weight prices that correlation as a cost (spread
+    # out), a negative one as a benefit (concentrate deliberately).
+    #
+    # The excess must be pinned EXACTLY, not merely bounded below. A one-sided
+    # `z >= n - 1` is correct for a penalty but leaves the objective unbounded
+    # the moment the weight goes negative, because nothing stops z running to
+    # infinity. So y_k is a true indicator for "at least k from this club":
+    #     n >= k * y_k         y_k can only be 1 when the players are there
+    #     n <= (k-1) + M * y_k y_k must be 1 once they are
+    # and the excess is y_2 + y_3, exact for every n in 0..MAX_PER_CLUB.
+    if concentration:
+        for t_i, g in enumerate(gws):
+            d = decay ** t_i
+            for cl in sorted(set(club.values())):
+                members = [p for p in ids if club[p] == cl]
+                if len(members) < 2:
+                    continue
+                n = pulp.lpSum(xi[p][t_i] for p in members)
+                for k in range(2, MAX_PER_CLUB + 1):
+                    y = pulp.LpVariable(f"conc_{cl}_{t_i}_{k}", cat="Binary")
+                    prob += n >= k * y
+                    prob += n <= (k - 1) + MAX_PER_CLUB * y
+                    obj.append(-concentration * d * y)
+
     prob += pulp.lpSum(obj)
 
     # --- per-gameweek structure (played squad) ---
@@ -453,7 +481,15 @@ def optimise_with_chips(
         elif free0 and t == 1:
             prob += ftv[t] == 1
         else:
-            prob += ftv[t] <= ftv[t - 1] - fused[t - 1] + 1
+            # A Wildcard or Free Hit week PRESERVES the stock, it does not
+            # add to it. FPL: "any saved free transfers are maintained for the
+            # following Gameweek. If you had 2 saved free transfers, you will
+            # still have 2 saved free transfers the Gameweek after playing the
+            # chip." Two in, two out - so the usual +1 accrual is suspended for
+            # a gameweek in which a chip was played. wc/fh are literal 0 for
+            # any chip the manager does not hold, so this is inert then.
+            prob += (ftv[t] <= ftv[t - 1] - fused[t - 1] + 1
+                     - wc[t - 1] - fh[t - 1])
             prob += ftv[t] >= 1
         g = gw_of[t]
         if g in min_ft:
@@ -508,7 +544,8 @@ def optimise_with_chips(
         if pulp.LpStatus[prob.status] not in ("Optimal", "Not Solved"):
             break
         plan = _extract(prob, ids, gws, name, pos, club, price, sell, ep,
-                        squad, xi, cap, tin, tout, fused, paid, ftv, bankv, chip)
+                        squad, xi, cap, tin, tout, fused, paid, ftv, bankv,
+                        chip, carry, prev)
         if plan is None:
             break
         plans.append(plan)
@@ -531,7 +568,12 @@ def _v(var) -> int:
 
 
 def _extract(prob, ids, gws, name, pos, club, price, sell, ep,
-             squad, xi, cap, tin, tout, fused, paid, ftv, bankv, chip):
+             squad, xi, cap, tin, tout, fused, paid, ftv, bankv, chip,
+             carry=None, prev=None):
+    def _by_position(p):
+        """Order transfers so the IN and OUT lists pair up by index."""
+        return (list(POSITION_QUOTA).index(pos[p]), -price[p], p)
+
     plan = ChipPlan(gws=gws, objective=pulp.value(prob.objective) or 0.0,
                     status=pulp.LpStatus[prob.status])
     for t, g in enumerate(gws):
@@ -553,6 +595,16 @@ def _extract(prob, ids, gws, name, pos, club, price, sell, ep,
         if cap_id is not None:
             xi_pts += (mult - 1) * ep[g][cap_id]
         bench_ids = [p for p in squad_ids if p not in xi_ids]
+        fh_in = fh_out = []
+        if chip_now == "freehit" and prev is not None:
+            base_ids = {p for p in ids
+                        if (prev[p] if t == 0 else _v(carry[p][t - 1]))}
+            fh_in = [{"player_id": p, "name": name[p], "position": pos[p],
+                      "ep": round(ep[g][p], 2)}
+                     for p in sorted(set(squad_ids) - base_ids, key=_by_position)]
+            fh_out = [{"player_id": p, "name": name[p], "position": pos[p],
+                       "ep": round(ep[g][p], 2)}
+                      for p in sorted(base_ids - set(squad_ids), key=_by_position)]
         if chip_now == "bench_boost":
             xi_pts += sum(ep[g][p] for p in bench_ids)
         plan.per_gw.append({
@@ -570,10 +622,26 @@ def _extract(prob, ids, gws, name, pos, club, price, sell, ep,
             "captain": name.get(cap_id), "captain_id": cap_id,
             "vice": name.get(vice_id), "vice_id": vice_id,
             "xi_points": round(xi_pts, 2),
-            "transfers_in": [{"player_id": p, "name": name[p]}
-                             for p in ids if _v(tin[p][t])],
-            "transfers_out": [{"player_id": p, "name": name[p]}
-                              for p in ids if _v(tout[p][t])],
+            # Both lists are ordered by POSITION, which makes pairing them by
+            # index legal. The squad quota is enforced every gameweek, so the
+            # number leaving a position always equals the number arriving in
+            # it; without the sort these are two id-ordered sets and a consumer
+            # zipping them shows moves like "DEF -> FWD" that the solver never
+            # made and the rules would not allow.
+            "transfers_in": [{"player_id": p, "name": name[p],
+                              "position": pos[p]}
+                             for p in sorted((p for p in ids if _v(tin[p][t])),
+                                             key=_by_position)],
+            "transfers_out": [{"player_id": p, "name": name[p],
+                               "position": pos[p]}
+                              for p in sorted((p for p in ids if _v(tout[p][t])),
+                                              key=_by_position)],
+            # A Free Hit is not a transfer - the rules make it free and it
+            # reverts - so tin/tout are pinned to zero that week and the plan
+            # would otherwise report "no changes" for the one gameweek that
+            # changes most. These say what the chip actually does: the played
+            # squad against the squad you would have fielded without it.
+            "fh_in": fh_in, "fh_out": fh_out,
             "n_transfers": sum(_v(tin[p][t]) for p in ids),
             "free_used": _v(fused[t]), "hits": _v(paid[t]),
             "free_after": _v(ftv[t]) - _v(fused[t]),
