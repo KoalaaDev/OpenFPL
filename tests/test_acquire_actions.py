@@ -106,13 +106,6 @@ def test_import_replays_the_archive_idempotently(tmp_path):
         "SELECT status, news, source_published_utc FROM "
         "acq_player_availability ORDER BY observed_utc").fetchall()
     assert got[0][0] == "a" and got[1][:2] == ("i", "Ankle injury")
-
-
-def test_the_collector_does_not_import_the_model(tmp_path):
-    """Same discipline as the acquirer: file collection must never touch
-    model code (fpl_engine beyond db/config)."""
-    import sys
-    actions.collect(str(tmp_path), payload=_boot())
-    for mod in ("fpl_engine.features", "fpl_engine.predict",
-                "fpl_engine.xpts.engine", "fpl_engine.minutes"):
-        assert mod not in sys.modules
+    # the no-model-import architecture rule is enforced for actions.py by
+    # test_acquire.test_the_acquirer_does_not_import_the_model (static scan
+    # of every file under acquire/), so it is not duplicated here
