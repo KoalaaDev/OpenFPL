@@ -3,8 +3,11 @@ import { api } from '../api'
 import { Donut, EOBars, LineChart, OverlapMatrix, Radar, StatTile, VIZ,
          VIZ_NEUTRAL } from '../charts'
 import Flag from '../components/Flag'
+import { Empty } from '../components/States'
 import { useStore } from '../store'
 import { badgeUrl, bestXI, epOf, fmt1, formationRows, money, shirtUrl } from '../util'
+
+const POS_RANK = { GK: 0, DEF: 1, MID: 2, FWD: 3 }
 
 const CHIP_MAP = { wildcard: 'WC', freehit: 'FH', bboost: 'BB', '3xc': 'TC', manager: 'AM' }
 
@@ -193,6 +196,47 @@ export default function MiniLeague() {
     })).filter((s) => s.points.length)
   }, [withPicks, me, entryId])
 
+  /* The best legal XI that could have been fielded last gameweek out of every
+     player anyone in this league owned. It answers a question the table cannot:
+     how much of the available score was actually reachable, and how much of it
+     you were holding. Uses REALISED points, so it is hindsight by construction
+     - that is the point of it. */
+  const lastBest = useMemo(() => {
+    const owners = new Map()
+    for (const e of withPicks) {
+      for (const pk of e.picks) {
+        const r = owners.get(pk.element) || { n: 0, mine: false }
+        r.n += 1
+        if (e.entry === entryId) r.mine = true
+        owners.set(pk.element, r)
+      }
+    }
+    const pool = [...owners.keys()].map((id) => byId.get(id)).filter(Boolean)
+    if (!pool.length) return { xi: [], total: 0, pool: 0, n: 0, mineCount: 0 }
+    const ptsOf = (id) => byId.get(id)?.event_points ?? 0
+    if (!pool.some((q) => (q.event_points ?? 0) > 0)) {
+      return { xi: [], total: 0, pool: pool.length, n: withPicks.length, mineCount: 0 }
+    }
+    const posOfId = (id) => byId.get(id)?.position
+    const ids = bestXI(pool.map((q) => q.id), posOfId, ptsOf)
+    const xi = ids.map((id) => {
+      const q = byId.get(id)
+      const o = owners.get(id) || { n: 0, mine: false }
+      return { id, name: q.web_name, position: q.position, pts: ptsOf(id),
+               owners: o.n, mine: o.mine }
+    }).sort((a, b) => POS_RANK[a.position] - POS_RANK[b.position] || b.pts - a.pts)
+    return {
+      xi,
+      total: xi.reduce((a, r) => a + r.pts, 0),
+      pool: pool.length,
+      n: withPicks.length,
+      mineCount: xi.filter((r) => r.mine).length,
+    }
+  }, [withPicks, byId, entryId])
+
+  const maxGwPts = useMemo(
+    () => Math.max(0, ...progression.map((s) => s.points.length)), [progression])
+
   // squad overlap matrix (top 10 by rank + me)
   const overlap = useMemo(() => {
     const ranked = [...withPicks].sort((a, b) => (a.rank || 99) - (b.rank || 99))
@@ -324,21 +368,22 @@ export default function MiniLeague() {
       </div>
 
       {!data && (
-        <div className="panel center-note">
-          <h3>Analyse your mini league</h3>
-          <p style={{ maxWidth: 560, margin: '0 auto' }}>
-            Enter a classic league id for the full dashboard: standings with
-            projections, playstyle radar, effective ownership, captaincy,
-            hidden gems, threats, squad overlap and season progression.
-          </p>
+        <div className="panel">
+          <Empty mark="🏆" title="Analyse your mini league">
+            Enter a classic league id above for the full dashboard: standings with
+            projections, the Team DNA radar, effective ownership, captaincy,
+            hidden gems, threats, last gameweek&apos;s best XI, squad overlap and
+            season progression. The id is the number in the league&apos;s URL.
+          </Empty>
         </div>
       )}
 
       {data && !withPicks.length && (
-        <div className="panel center-note" style={{ marginBottom: 16 }}>
-          <h3>Squads not public yet</h3>
-          <p>FPL exposes picks once a gameweek deadline passes — re-analyse
-            after the GW{data.gw ?? 1} deadline.</p>
+        <div className="panel" style={{ marginBottom: 16 }}>
+          <Empty mark="🔒" title="Squads are not public yet">
+            FPL only exposes picks once a gameweek deadline has passed — re-analyse
+            after the GW{data.gw ?? 1} deadline and the full dashboard will fill in.
+          </Empty>
         </div>
       )}
 
@@ -665,14 +710,74 @@ export default function MiniLeague() {
             </div>
           </div>
 
+          {/* ---- what the league actually had available last gameweek ---- */}
+          <div className="panel">
+            <div className="panel-head">
+              Last gameweek&apos;s best XI — from players someone in this league owned
+            </div>
+            <div style={{ padding: '10px 14px 14px' }}>
+              {lastBest.xi.length ? (
+                <>
+                  <div className="lbx-grid">
+                    {lastBest.xi.map((r) => (
+                      <div key={r.id} className={`lbx ${r.mine ? 'mine' : ''}`}>
+                        <span className="pos">{r.position}</span>
+                        <span className="nm">{r.name}</span>
+                        <span className="ow" title={`${r.owners} of ${lastBest.n} managers owned him`}>
+                          {Math.round((r.owners / Math.max(1, lastBest.n)) * 100)}%
+                        </span>
+                        <b>{r.pts}</b>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="viz-note">
+                    <b>{lastBest.total} points</b> was the best legal XI available from
+                    the {lastBest.pool} distinct players this league owned
+                    {lastBest.mineCount ? <> — you owned <b>{lastBest.mineCount}</b> of
+                      the eleven</> : null}. Highlighted rows are yours; the percentage
+                    is how many managers here held him.
+                  </p>
+                </>
+              ) : (
+                <p className="ml-note">
+                  No completed gameweek yet, or no squads loaded.
+                </p>
+              )}
+            </div>
+          </div>
+
           {/* ---- wide bottom row ---- */}
           <div className="mld-bottom">
             <div className="panel">
               <div className="panel-head">Season progression — total points</div>
               <div style={{ padding: '12px 14px' }}>
-                {progression.length
+                {/* One gameweek is a dot, not a line - a LineChart given a
+                    single point draws nothing and reads as broken. Say what is
+                    actually happening instead. */}
+                {progression.length && maxGwPts >= 2
                   ? <LineChart series={progression} yLabel="total pts" height={250} />
-                  : <p className="ml-note">Charts grow as gameweeks complete.</p>}
+                  : progression.length
+                    ? (
+                      <div className="ml-early">
+                        <p>
+                          Only <b>{maxGwPts} gameweek{maxGwPts === 1 ? '' : 's'}</b> have
+                          been played, so there is no trend to draw yet. Standings
+                          after one gameweek are almost entirely noise — the overall
+                          top 250 sampled at this point had a median past-season rank
+                          of <b>2.6 million</b>.
+                        </p>
+                        <div className="ml-early-rows">
+                          {progression.map((s) => (
+                            <div key={s.name}>
+                              <i style={{ background: s.color }} />
+                              <span className={s.me ? 'me' : ''}>{s.name}</span>
+                              <b>{s.points[s.points.length - 1]?.y ?? '–'}</b>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                    : <p className="ml-note">Charts grow as gameweeks complete.</p>}
               </div>
             </div>
             <div className="panel">

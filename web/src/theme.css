@@ -755,3 +755,438 @@ input[type='range'] { accent-color: var(--accent); flex: 1; }
 .fh-p em { font-style: normal; font-family: var(--mono); color: var(--blue); font-weight: 700; }
 .fh-p i { font-style: normal; font-family: var(--mono); color: var(--muted-2); }
 .fh-foot { margin-top: 6px; color: var(--muted-2); font-size: 10px; line-height: 1.5; }
+
+/* ---- clickable player rows (Projections opens the same card as Planner) --- */
+.pl-cell.clickable { cursor: pointer; border-radius: 6px; }
+.pl-cell.clickable:hover .nm { color: var(--accent); }
+.pl-cell.clickable:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 2px;
+}
+
+/* ---- player profile radar inside the card ------------------------------- */
+.pm-profile {
+  margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line);
+}
+.pm-profile .viz-wrap { margin-top: 6px; }
+
+/* ---- a fixture that a bookmaker has actually priced --------------------- */
+.fdr-cell { position: relative; }
+.odds-dot {
+  position: absolute; top: 3px; right: 3px;
+  width: 4px; height: 4px; border-radius: 50%;
+  background: currentColor; opacity: 0.55;
+}
+
+/* ---- price movers ------------------------------------------------------- */
+.prc-explain { padding: 12px 16px 14px; }
+.prc-explain p { margin: 0 0 8px; font-size: 12.5px; line-height: 1.55; color: var(--muted); }
+.prc-explain p:last-child { margin-bottom: 0; }
+.prc-explain b { color: var(--text); }
+.prc-table td { vertical-align: middle; }
+.prc-bar {
+  display: inline-block; width: 64px; height: 6px; border-radius: 3px;
+  background: var(--bg-deep); overflow: hidden; vertical-align: middle;
+}
+.prc-bar > div { height: 100%; border-radius: 3px; }
+.prc-n { margin-left: 7px; font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.prc-unit { font-size: 10.5px; color: var(--muted-2); }
+
+/* ---- Team DNA in the planner ------------------------------------------- */
+.dna-panel { margin-top: 12px; padding-bottom: 10px; }
+
+/* ---- mini league: early-season progression fallback --------------------- */
+.ml-early { padding: 4px 2px 2px; }
+.ml-early p { margin: 0 0 12px; font-size: 12.5px; line-height: 1.55; color: var(--muted); }
+.ml-early b { color: var(--text); }
+.ml-early-rows { display: flex; flex-direction: column; gap: 6px; }
+.ml-early-rows > div {
+  display: grid; grid-template-columns: 10px 1fr auto; gap: 10px;
+  align-items: center; font-size: 12.5px; color: var(--muted);
+}
+.ml-early-rows i { width: 9px; height: 9px; border-radius: 2px; }
+.ml-early-rows .me { color: var(--text); font-weight: 700; }
+.ml-early-rows b { color: var(--text); font-variant-numeric: tabular-nums; }
+
+/* ---- mini league: last gameweek's best XI ------------------------------ */
+.lbx-grid { display: flex; flex-direction: column; gap: 3px; }
+.lbx {
+  display: grid; grid-template-columns: 34px 1fr 46px 34px; gap: 8px;
+  align-items: center; padding: 5px 8px; border-radius: 6px;
+  font-size: 12.5px; color: var(--muted); background: var(--bg-deep);
+}
+.lbx.mine { background: color-mix(in srgb, var(--accent) 16%, var(--bg-deep)); }
+.lbx .pos { font-size: 10px; font-weight: 800; color: var(--muted-2); }
+.lbx .nm { color: var(--text); font-weight: 600; }
+.lbx .ow { text-align: right; font-size: 11px; color: var(--muted-2);
+           font-variant-numeric: tabular-nums; }
+.lbx b { text-align: right; color: var(--text); font-variant-numeric: tabular-nums; }
+
+/* ---- model assist bar (Planner) ---------------------------------------- */
+.assist {
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: 10px; padding: 11px 13px 10px; margin-bottom: 12px;
+}
+.assist-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 12px; flex-wrap: wrap; margin-bottom: 9px;
+}
+.assist-gap { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.assist-gap b { color: var(--text); }
+.assist-gap .up { color: var(--accent); font-weight: 700; margin-left: 4px; }
+.assist-gap .ok { color: var(--muted-2); }
+.assist-row { display: flex; gap: 7px; flex-wrap: wrap; }
+.assist-note {
+  margin-top: 9px; font-size: 11.5px; color: var(--muted);
+  display: flex; align-items: center; gap: 7px;
+}
+.assist-hint {
+  margin: 9px 0 0; font-size: 11px; line-height: 1.5; color: var(--muted-2);
+}
+
+/* ---- routes (drafts) verdict ------------------------------------------- */
+.routes-verdict {
+  padding: 9px 12px; font-size: 12px; line-height: 1.55; color: var(--muted);
+  border-bottom: 1px solid var(--line);
+}
+.routes-verdict b { color: var(--text); }
+.routes-verdict .down { color: var(--red); font-weight: 700; }
+.routes-verdict .note { display: block; margin-top: 3px; font-size: 10.5px; color: var(--muted-2); }
+.draft-row.leads .draft-total .t { color: var(--accent); }
+.draft-row.leads .draft-total .s { color: var(--accent); font-weight: 700; }
+
+/* ---- market mode: unpriced fixtures and the coverage warning ------------ */
+.fdr-cell.unpriced {
+  background: repeating-linear-gradient(
+    -45deg, var(--bg-deep), var(--bg-deep) 4px,
+    color-mix(in srgb, var(--line) 55%, transparent) 4px,
+    color-mix(in srgb, var(--line) 55%, transparent) 8px);
+  color: var(--muted-2);
+  border: 1px dashed var(--line);
+}
+.fdr-cell.unpriced .val { font-size: 9px; letter-spacing: 0.02em; }
+.odds-warn {
+  margin: 10px 12px 0; padding: 10px 13px;
+  border: 1px solid color-mix(in srgb, var(--red) 45%, var(--line));
+  background: color-mix(in srgb, var(--red) 9%, var(--panel));
+  border-radius: 8px; font-size: 12px; line-height: 1.55; color: var(--muted);
+}
+.odds-warn b { color: var(--text); }
+.odds-warn code {
+  font-size: 11.5px; padding: 1px 5px; border-radius: 4px;
+  background: var(--bg-deep); color: var(--text);
+}
+.odds-warn ul { margin: 7px 0 0; padding-left: 18px; }
+.odds-warn li { margin-bottom: 5px; }
+.odds-warn li:last-child { margin-bottom: 0; }
+
+/* ---- planner: grow the horizon, and unprojected != played --------------- */
+.gw-dot.add { font-weight: 800; color: var(--muted-2); }
+.gw-dot.add:not(:disabled):hover { color: var(--accent); border-color: var(--accent); }
+.gw-dot.add:disabled { opacity: 0.35; cursor: default; }
+.gw-dot.noproj { border-style: dashed; color: var(--muted-2); }
+.past-gw-note.build {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+  background: color-mix(in srgb, var(--accent) 9%, var(--panel));
+}
+
+/* ---- routes: keep long labels and totals inside the box ---------------- */
+.draft-row { grid-template-columns: minmax(86px, 108px) minmax(0, 1fr) 78px 24px; }
+.draft-name { min-width: 0; overflow: hidden; }
+.draft-name, .draft-name .sub {
+  white-space: nowrap; text-overflow: ellipsis; overflow: hidden;
+}
+.draft-cells { min-width: 0; }
+.draft-total { min-width: 0; white-space: nowrap; }
+.draft-total .t { font-size: 13px; }
+.draft-total .s { font-size: 9px; overflow: hidden; text-overflow: ellipsis; }
+
+/* =========================================================================
+   POLISH LAYER
+   Appended deliberately so it wins the cascade over the rules above without
+   rewriting them. Three things were missing rather than wrong: the interface
+   had no MOTION (one transition in nine hundred lines), no FOCUS treatment at
+   all (invisible to the keyboard, and a focus ring is the cheapest signal that
+   software was finished), and no shared vocabulary for LOADING and EMPTY, so
+   every tab improvised one.
+   ========================================================================= */
+
+:root {
+  /* spacing — a 4px rhythm, so padding stops being guessed per component */
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px;
+
+  /* radii: controls, surfaces, overlays */
+  --r-sm: 6px; --r-md: 9px; --r-lg: 13px;
+
+  /* elevation. Flat panels on a flat background read as a wireframe; a very
+     low-alpha lift is what separates "laid out" from "designed". */
+  --e1: 0 1px 2px rgba(0, 0, 0, 0.18);
+  --e2: 0 2px 6px rgba(0, 0, 0, 0.22), 0 1px 2px rgba(0, 0, 0, 0.16);
+  --e3: 0 12px 34px rgba(0, 0, 0, 0.42), 0 2px 8px rgba(0, 0, 0, 0.24);
+
+  /* motion — one duration and one curve, used everywhere */
+  --dur: 140ms;
+  --dur-slow: 240ms;
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+
+  --ring: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
+  --hairline: color-mix(in srgb, var(--line) 62%, transparent);
+}
+
+body {
+  line-height: 1.45;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: 'cv05' 1, 'ss01' 1;
+}
+::selection { background: color-mix(in srgb, var(--accent) 40%, transparent); color: #fff; }
+
+/* Every number in the app is compared against another number in the row above
+   it, so they must share a column width. */
+.num, .ptable td, .ptable th, .fdr td, td.num, .draft-total, .prc-n {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- motion + focus, applied once, centrally ---------------------- */
+.pill-btn, .tab, .gw-dot, .draft-cell, .chip-btn, .fdr-cell,
+.ptable tbody tr, .pl-cell.clickable, .draft-row, .search, .lbx {
+  transition: background-color var(--dur) var(--ease),
+              border-color var(--dur) var(--ease),
+              color var(--dur) var(--ease),
+              box-shadow var(--dur) var(--ease),
+              transform var(--dur) var(--ease);
+}
+.pill-btn:active:not(:disabled) { transform: translateY(1px); }
+.pill-btn:hover:not(:disabled) { box-shadow: var(--e1); }
+.pill-btn:disabled { opacity: 0.4; box-shadow: none; transform: none; }
+
+/* One visible, consistent keyboard focus ring. `:focus-visible` keeps it off
+   mouse clicks, which is why this can be bold enough to actually see. */
+button:focus-visible, a:focus-visible, input:focus-visible,
+select:focus-visible, [tabindex]:focus-visible, summary:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+  border-radius: var(--r-sm);
+}
+.search:focus-within {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--line));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important; animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important; scroll-behavior: auto !important;
+  }
+}
+
+/* ---------- surfaces ----------------------------------------------------- */
+.panel { box-shadow: var(--e1); }
+.panel-head {
+  letter-spacing: 0.09em;
+  color: color-mix(in srgb, var(--muted) 82%, var(--text));
+}
+.dd-menu, .pmodal { box-shadow: var(--e3); }
+
+/* ---------- tables ------------------------------------------------------- */
+/* A sticky header floating over rows with no separation looks like a bug; the
+   shadow only appears once something has scrolled under it. */
+.ptable thead th {
+  background: linear-gradient(var(--panel), var(--panel));
+  box-shadow: 0 1px 0 var(--line), 0 4px 10px -8px rgba(0, 0, 0, 0.9);
+  padding-top: 11px; padding-bottom: 11px;
+}
+.ptable tbody td { border-bottom: 1px solid var(--hairline); }
+.ptable tbody tr:last-child td { border-bottom: none; }
+.ptable tbody tr:hover { background: var(--panel-2); box-shadow: inset 2px 0 0 var(--accent); }
+.ptable thead th:first-child, .ptable tbody td:first-child { padding-left: var(--s4); }
+.ptable thead th:last-child, .ptable tbody td:last-child { padding-right: var(--s4); }
+.ptable thead th.sorted::after { content: ''; }
+
+/* ---------- loading + empty, shared ------------------------------------- */
+.skeleton {
+  position: relative; overflow: hidden;
+  background: var(--panel-2); border-radius: var(--r-sm);
+}
+.skeleton::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent,
+    color-mix(in srgb, var(--panel-3) 85%, transparent), transparent);
+  transform: translateX(-100%);
+  animation: sk 1.35s var(--ease) infinite;
+}
+@keyframes sk { to { transform: translateX(100%); } }
+.sk-row { height: 34px; margin: 6px var(--s4); }
+.sk-row:first-child { margin-top: var(--s4); }
+.sk-row:last-child { margin-bottom: var(--s4); }
+
+.empty-state {
+  display: flex; flex-direction: column; align-items: center; gap: var(--s2);
+  padding: var(--s6) var(--s5); text-align: center;
+}
+.empty-state .es-mark {
+  width: 38px; height: 38px; border-radius: 50%;
+  display: grid; place-items: center; font-size: 17px;
+  background: var(--panel-2); color: var(--muted-2); margin-bottom: var(--s1);
+}
+.empty-state h3 { font-size: 14px; font-weight: 700; color: var(--text); }
+.empty-state p {
+  font-size: 12.5px; line-height: 1.6; color: var(--muted);
+  max-width: 52ch; margin: 0;
+}
+.empty-state .es-actions { display: flex; gap: var(--s2); margin-top: var(--s2); }
+
+/* ---------- chrome ------------------------------------------------------- */
+.topnav { box-shadow: var(--e1); }
+.topnav .tab { position: relative; letter-spacing: 0.12em; }
+.topnav .tab::after {
+  content: ''; position: absolute; left: 50%; right: 50%; bottom: -1px; height: 3px;
+  background: var(--accent); border-radius: 2px 2px 0 0;
+  transition: left var(--dur-slow) var(--ease), right var(--dur-slow) var(--ease);
+}
+.topnav .tab.active { border-bottom-color: transparent; }
+.topnav .tab.active::after { left: 18px; right: 18px; }
+
+::-webkit-scrollbar-thumb {
+  background: var(--panel-3); border-radius: 6px;
+  border: 2px solid transparent; background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--line); background-clip: padding-box; }
+
+/* toolbars breathe consistently rather than per-tab */
+.toolbar, .filterbar { display: flex; align-items: center; gap: var(--s2); flex-wrap: wrap; }
+.empty-state .es-mark.es-err {
+  background: color-mix(in srgb, var(--red) 18%, var(--panel-2));
+  color: var(--red); font-weight: 800;
+}
+
+/* the "no projections" warning carries its own fix, so it needs a row layout */
+.past-gw-note.build {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--s4); flex-wrap: wrap;
+}
+.past-gw-note.build > span { flex: 1 1 320px; }
+
+/* ---- routes: a sidebar is too narrow for one line ----------------------- */
+/* Name, gameweek cells, total and controls did not fit across ~470px, so the
+   cells overflowed and the last gameweek was clipped. Two rows instead: the
+   identity line, then the gameweeks across the full width. */
+.draft-row {
+  grid-template-columns: minmax(0, 1fr) 76px 22px;
+  grid-template-areas: "name total btns" "cells cells cells";
+  row-gap: 7px; padding: 9px 12px;
+}
+.draft-name { grid-area: name; }
+.draft-total { grid-area: total; }
+.draft-row > div:last-child { grid-area: btns; }
+.draft-cells {
+  grid-area: cells; display: grid; gap: 5px;
+  grid-template-columns: repeat(auto-fit, minmax(52px, 1fr));
+  overflow: visible;
+}
+.draft-cell { min-width: 0; padding: 4px 3px; }
+.draft-cell .ev { font-size: 12px; }
+.draft-cell .mv { font-size: 8.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.draft-total { text-align: right; align-self: center; }
+.draft-total .t { font-size: 14px; line-height: 1.15; }
+
+/* ---- the analysing radar ------------------------------------------------ */
+.radar-loader {
+  display: flex; flex-direction: column; align-items: center; gap: var(--s2);
+  padding: var(--s5) var(--s4);
+}
+.radar-loader.inline { padding: var(--s3) 0; }
+.radar-loader svg { display: block; overflow: visible; }
+.rl-label {
+  font-size: 11px; font-weight: 800; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--muted);
+}
+.rl-sub {
+  font-size: 12px; color: var(--muted-2); text-align: center;
+  max-width: 44ch; line-height: 1.5; min-height: 1.2em;
+}
+.boot-loader {
+  position: fixed; inset: 0; display: grid; place-items: center;
+  background: var(--bg); z-index: 200;
+}
+
+/* ---- player card: season-constant rates, stated once -------------------- */
+.pd-rates { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+.pd-rates-row {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(74px, 1fr));
+  gap: var(--s2); margin-top: var(--s2);
+}
+.pd-rates-row > div {
+  background: var(--bg-deep); border-radius: var(--r-sm);
+  padding: 7px 9px; display: flex; flex-direction: column; gap: 2px;
+}
+.pd-rates-row span {
+  font-size: 9.5px; font-weight: 800; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--muted-2);
+}
+.pd-rates-row b {
+  font-family: var(--mono); font-size: 13px; color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.pd-rates-note {
+  margin-top: var(--s2); font-size: 10.5px; line-height: 1.55; color: var(--muted-2);
+}
+
+/* ---- player card hero --------------------------------------------------- */
+/* The cut-out has to read as part of the surface, not as a picture pasted on
+   it. The trick is which edges are handled where: the image BLEEDS past the
+   right, top and bottom of the header, so `overflow: hidden` crops it against
+   the card's own edge — a deliberate-looking crop rather than a floating
+   rectangle. Only the left edge, where it meets the title, needs a soft mask,
+   and one mask is used rather than two composited ones so it degrades
+   predictably. Low opacity and slight desaturation keep it behind the text. */
+.pm-head {
+  position: relative; overflow: hidden;
+  min-height: 132px; padding-bottom: 18px;
+  border-radius: 12px 12px 0 0;
+}
+.pm-head-text, .pm-head .close { position: relative; z-index: 2; }
+.pm-hero { position: absolute; inset: 0; pointer-events: none; z-index: 0; }
+.pm-hero-img {
+  /* Framed on the FACE, with the kit cropped away below. Premier League
+     updates these cut-outs lazily, so a player who moved in the summer is
+     often still photographed in last season's shirt — and a stale kit next to
+     the current club's badge looks like a bug in our data rather than theirs.
+     Tight framing sidesteps it: the head is what identifies a player anyway.
+     The crop still lands below the chin, never through the forehead. */
+  position: absolute; right: -14px; top: -20%; height: 250%;
+  width: auto; object-fit: contain;
+  opacity: 0.6; filter: saturate(0.92) contrast(1.05);
+  -webkit-mask-image:
+    linear-gradient(to left, #000 34%, transparent 94%),
+    linear-gradient(to top, transparent 2%, #000 34%);
+  mask-image:
+    linear-gradient(to left, #000 34%, transparent 94%),
+    linear-gradient(to top, transparent 2%, #000 34%);
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
+}
+/* club colour, well out of focus, so the corner is not just grey */
+.pm-hero-badge {
+  position: absolute; right: -34px; top: -56px;
+  width: 210px; height: 210px; object-fit: contain;
+  opacity: 0.07; filter: blur(3px);
+}
+/* guarantees the title stays legible whatever the cut-out looks like */
+.pm-hero::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(to right,
+    var(--panel) 20%,
+    color-mix(in srgb, var(--panel) 62%, transparent) 44%,
+    transparent 70%);
+}
+/* and a whisper of the panel at the very bottom so the header melts into the
+   body instead of ending on a line */
+.pm-head::after {
+  content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 26px;
+  background: linear-gradient(to top, var(--panel), transparent);
+  pointer-events: none; z-index: 1;
+}
+/* prediction market vs bookmaker: only marked where they actually diverge */
+.pm-diverge {
+  position: absolute; left: 3px; top: 2px; font-size: 7px;
+  color: currentColor; opacity: 0.85;
+}

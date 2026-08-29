@@ -10,11 +10,23 @@ export const CHIP_LONG = {
   bench_boost: 'Bench Boost Played', triple_captain: 'Triple Captain Played',
 }
 
+// Served from the local disk cache (app/images.py), not the Premier League
+// CDN. A pitch is 15 shirts and the projections table is a badge per row; as
+// cross-origin requests on a cold cache that was seconds of blank boxes.
+// 1x1 transparent gif: a player whose club could not be resolved should show
+// nothing, not fire a request for `.../shirt/undefined`
+const BLANK = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
+const ok = (c) => c != null && c !== '' && Number.isFinite(Number(c))
+
 export const shirtUrl = (teamCode, isGk = false) =>
-  `https://fantasy.premierleague.com/dist/img/shirts/standard/shirt_${teamCode}${isGk ? '_1' : ''}-66.webp`
+  (ok(teamCode) ? `/api/img/${isGk ? 'shirt_gk' : 'shirt'}/${Number(teamCode)}` : BLANK)
 
 export const badgeUrl = (teamCode) =>
-  `https://resources.premierleague.com/premierleague/badges/70/t${teamCode}.png`
+  (ok(teamCode) ? `/api/img/badge/${Number(teamCode)}` : BLANK)
+
+// player cut-out, keyed by player.code (NOT player_id)
+export const photoUrl = (playerCode) =>
+  (ok(playerCode) ? `/api/img/photo/${Number(playerCode)}` : null)
 
 export const fmt1 = (x) => (x == null || Number.isNaN(x) ? '–' : Number(x).toFixed(1))
 export const money = (x) => (x == null ? '–' : `£${Number(x).toFixed(1)}m`)

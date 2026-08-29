@@ -1,0 +1,327 @@
+/* Solver output — an instrument panel, deliberately unlike the rest of the app.
+
+   Monospace, uppercase keys, hairline grid. A solver result is a machine's
+   answer and it reads better looking like one; more practically, a mono grid
+   is what lets three plans line up column-for-column, so a disagreement
+   between them becomes a horizontal glance instead of a memory test. */
+
+.so-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: grid;
+  background: rgba(8, 10, 18, 0.72);
+  backdrop-filter: blur(3px);
+  padding: 22px;
+}
+.so-modal {
+  background: var(--bg-deep);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: var(--e3);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  width: 100%;
+  max-width: 1560px;
+  margin: 0 auto;
+  max-height: 100%;
+}
+.so-top {
+  display: flex;
+  align-items: center;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.so-top h2 { font-size: 15px; font-weight: 800; }
+.so-x {
+  margin-left: auto;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 13px;
+}
+.so-x:hover { color: var(--text); background: var(--panel-2); }
+
+.so-tabs {
+  display: flex;
+  gap: 2px;
+  justify-content: center;
+  border-bottom: 1px solid var(--line-soft);
+  padding: 0 20px;
+}
+.so-tabs button {
+  padding: 11px 18px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--muted);
+  border-bottom: 2px solid transparent;
+  font-family: var(--mono);
+}
+.so-tabs button:hover { color: var(--text); }
+.so-tabs button.on { color: var(--accent); border-bottom-color: currentColor; }
+
+.so-body { overflow: auto; padding: 18px 20px 24px; flex: 1; }
+.so-foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 20px;
+  border-top: 1px solid var(--line-soft);
+  background: var(--panel);
+}
+.so-foot .so-note {
+  margin-right: auto;
+  font-size: 11.5px;
+  color: var(--muted-2);
+  font-style: italic;
+  max-width: 60ch;
+}
+
+/* ---- compare grid ------------------------------------------------------- */
+.so-compare {
+  display: grid;
+  gap: 0;
+  font-family: var(--mono);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+  min-width: min-content;
+}
+.so-cell {
+  border-right: 1px solid var(--line-soft);
+  border-bottom: 1px solid var(--line-soft);
+}
+.so-cell:last-child { border-right: none; }
+.so-corner { background: var(--panel); }
+
+.so-planhead { padding: 12px 14px; background: var(--panel); }
+.so-planhead-top { display: flex; align-items: baseline; gap: 10px; }
+.so-planname {
+  color: var(--pa, var(--accent));
+  font-weight: 800;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+}
+.so-score {
+  margin-left: auto;
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.so-score i {
+  font-size: 9.5px;
+  color: var(--muted-2);
+  font-style: normal;
+  margin-left: 3px;
+}
+.so-score.big { font-size: 22px; }
+.so-planhead-sub { display: flex; align-items: center; gap: 7px; margin: 7px 0 9px; }
+.so-tag {
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--pa, var(--accent));
+  color: var(--pa, var(--accent));
+}
+.so-tag.best { border-color: var(--green); color: var(--green); }
+.so-delta { font-size: 11px; color: var(--red); font-variant-numeric: tabular-nums; }
+.so-apply {
+  width: 100%;
+  text-align: left;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--pa, var(--accent));
+  padding: 7px 9px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--bg-deep);
+}
+.so-apply span { color: var(--muted-2); font-weight: 400; }
+.so-apply:hover { border-color: var(--pa, var(--accent)); background: var(--panel-2); }
+
+.so-railcell {
+  background: var(--panel);
+  padding: 12px 8px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  position: relative;
+}
+/* A full-cell tint shouts on every row when the plans differ everywhere,
+   which is the normal case. A hairline on the edge says the same thing without
+   turning the rail into a colour block. */
+.so-railcell.differs { box-shadow: inset 3px 0 0 var(--accent); }
+.so-differs { position: absolute; right: 5px; top: 6px; font-size: 7px; color: var(--accent); opacity: 0.9; }
+
+/* the dotted spine: makes the rail read as one timeline rather than a stack
+   of unrelated labels */
+.so-railcell::before {
+  content: ''; position: absolute; left: 50%; top: 0; bottom: 0; width: 0;
+  border-left: 1px dashed var(--line); opacity: 0.55; z-index: 0;
+}
+.so-railcell > * { position: relative; z-index: 1; }
+.so-rail-gw {
+  background: var(--panel); padding: 2px 5px; border-radius: 4px;
+}
+.so-railcell.differs .so-rail-gw { background: color-mix(in srgb, var(--accent) 12%, var(--panel)); }
+.so-rail { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.so-rail-gw { font-family: var(--mono); font-size: 12px; font-weight: 800; color: var(--text); }
+.so-rail-live {
+  font-size: 8.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--green);
+}
+.so-rail-chip { font-size: 8.5px; color: var(--muted-2); line-height: 1.25; }
+
+.so-gwcell { padding: 10px 12px; display: flex; flex-direction: column; gap: 7px; }
+.so-meta-line {
+  display: flex;
+  gap: 9px;
+  font-size: 9.5px;
+  color: var(--muted-2);
+  letter-spacing: 0.04em;
+  justify-content: flex-end;
+}
+.so-hit { color: var(--red); font-weight: 700; }
+.so-none { font-size: 11px; color: var(--muted-2); font-style: italic; }
+.so-chipnote { font-size: 9px; color: var(--muted-2); opacity: 0.7; }
+
+/* ---- one transfer ------------------------------------------------------- */
+.so-move {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  justify-content: center;
+  font-size: 12px;
+  flex-wrap: wrap;
+}
+.so-move .so-side { display: flex; flex-direction: column; line-height: 1.25; }
+.so-move .so-side.out { text-align: right; align-items: flex-end; }
+.so-move .so-side.out .so-nm { color: var(--red); }
+.so-move .so-side.in .so-nm { color: var(--green); }
+.so-nm { font-weight: 700; }
+.so-meta { font-size: 9.5px; color: var(--muted-2); font-weight: 400; }
+.so-arrow { color: var(--accent); font-weight: 800; letter-spacing: -1px; }
+.so-badge { width: 17px; height: 17px; object-fit: contain; flex: none; }
+.so-badge-gap { width: 17px; flex: none; }
+
+/* ---- a whole squad (chip weeks) ---------------------------------------- */
+.so-squad { display: flex; flex-direction: column; gap: 6px; }
+.so-squad-row { display: grid; grid-template-columns: 30px 1fr; gap: 8px; align-items: start; }
+.so-pos {
+  font-size: 8.5px;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  color: var(--muted-2);
+  padding-top: 3px;
+}
+/* `.bench` is the Planner's pitch class and a bare class selector, so a
+   squad row that used it inherited that panel's background, border and flex
+   layout. Scoped names only inside this component. */
+.so-squad { max-width: 760px; }
+.so-squad-names {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 2px 14px;
+}
+.so-squad.compact .so-squad-names {
+  font-size: 11px; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+}
+.so-player { display: flex; align-items: center; gap: 6px; font-size: 11.5px; }
+.so-player.is-bench { opacity: 0.5; }
+.so-player .so-meta { margin-left: auto; }
+.so-arm {
+  display: inline-grid;
+  place-items: center;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: 8px;
+  font-style: normal;
+  font-weight: 800;
+  margin-left: 5px;
+}
+.so-arm.v { background: var(--panel-3); color: var(--muted); }
+
+/* ---- plan detail -------------------------------------------------------- */
+.so-detail { font-family: var(--mono); }
+.so-banner {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+  border: 1px solid var(--pa);
+  border-radius: 10px;
+  padding: 14px 18px;
+  margin-bottom: 18px;
+  background: color-mix(in srgb, var(--pa) 7%, transparent);
+}
+.so-banner .so-sep { color: var(--muted-2); }
+.so-banner-meta { margin-left: auto; font-size: 11.5px; color: var(--muted); }
+.so-detail-head {
+  display: grid;
+  grid-template-columns: 90px 1fr 70px 90px;
+  font-size: 9.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted-2);
+  padding: 0 0 6px;
+  text-align: right;
+}
+.so-detail-row {
+  display: grid;
+  grid-template-columns: 90px 1fr 70px 90px;
+  border-top: 1px solid var(--line-soft);
+  padding: 12px 0;
+  align-items: center;
+}
+.so-detail-row.chip { background: color-mix(in srgb, var(--pa) 5%, transparent); }
+.so-detail-body { display: flex; flex-direction: column; gap: 9px; align-items: center; }
+/* the summary line belongs with the moves it describes, not adrift at the
+   left edge of the column */
+.so-detail-body > .so-xi { justify-content: center; }
+.so-detail-body > .so-squad { align-self: stretch; }
+.so-detail-ft,
+.so-detail-itb {
+  text-align: right;
+  font-size: 12px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  padding-right: 4px;
+}
+.so-xi { font-size: 10.5px; color: var(--muted-2); display: flex; gap: 8px; align-items: center; }
+.so-chipflag {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--pa);
+  border: 1px solid var(--pa);
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+
+@media (max-width: 900px) {
+  .so-overlay { padding: 0; }
+  .so-modal { border-radius: 0; }
+  .so-detail-head,
+  .so-detail-row { grid-template-columns: 70px 1fr 54px 70px; }
+}
+.so-reopen {
+  display: flex; align-items: center; gap: 12px; margin-top: 16px;
+  padding: 12px 14px; border: 1px solid var(--line);
+  border-radius: var(--r-md); background: var(--panel);
+}
+.so-reopen span { font-size: 12.5px; color: var(--muted); margin-right: auto; }

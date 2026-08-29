@@ -65,7 +65,14 @@ export function StoreProvider({ children }) {
 
   const teams = playersDoc?.teams || {}
 
+  // The app used to render tabs against nulls while the first fetches were in
+  // flight, so the first second looked like an empty product. `booted` is what
+  // the boot screen waits on: status and players are the two payloads every
+  // tab needs before anything it draws means anything.
+  const booted = !!(status && playersDoc)
+
   const value = {
+    booted,
     status, setStatus,
     players: playersDoc?.players || [], byId, teams,
     events: playersDoc?.events || [],

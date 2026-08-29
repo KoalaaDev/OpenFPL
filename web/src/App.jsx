@@ -5,14 +5,24 @@ import Projections from './tabs/Projections'
 import Fixtures from './tabs/Fixtures'
 import MiniLeague from './tabs/MiniLeague'
 import Solver from './tabs/Solver'
+import Prices from './tabs/Prices'
 import MyTeamModal from './components/MyTeamModal'
+import { BootLoader } from './components/RadarLoader'
 import { API_VERSION, api, pollJob } from './api'
 
-const TABS = ['Planner', 'Projections', 'Fixtures', 'Mini League', 'Solver']
+const TABS = ['Planner', 'Projections', 'Fixtures', 'Prices', 'Mini League', 'Solver']
 
 export default function App() {
   const [tab, setTab] = useState('Planner')
-  const { status, setStatus, entryId, setEntryId, entry, toast, setToast,
+  // Tabs used to be swapped with `tab === 'X' && <X/>`, which UNMOUNTS the
+  // old one and throws away everything it held - most painfully a solve that
+  // took a minute to run. A tab is now mounted the first time it is opened
+  // and then merely hidden, so results, filters and scroll position survive
+  // switching. Unvisited tabs are still never mounted, so nothing fetches
+  // league or projection data until it is actually asked for.
+  const [visited, setVisited] = useState({ Planner: true })
+  const openTab = (t) => { setVisited((v) => (v[t] ? v : { ...v, [t]: true })); setTab(t) }
+  const { booted, status, setStatus, entryId, setEntryId, entry, toast, setToast,
           refreshProjections } = useStore()
   const [pulling, setPulling] = useState(false)
   const [teamModal, setTeamModal] = useState(false)
@@ -39,6 +49,10 @@ export default function App() {
 
   const stale = status && status.api_version !== API_VERSION
 
+  if (!booted) {
+    return <BootLoader sub={status ? 'Loading players and fixtures…' : 'Contacting the backend…'} />
+  }
+
   return (
     <>
       {stale && (
@@ -56,7 +70,7 @@ export default function App() {
         <nav className="tabs">
           {TABS.map((t) => (
             <button key={t} className={`tab ${tab === t ? 'active' : ''}`}
-              onClick={() => setTab(t)}>{t}</button>
+              onClick={() => openTab(t)}>{t}</button>
           ))}
         </nav>
         <div className="right">
@@ -77,11 +91,16 @@ export default function App() {
       </header>
 
       <main className={`page ${tab === 'Mini League' ? 'wide' : ''}`}>
-        {tab === 'Planner' && <Planner />}
-        {tab === 'Projections' && <Projections />}
-        {tab === 'Fixtures' && <Fixtures />}
-        {tab === 'Mini League' && <MiniLeague />}
-        {tab === 'Solver' && <Solver goPlanner={() => setTab('Planner')} />}
+        {visited.Planner && <Pane on={tab === 'Planner'}><Planner /></Pane>}
+        {visited.Projections && <Pane on={tab === 'Projections'}><Projections /></Pane>}
+        {visited.Fixtures && <Pane on={tab === 'Fixtures'}><Fixtures /></Pane>}
+        {visited.Prices && <Pane on={tab === 'Prices'}><Prices /></Pane>}
+        {visited['Mini League'] && <Pane on={tab === 'Mini League'}><MiniLeague /></Pane>}
+        {visited.Solver && (
+          <Pane on={tab === 'Solver'}>
+            <Solver goPlanner={() => openTab('Planner')} />
+          </Pane>
+        )}
       </main>
 
       {teamModal && <MyTeamModal close={() => setTeamModal(false)} />}
@@ -97,6 +116,12 @@ export default function App() {
       )}
     </>
   )
+}
+
+// keeps a tab alive but out of the way; `hidden` would also stop layout but
+// display:none is what lets a re-shown tab keep its scroll position
+function Pane({ on, children }) {
+  return <div style={{ display: on ? 'contents' : 'none' }}>{children}</div>
 }
 
 function EntryBox({ entryId, setEntryId, entry }) {

@@ -1,16 +1,22 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import Flag from '../components/Flag'
 import PlayerModal from '../components/PlayerModal'
+import ModelAssist from '../components/ModelAssist'
+import { api, pollJob } from '../api'
 import { useFixtureLookup, useStore } from '../store'
+import { Radar, VIZ, VIZ_NEUTRAL as VIZ_MUTED } from '../charts'
+import { DNA_AXES, dnaOf, dnaRaw, dnaScaled } from '../dna'
 import {
   CHIP_LONG, CHIP_SHORT, POS_ORDER, baselineDeltas, bestAffordableXI, bestXI,
   epOf, fdrColor, formationRows, fmt1, gwEV, gwHasProj, money, shirtUrl,
   withBaseline, xiLegal,
 } from '../util'
 
+const DEFAULT_HORIZON = 8    // gameweeks in a new draft
+
 export default function Planner() {
   const { drafts, setDrafts, activeDraftId, setActiveDraftId, proj, byId, players,
-          entry, status, setToast } = useStore()
+          entry, status, setToast, refreshProjections } = useStore()
   const draft = drafts.find((d) => d.id === activeDraftId) || drafts[0] || null
   const [gwIdx, setGwIdx] = useState(0)
   const [sel, setSel] = useState(null)          // {pid, mode: 'swap'}
@@ -23,13 +29,48 @@ export default function Planner() {
   const plan = draft?.gws?.[Math.min(gwIdx, (draft?.gws?.length || 1) - 1)] || null
   // A draft saved before the season still lists played gameweeks; those have no
   // projections (every player would read 0.0), so open the first live one.
+  // Open on the first gameweek still ahead of us. This used to key off
+  // whether PROJECTIONS existed, so an empty cache (a data pull clears it)
+  // dropped you on GW1 - a gameweek already played, where every control is
+  // correctly disabled and the whole tab looks broken.
   const firstLiveGw = useMemo(() => {
-    const i = (draft?.gws || []).findIndex((g) => gwHasProj(proj, g.gw))
+    const gws = draft?.gws || []
+    const next = status?.next_gw
+    let i = next != null ? gws.findIndex((g) => g.gw >= next) : -1
+    if (i < 0) i = gws.findIndex((g) => gwHasProj(proj, g.gw))
     return i < 0 ? 0 : i
-  }, [draft?.id, draft?.gws, proj])
+  }, [draft?.id, draft?.gws, proj, status?.next_gw])
   useEffect(() => { setGwIdx(firstLiveGw) }, [draft?.id, firstLiveGw])
-  const planIsPast = plan ? !gwHasProj(proj, plan.gw) : false
+  // These are NOT the same thing and conflating them told the user that GW2-5
+  // had "already been played" when the projection cache was simply empty
+  // (a data pull clears it). Played is decided by the calendar; missing
+  // projections are a job you can run.
+  const planIsPast = plan && status?.next_gw != null
+    ? plan.gw < status.next_gw : false
+  const planUnprojected = plan ? !gwHasProj(proj, plan.gw) : false
   const posOf = (pid) => byId.get(pid)?.position || 'MID'
+
+  // Build exactly the gameweeks this draft spans, so the button next to the
+  // warning fixes the thing the warning is about.
+  const [building, setBuilding] = useState(false)
+  const buildHorizon = async () => {
+    if (building || !draft?.gws?.length) return
+    setBuilding(true)
+    setToast({ kind: 'info', msg: 'Building projections…' })
+    try {
+      const { job_id } = await api.buildProjections(draft.gws.map((g) => g.gw))
+      await pollJob(job_id, (j) => {
+        const last = j.progress[j.progress.length - 1]
+        if (last) setToast({ kind: 'info', msg: last.msg })
+      })
+      refreshProjections()
+      setToast({ kind: 'ok', msg: 'Projections built.' })
+    } catch (e) {
+      setToast({ kind: 'err', msg: `Build failed: ${e.message}` })
+    } finally {
+      setBuilding(false)
+    }
+  }
 
   // every edit goes through here: snapshot for undo, then mutate a clone
   const updateDraft = (fn, { record = true } = {}) => {
@@ -66,7 +107,10 @@ export default function Planner() {
   const applyTransfer = (outId, inP) => {
     const cur = draft.gws[gwIdx]
     const out = cur.squad.find((s) => s.id === outId)
-    const budget = (cur.bank || 0) + (out?.sell || 0)
+    // Drafts created before selling prices were wired through store sell: 0;
+    // treat that as unknown and fall back to the current price, never £0.0.
+    const outSell = out?.sell || byId.get(outId)?.price || 0
+    const budget = (cur.bank || 0) + outSell
     if (posOf(outId) !== inP.position) {
       setToast({ kind: 'err', msg: `${inP.web_name} is a ${inP.position} — replace a ${inP.position}.` })
       return false
@@ -83,7 +127,7 @@ export default function Planner() {
       setToast({ kind: 'err', msg: `Already 3 players from ${inP.team_id ? 'that club' : 'the club'}.` }); return false
     }
     updateDraft((d) => {
-      const delta = (out?.sell || 0) - inP.price
+      const delta = outSell - inP.price
       const end = d.gws[gwIdx].chip === 'freehit' ? gwIdx + 1 : d.gws.length
       for (let t = gwIdx; t < end; t++) {
         const g = d.gws[t]
@@ -97,7 +141,7 @@ export default function Planner() {
         if (t === gwIdx) {
           g.transfers_out = [...g.transfers_out, outId]
           g.transfers_in = [...g.transfers_in, inP.id]
-          g.sold = { ...(g.sold || {}), [outId]: out?.sell || 0 }
+          g.sold = { ...(g.sold || {}), [outId]: outSell }
         }
       }
       return d
@@ -134,12 +178,20 @@ export default function Planner() {
 
   const createFromEntry = () => {
     if (!entry?.squad) return
-    const horizon = (status?.scheduled_gws || []).filter((g) => g >= status.next_gw).slice(0, 4)
+    // Four gameweeks is not a plan - chips, fixture swings and price moves all
+    // play out over longer than that, and the draft length is what caps how far
+    // ahead the Planner can look at all.
+    const horizon = (status?.scheduled_gws || [])
+      .filter((g) => g >= status.next_gw).slice(0, DEFAULT_HORIZON)
     if (!horizon.length) {
       setToast({ kind: 'err', msg: 'No upcoming gameweeks known yet — run a data pull (⟳ Data, top right) first.' })
       return
     }
-    const squad = entry.squad.map((p) => ({ id: p.element, sell: p.selling_price }))
+    const squad = entry.squad.map((p) => ({
+      id: p.element,
+      // never store a £0.0 sell — it makes every later transfer unaffordable
+      sell: p.selling_price || byId.get(p.element)?.price || 0,
+    }))
     const ids = squad.map((s) => s.id)
     const picksXi = entry.squad.filter((p) => p.multiplier > 0).map((p) => p.element)
     const gws = horizon.map((gw) => {
@@ -228,6 +280,22 @@ export default function Planner() {
               it — every point shown reads 0.0. Pick a later gameweek to plan.
             </div>
           )}
+          {!planIsPast && planUnprojected && (
+            <div className="past-gw-note build">
+              <span>
+                No projections for GW{plan.gw} yet, so every point reads <b>0.0</b>.
+                A data pull clears the cache.
+              </span>
+              <button className="pill-btn accent" disabled={building}
+                onClick={buildHorizon}>
+                {building ? <span className="spinner" /> : '⚙'} Build projections
+              </button>
+            </div>
+          )}
+          {plan && (
+            <ModelAssist draft={draft} gwIdx={gwIdx} plan={plan} posOf={posOf}
+              updateDraft={updateDraft} setToast={setToast} />
+          )}
           {plan && (
             <PitchView plan={plan} draft={draft} sel={sel} setSel={setSel}
               setStatPid={setStatPid} posOf={posOf} armed={armed} setArmed={setArmed}
@@ -237,6 +305,9 @@ export default function Planner() {
           {plan && (
             <ChangesStrip moves={manualMoves} plan={plan} draft={draft} gwIdx={gwIdx}
               byId={byId} proj={proj} undoTransfer={undoTransfer} />
+          )}
+          {plan && (
+            <TeamDna plan={plan} draft={draft} gwIdx={gwIdx} byId={byId} proj={proj} />
           )}
         </div>
         <div>
@@ -290,7 +361,7 @@ export default function Planner() {
 const ALL_CHIPS = ['bench_boost', 'triple_captain', 'wildcard', 'freehit']
 
 function GwBar({ draft, gwIdx, setGwIdx, evs, deltas, plan, nMoves, updateDraft, undo, canUndo }) {
-  const { proj } = useStore()
+  const { proj, status } = useStore()
   const total = evs.reduce((a, b) => a + b, 0)
   const dTotal = deltas ? deltas.reduce((a, b) => a + b, 0) : null
   const [openChip, setOpenChip] = useState(null)
@@ -307,6 +378,10 @@ function GwBar({ draft, gwIdx, setGwIdx, evs, deltas, plan, nMoves, updateDraft,
     setOpenChip(null)
   }
 
+  const planned = new Set(draft.gws.map((p) => p.gw))
+  const nextUnplanned = (status?.scheduled_gws || [])
+    .filter((g) => g >= (status?.next_gw ?? 1) && !planned.has(g))[0] ?? null
+
   const Delta = ({ v }) => (v == null || Math.abs(v) < 0.05 ? null : (
     <span className={`dv ${v > 0 ? 'up' : 'down'}`}>{v > 0 ? '+' : ''}{fmt1(v)}</span>
   ))
@@ -315,17 +390,32 @@ function GwBar({ draft, gwIdx, setGwIdx, evs, deltas, plan, nMoves, updateDraft,
     <div className="gwbar">
       <div className="pager">
         {draft.gws.map((p, i) => {
-          const past = !gwHasProj(proj, p.gw)
+          // played is the calendar; unprojected is a job you can run
+          const past = status?.next_gw != null && p.gw < status.next_gw
+          const noProj = !past && !gwHasProj(proj, p.gw)
           return (
             <button key={p.gw}
-              className={`gw-dot ${i === gwIdx ? 'active' : ''} ${past ? 'past' : ''}`}
-              title={past ? `GW${p.gw} has already been played — no projections` : undefined}
+              className={`gw-dot ${i === gwIdx ? 'active' : ''} ${past ? 'past' : ''} ${noProj ? 'noproj' : ''}`}
+              title={past ? `GW${p.gw} has already been played`
+                : noProj ? `GW${p.gw} has no projections yet — build them from the Projections tab`
+                : undefined}
               onClick={() => setGwIdx(i)}>
               {p.gw}
               {p.chip && <span className="chipmark">{CHIP_SHORT[p.chip]}</span>}
             </button>
           )
         })}
+        {/* a draft can only look as far ahead as it is long */}
+        <button className="gw-dot add" title="add the next gameweek to this plan"
+          disabled={!nextUnplanned}
+          onClick={() => updateDraft((d) => {
+            const last = d.gws[d.gws.length - 1]
+            d.gws.push({
+              ...structuredClone(last), gw: nextUnplanned, chip: null,
+              transfers_in: [], transfers_out: [], sold: {},
+            })
+            return d
+          })}>+</button>
       </div>
       <div className="chipbar">
         {openChip && (
@@ -554,6 +644,49 @@ function ChangesStrip({ moves, plan, draft, gwIdx, byId, proj, undoTransfer }) {
 /* ------------------------------------------------------------------ */
 
 // Search any player and arm him; then click the squad player to replace.
+/* What the plan does to the SHAPE of the squad, not just its total.
+
+   Two squads worth the same expected points can be completely different
+   animals - one template and balanced, one loaded with premiums and carrying a
+   dead bench. The axes are the same six the Mini League uses (they share
+   `dna.js`), so "my Attack" means the same thing in both places.
+
+   Scaled against fixed absolute domains rather than against the two squads
+   being compared: min-maxing two series would pin every axis at one end or the
+   other and make a single transfer look like a personality transplant. */
+function TeamDna({ plan, draft, gwIdx, byId, proj }) {
+  const base = draft.baseline?.[gwIdx]?.squad
+  const series = useMemo(() => {
+    const asRows = (squad, xi) => (squad || []).map((s) => ({
+      id: s.id, benched: !(xi || []).includes(s.id),
+    }))
+    const now = base
+      ? dnaOf(asRows(base, draft.baseline?.[gwIdx]?.xi), { byId, proj, gw: plan.gw })
+      : null
+    const after = dnaOf(asRows(plan.squad, plan.xi), { byId, proj, gw: plan.gw })
+    if (!after) return null
+    const out = []
+    if (now) {
+      out.push({ name: 'Before', color: VIZ_MUTED, values: dnaScaled(now), raw: dnaRaw(now) })
+    }
+    out.push({ name: now ? 'After plan' : 'This squad', color: VIZ[0],
+               values: dnaScaled(after), raw: dnaRaw(after) })
+    return out
+  }, [plan, base, byId, proj, gwIdx])   // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (!series) return null
+  return (
+    <div className="panel dna-panel">
+      <div className="panel-head">Team DNA — GW{plan.gw}</div>
+      <Radar axes={DNA_AXES} series={series} size={300} />
+      <p className="viz-note">
+        {DNA_AXES.map((a) => a.label + ' = ' + a.hint).join(' · ')}
+      </p>
+    </div>
+  )
+}
+
+
 function AddPlayerPanel({ plan, players, byId, proj, posOf, armed, setArmed }) {
   const [q, setQ] = useState('')
   const [pos, setPos] = useState('ALL')
@@ -724,7 +857,8 @@ function TransferModal({ draft, gwIdx, outId, byId, proj, posOf, close, applyTra
   const [q, setQ] = useState('')
   const plan = draft.gws[gwIdx]
   const out = plan.squad.find((s) => s.id === outId)
-  const budget = (plan.bank || 0) + (out?.sell || 0)
+  // sell: 0 means the draft predates selling prices — use the current price
+  const budget = (plan.bank || 0) + (out?.sell || byId.get(outId)?.price || 0)
   const pos = posOf(outId)
   const owned = new Set(plan.squad.map((s) => s.id))
 
@@ -793,23 +927,61 @@ function DraftsPanel({ drafts, setDrafts, proj, activeDraftId, setActiveDraftId,
     copy.label = `${d.label} [copy]`
     setDrafts((ds) => [...ds, copy])
   }
+  /* Branching is how you actually plan: keep everything up to the gameweek you
+     are looking at, then try a different route from there. Duplicating and
+     hand-unwinding the tail is the same thing done badly. */
+  const branch = (d) => {
+    const at = d.id === activeDraftId ? gwIdx : 0
+    const copy = structuredClone(d)
+    copy.id = `d${Date.now()}`
+    copy.label = `${d.label} → GW${d.gws[at]?.gw ?? '?'}`
+    // the future is yours to redraw: clear planned moves and chips after the
+    // branch point, keeping the squad the route has reached
+    for (let i = at; i < copy.gws.length; i++) {
+      if (i > at) copy.gws[i].chip = null
+      copy.gws[i].transfers_in = []
+      copy.gws[i].transfers_out = []
+      copy.gws[i].sold = {}
+    }
+    delete copy.baseline
+    copy.source = `branch of ${d.label}`
+    setDrafts((ds) => [...ds, copy])
+    setActiveDraftId(copy.id)
+  }
+
+  // which route is actually ahead, and by how much
+  const totals = drafts.map((d) => d.gws.reduce((a, p) => a + gwEV(p, proj), 0))
+  const bestTot = totals.length ? Math.max(...totals) : 0
+  const activeTot = totals[drafts.findIndex((d) => d.id === activeDraftId)] ?? 0
 
   return (
     <div className="panel" style={{ marginBottom: 16 }}>
       <div className="panel-head">
-        Drafts
+        Routes
         <span style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
           {entry?.squad && (
             <button className="pill-btn" onClick={createFromEntry}>+ from squad</button>
           )}
         </span>
       </div>
-      {drafts.map((d) => {
+      {drafts.length > 1 && (
+        <div className="routes-verdict">
+          Best route projects <b>{fmt1(bestTot)}</b>
+          {Math.abs(bestTot - activeTot) >= 0.05 ? (
+            <> — the one you are editing is <span className="down">
+              {fmt1(activeTot - bestTot)}</span> behind it.</>
+          ) : <> — that is the one you are editing.</>}
+          <span className="note"> Totals are undecayed projected XI points and
+            ignore hits, so compare like with like.</span>
+        </div>
+      )}
+      {drafts.map((d, di) => {
         const evs = d.gws.map((p) => gwEV(p, proj))
         const tot = evs.reduce((a, b) => a + b, 0)
         const dl = baselineDeltas(d, proj)
+        const leads = drafts.length > 1 && Math.abs(tot - bestTot) < 1e-9
         return (
-          <div key={d.id} className={`draft-row ${d.id === activeDraftId ? 'active' : ''}`}>
+          <div key={d.id} className={`draft-row ${d.id === activeDraftId ? 'active' : ''} ${leads ? 'leads' : ''}`}>
             <div className="draft-name" onClick={() => setActiveDraftId(d.id)}
               onDoubleClick={() => rename(d)} title="click to select · double-click to rename">
               {d.label}
@@ -839,9 +1011,15 @@ function DraftsPanel({ drafts, setDrafts, proj, activeDraftId, setActiveDraftId,
             </div>
             <div className="draft-total">
               <div className="t">{fmt1(tot)}</div>
-              <div className="s">{d.gws.length} gws</div>
+              <div className="s">
+                {leads ? 'best' : drafts.length > 1
+                  ? `${fmt1(tot - bestTot)}` : `${d.gws.length} gws`}
+              </div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <button title={`branch a new route from GW${d.gws[d.id === activeDraftId ? gwIdx : 0]?.gw ?? ''}`}
+                style={{ color: 'var(--muted-2)', fontSize: 12 }}
+                onClick={() => branch(d)}>⑂</button>
               <button title="duplicate" style={{ color: 'var(--muted-2)', fontSize: 12 }}
                 onClick={() => duplicate(d)}>⧉</button>
               <button title="delete" style={{ color: 'var(--muted-2)', fontSize: 12 }}

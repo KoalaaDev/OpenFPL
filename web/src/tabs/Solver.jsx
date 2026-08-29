@@ -1,6 +1,8 @@
 import React, { useMemo, useRef, useState } from 'react'
 import { api, pollJob } from '../api'
 import { useStore } from '../store'
+import RadarLoader from '../components/RadarLoader'
+import SolverOutput from '../components/SolverOutput'
 import { CHIP_SHORT, fmt1, money, planToDraft, withBaseline } from '../util'
 
 const CHIP_DEFS = [
@@ -35,6 +37,7 @@ export default function Solver({ goPlanner }) {
   const [running, setRunning] = useState(false)
   const [job, setJob] = useState(null)
   const [result, setResult] = useState(null)
+  const [showOut, setShowOut] = useState(false)
   const logRef = useRef(null)
 
   const from = solveFrom || status?.next_gw || 1
@@ -70,7 +73,7 @@ export default function Solver({ goPlanner }) {
           logRef.current?.scrollTo(0, logRef.current.scrollHeight)
         })
       })
-      setResult(res)
+      setResult(res); setShowOut(true)
       refreshProjections()
       setToast({ kind: 'ok', msg: `Solve finished — ${res.plans.length} plan(s).` })
     } catch (e) {
@@ -288,6 +291,13 @@ export default function Solver({ goPlanner }) {
 
           {(running || job?.progress?.length > 0) && (
             <div style={{ marginTop: 14 }}>
+              {/* A solve is 30-60s of MILP with nothing to preview, which is
+                  exactly the wait the radar is for. It carries the real
+                  progress line rather than spinning decoratively. */}
+              {running && (
+                <RadarLoader inline size={116} label="Solving"
+                  sub={(job?.progress || []).slice(-1)[0]?.msg || 'Setting up…'} />
+              )}
               <div className="progressbar" style={{ marginBottom: 8 }}>
                 <div style={{ width: `${Math.round((job?.pct || 0) * 100)}%` }} />
               </div>
@@ -299,15 +309,23 @@ export default function Solver({ goPlanner }) {
             </div>
           )}
 
-          {result && (
-            <div style={{ marginTop: 16 }}>
-              {result.plans.map((plan, i) => (
-                <PlanCard freeFirst={!!result?.state?.unlimited_transfers} key={i} plan={plan} i={i} addDraft={addDraft} byId={byId} />
-              ))}
+          {result && !showOut && (
+            <div className="so-reopen">
+              <span>
+                {result.plans.length} plan{result.plans.length === 1 ? '' : 's'} ready
+              </span>
+              <button className="pill-btn accent" onClick={() => setShowOut(true)}>
+                ▥ Open results
+              </button>
             </div>
           )}
         </div>
       </div>
+      {result && showOut && (
+        <SolverOutput result={result} close={() => setShowOut(false)}
+          addDraft={(plan, k) => { addDraft(plan, k); setShowOut(false) }}
+          draftLabel={null} />
+      )}
     </div>
   )
 }
@@ -428,6 +446,15 @@ function PlanCard({ plan, i, addDraft, byId, freeFirst }) {
             {g.transfers_out.length === 0 && !g.chip && (
               <span style={{ color: 'var(--muted-2)' }}>roll</span>
             )}
+            {/* A Free Hit is not a transfer, so transfers_in/out are empty by
+                design. fh_out -> fh_in is what the chip actually does. */}
+            {(g.fh_out || []).map((o, k) => (
+              <div key={`fh${k}`} style={{ marginBottom: 2 }}>
+                <span style={{ color: 'var(--muted)' }}>{nm(o)}</span>
+                <span style={{ color: 'var(--gold, var(--accent))', margin: '0 8px' }}>⇢</span>
+                <span style={{ fontWeight: 600 }}>{nm(g.fh_in[k])}</span>
+              </div>
+            ))}
             {g.transfers_out.map((o, k) => (
               <div key={k} style={{ marginBottom: 2 }}>
                 <span style={{ color: 'var(--muted)' }}>{nm(o)}</span>
@@ -438,6 +465,12 @@ function PlanCard({ plan, i, addDraft, byId, freeFirst }) {
             <div style={{ fontSize: 11, color: 'var(--muted-2)', marginTop: 3 }}>
               XI {fmt1(g.xi_points)} pts · C {g.captain}
             </div>
+            {g.chip === 'freehit' && (
+              <div style={{ fontSize: 11, color: 'var(--muted-2)', marginTop: 2 }}>
+                XI: {(g.squad || []).filter((r) => r.in_xi)
+                  .map((r) => r.name + (r.is_captain ? ' (C)' : '')).join(', ')}
+              </div>
+            )}
           </div>
           <span className="meta">
             £{fmt1(g.bank)}m · {g.free_after}FT

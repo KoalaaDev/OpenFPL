@@ -2,7 +2,9 @@ import React, { useMemo, useState } from 'react'
 import { api, pollJob } from '../api'
 import { useStore } from '../store'
 import Flag from '../components/Flag'
-import { availPct, badgeUrl, downloadCSV, epColor, fmt1 } from '../util'
+import { availPct, badgeUrl, downloadCSV, epColor, fdrColor, fmt1 } from '../util'
+import PlayerModal from '../components/PlayerModal'
+import RadarLoader from '../components/RadarLoader'
 
 const POS_FILTERS = [
   ['ALL', 'All players'], ['GK', 'Goalkeepers'], ['DEF', 'Defenders'],
@@ -38,9 +40,16 @@ export default function Projections() {
   const [gwOpen, setGwOpen] = useState(false)
   const [sort, setSort] = useState({ key: 'total', dir: -1 })
   const [sub, setSub] = useState('opp')         // secondary line in gw cells
+  // colour the squares by the model's own number, or by fixture difficulty.
+  // Both are useful and they answer different questions - "who scores most"
+  // vs "who has the kind run" - so this is a toggle rather than a choice.
+  const [shade, setShade] = useState('ep')      // 'ep' | 'fdr'
+  const [fdrMode, setFdrMode] = useState('diff')  // diff | diff_att | diff_def
+  const [modalPid, setModalPid] = useState(null)
   const [col3, setCol3] = useState('own')       // trailing column: own | ppm | none
   const [priceMax, setPriceMax] = useState(null)
   const [building, setBuilding] = useState(false)
+  const [buildMsg, setBuildMsg] = useState(null)
 
   const projGws = (status?.projected_gws?.length
     ? status.projected_gws
@@ -151,8 +160,9 @@ export default function Projections() {
       const { job_id } = await api.buildProjections(gws)
       await pollJob(job_id, (j) => {
         const last = j.progress[j.progress.length - 1]
-        if (last) setToast({ kind: 'info', msg: last.msg })
+        if (last) { setToast({ kind: 'info', msg: last.msg }); setBuildMsg(last.msg) }
       })
+      setBuildMsg(null)
       setToast({ kind: 'ok', msg: 'Projections built.' })
       refreshProjections()
       api.status().then(() => {})
@@ -170,15 +180,22 @@ export default function Projections() {
 
   if (!projGws.length) {
     return (
-      <div className="panel center-note">
-        <h3>No projections yet</h3>
-        <p style={{ marginBottom: 16 }}>
-          Run the OpenFPL models to project the next six gameweeks (a few minutes,
-          cached afterwards).
-        </p>
-        <button className="pill-btn accent" onClick={build} disabled={building}>
-          {building ? <span className="spinner" /> : '▶'} Build projections
-        </button>
+      <div className="panel">
+        {building ? (
+          <RadarLoader size={150} label="Projecting"
+            sub={buildMsg || 'Running the OpenFPL models over the horizon…'} />
+        ) : (
+          <div className="center-note">
+            <h3>No projections yet</h3>
+            <p style={{ marginBottom: 16 }}>
+              Run the OpenFPL models to project the next six gameweeks (a few
+              minutes, cached afterwards).
+            </p>
+            <button className="pill-btn accent" onClick={build}>
+              ▶ Build projections
+            </button>
+          </div>
+        )}
       </div>
     )
   }
@@ -245,6 +262,19 @@ export default function Projections() {
           <option value="xmins">Secondary: xMins</option>
         </select>
         <select className="pill-btn" style={{ background: 'var(--panel)', appearance: 'auto' }}
+          value={shade} onChange={(e) => setShade(e.target.value)}
+          title="What the coloured square means">
+          <option value="ep">Shade: expected points</option>
+          <option value="fdr">Shade: fixture difficulty</option>
+        </select>
+        <select className="pill-btn" style={{ background: 'var(--panel)', appearance: 'auto' }}
+          value={fdrMode} onChange={(e) => setFdrMode(e.target.value)}
+          title="Which difficulty: overall, or the half of the game you care about">
+          <option value="diff">FDR: overall</option>
+          <option value="diff_att">FDR: for attacking</option>
+          <option value="diff_def">FDR: for clean sheets</option>
+        </select>
+        <select className="pill-btn" style={{ background: 'var(--panel)', appearance: 'auto' }}
           value={col3} onChange={(e) => setCol3(e.target.value)}
           title="Trailing column">
           <option value="own">Own%</option>
@@ -285,7 +315,11 @@ export default function Projections() {
             {rows.map((r) => (
               <tr key={r.id}>
                 <td className="l">
-                  <div className="pl-cell">
+                  <div className="pl-cell clickable"
+                    role="button" tabIndex={0}
+                    title="open player card"
+                    onClick={() => setModalPid(r.id)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') setModalPid(r.id) }}>
                     <img src={badgeUrl(r.teamCode)} alt="" loading="lazy"
                       onError={(e) => { e.currentTarget.style.visibility = 'hidden' }} />
                     <div>
@@ -303,12 +337,25 @@ export default function Projections() {
                     const s = teams[String(f.opp)]?.short || '?'
                     return f.home ? s : s.toLowerCase()
                   }).join(',')
+                  // average difficulty across a double gameweek, as the
+                  // Fixtures heatmap does, so the two tabs never disagree
+                  const dv = fs.length
+                    ? fs.reduce((a, f) => a + (f[fdrMode] ?? f.fdr ?? 3), 0) / fs.length
+                    : null
+                  const fc = dv == null ? null : fdrColor(dv)
                   return (
                     <td key={g}>
                       {r.eps[g] != null ? (
-                        <span className="ep-cell" style={{ background: epColor(r.eps[g]) }}>
+                        <span className="ep-cell" style={shade === 'fdr' && fc
+                          ? { background: fc.bg, color: fc.fg }
+                          : { background: epColor(r.eps[g]) }}>
                           {fmt1(r.eps[g])}
-                          {sub === 'opp' && <span className="ep-sub">{opp || 'blank'}</span>}
+                          {sub === 'opp' && (
+                            <span className="ep-sub" style={shade === 'ep' && fc
+                              ? { background: fc.bg, color: fc.fg,
+                                  borderRadius: 3, padding: '0 3px' }
+                              : undefined}>{opp || 'blank'}</span>
+                          )}
                           {sub === 'xmins' && (
                             <span className="ep-sub">
                               {Math.round(r.m.xmins * Math.max(1, fs.length))}′
@@ -340,6 +387,12 @@ export default function Projections() {
           </tbody>
         </table>
       </div>
+      {/* the same card the Planner opens, so a player looks identical
+          wherever you click him */}
+      {modalPid && (
+        <PlayerModal pid={modalPid} close={() => setModalPid(null)}
+          draft={{ gws: shown.map((g) => ({ gw: g })) }} />
+      )}
     </div>
   )
 }

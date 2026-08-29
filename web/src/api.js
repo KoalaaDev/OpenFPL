@@ -1,6 +1,6 @@
 // must match app/services.py API_VERSION — mismatch means the running
 // `python -m app` predates this build and needs a restart
-export const API_VERSION = '2026-08-21.4'
+export const API_VERSION = '2026-08-27.1'
 
 const j = async (r) => {
   if (!r.ok) {
@@ -15,6 +15,7 @@ export const api = {
   status: () => fetch('/api/status').then(j),
   players: () => fetch('/api/players').then(j),
   fixtures: () => fetch('/api/fixtures').then(j),
+  prices: (limit = 30) => fetch(`/api/prices?limit=${limit}`).then(j),
   projections: () => fetch('/api/projections').then(j),
   projectionHistory: () => fetch('/api/projections/history').then(j),
   buildProjections: (gws, force = false) =>

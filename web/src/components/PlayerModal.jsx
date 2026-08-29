@@ -1,14 +1,15 @@
 import React, { useMemo, useState } from 'react'
 import Flag from './Flag'
 import { useFixtureLookup, useStore } from '../store'
-import { availPct, epColor, epOf, fdrColor, fmt1, money } from '../util'
+import { Radar, VIZ } from '../charts'
+import { availPct, badgeUrl, epColor, epOf, fdrColor, fmt1, money, photoUrl } from '../util'
 
 /* FPL Review-style player card: horizon projections, availability, per-90
    rates and fixture run for one player in the active draft. The EP column is
    the model output (fixture-aware); the per-90 columns are current season
    rates (xG-based once the season has data, else last-season history). */
 export default function PlayerModal({ pid, draft, plan, actions, close }) {
-  const { byId, teams, proj, projHistory } = useStore()
+  const { byId, teams, proj, projHistory, players } = useStore()
   const fixOf = useFixtureLookup()
   const [fdrMode, setFdrMode] = useState('diff_att')
   const p = byId.get(pid)
@@ -24,7 +25,12 @@ export default function PlayerModal({ pid, draft, plan, actions, close }) {
 
   const rows = useMemo(() => gws.map((gw) => {
     const fixes = fixOf(p?.team_id, gw)
-    const xm = xminsBase * (ava / 100) * Math.max(1, fixes.length)
+    // the engine now publishes expected minutes per gameweek; fall back to the
+    // single-value estimate for caches built before that
+    const perGw = proj?.players?.[String(pid)]?.xm?.[String(gw)]
+    const xm = perGw != null
+      ? perGw * Math.max(1, fixes.length)
+      : xminsBase * (ava / 100) * Math.max(1, fixes.length)
     return { gw, fixes, ep: epOf(proj, pid, gw), xm }
   }), [gws.join(','), p, proj, pid, ava, xminsBase, fixOf])
 
@@ -42,6 +48,43 @@ export default function PlayerModal({ pid, draft, plan, actions, close }) {
     return pts
   }, [projHistory, gws.join(','), pid])
 
+  // Percentile WITHIN POSITION. An 0.35 g90 is elite for a defender and
+  // ordinary for a forward, so an absolute scale would make every centre-back
+  // look useless and every striker look identical. Percentiles also make the
+  // axes commensurable, which is the only way a radar means anything.
+  const PROFILE_AXES = [
+    { key: 'g90', label: 'Goal threat', fmt: (v) => `${v.toFixed(0)}th pct` },
+    { key: 'a90', label: 'Creativity', fmt: (v) => `${v.toFixed(0)}th pct` },
+    { key: 'xm', label: 'Minutes', fmt: (v) => `${v.toFixed(0)}th pct` },
+    { key: 'dc90', label: 'Defensive', fmt: (v) => `${v.toFixed(0)}th pct` },
+    { key: 'cs90', label: 'Clean sheets', fmt: (v) => `${v.toFixed(0)}th pct` },
+    { key: 'ppm', label: 'Value', fmt: (v) => `${v.toFixed(0)}th pct` },
+  ]
+  const profile = useMemo(() => {
+    if (!p || !players?.length) return null
+    const peers = players.filter((q) => q.position === p.position)
+    if (peers.length < 8) return null
+    const epTot = (q) => {
+      const r = proj?.players?.[String(q.id)]
+      if (!r?.ep) return 0
+      return gws.reduce((a, g) => a + (r.ep[String(g)] ?? r.ep[g] ?? 0), 0)
+    }
+    const val = (q, key) => {
+      if (key === 'xm') return proj?.players?.[String(q.id)]?.xmins ?? q.xmins ?? 0
+      if (key === 'ppm') return q.price ? epTot(q) / q.price : 0
+      return q[key] ?? 0
+    }
+    const pct = (key) => {
+      const mine = val(p, key)
+      const vs = peers.map((q) => val(q, key))
+      const below = vs.filter((v) => v < mine).length
+      const same = vs.filter((v) => v === mine).length
+      return ((below + same / 2) / vs.length) * 100
+    }
+    const values = PROFILE_AXES.map((a) => pct(a.key))
+    return [{ name: p.web_name, color: VIZ[0], values, raw: values }]
+  }, [p, players, proj, gws.join(',')])
+
   const n = rows.length || 1
   const totEp = rows.reduce((a, r) => a + r.ep, 0)
   const totXm = rows.reduce((a, r) => a + r.xm, 0)
@@ -55,8 +98,20 @@ export default function PlayerModal({ pid, draft, plan, actions, close }) {
   return (
     <div className="pmodal-overlay" onClick={close}>
       <div className="pmodal" onClick={(e) => e.stopPropagation()}>
-        <div className="head">
-          <div>
+        <div className="head pm-head">
+          {/* The cut-out is a BACKGROUND, not a picture of a man in a box: it
+              is masked away towards the text and the bottom edge so it
+              dissolves into the panel instead of sitting on it, and the club
+              badge behind it supplies the colour. Text always wins. */}
+          {photoUrl(p.code) && (
+            <div className="pm-hero" aria-hidden="true">
+              <img className="pm-hero-badge" src={badgeUrl(team?.code)} alt=""
+                onError={(e) => { e.currentTarget.style.display = 'none' }} />
+              <img className="pm-hero-img" src={photoUrl(p.code)} alt="" loading="lazy"
+                onError={(e) => { e.currentTarget.closest('.pm-hero').style.display = 'none' }} />
+            </div>
+          )}
+          <div className="pm-head-text">
             <h2>{p.web_name}</h2>
             <div className="sub">
               {team?.short || '?'} · {p.position} · {money(p.price)}
@@ -132,10 +187,8 @@ export default function PlayerModal({ pid, draft, plan, actions, close }) {
           <table className="pd-table">
             <thead>
               <tr>
-                <th className="l">GW</th><th className="l">Opp</th><th>Pts</th>
-                <th>xMins</th><th>Ava%</th><th>PK%</th><th>G90</th><th>A90</th>
-                <th title={p.position === 'DEF' ? 'CBIT/90' : 'CBIRT/90'}>DC90</th>
-                <th>CS90</th>
+                <th className="l">GW</th><th className="l">Opp</th>
+                <th>FDR</th><th>Pts</th><th>xMins</th>
               </tr>
             </thead>
             <tbody>
@@ -144,18 +197,47 @@ export default function PlayerModal({ pid, draft, plan, actions, close }) {
                   <td className="l">{r.gw}</td>
                   <td className="l">{r.fixes.map((f) =>
                     `${f.oppShort}${f.home ? ' (H)' : ' (A)'}`).join(', ') || '–'}</td>
+                  <td>{(() => {
+                    if (!r.fixes.length) return <span style={{ color: 'var(--muted-2)' }}>–</span>
+                    const d = r.fixes.reduce((a, f) => a + (f[fdrMode] ?? f.fdr ?? 3), 0) / r.fixes.length
+                    const c = fdrColor(d)
+                    return <span className="ep-chip"
+                      style={{ background: c.bg, color: c.fg, minWidth: 34 }}>{d.toFixed(1)}</span>
+                  })()}</td>
                   <td><span className="ep-chip" style={{ background: epColor(r.ep) }}>{fmt1(r.ep)}</span></td>
                   <td>{Math.round(r.xm)}</td>
-                  <td>{ava}%</td>
-                  <td>{Math.round((p.pk_share || 0) * 100)}%</td>
-                  <td>{(p.g90 ?? 0).toFixed(2)}</td>
-                  <td>{(p.a90 ?? 0).toFixed(2)}</td>
-                  <td>{(p.dc90 ?? 0).toFixed(2)}</td>
-                  <td>{(p.cs90 ?? 0).toFixed(2)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
+          <div className="pd-rates">
+            <span className="section-label">Season rates</span>
+            <div className="pd-rates-row">
+              {[
+                ['Avail', `${ava}%`, 'current availability from FPL'],
+                ['PK', `${Math.round((p.pk_share || 0) * 100)}%`, 'share of his club’s penalties'],
+                ['G90', (p.g90 ?? 0).toFixed(2), 'goals per 90'],
+                ['A90', (p.a90 ?? 0).toFixed(2), 'assists per 90'],
+                ['DC90', (p.dc90 ?? 0).toFixed(2),
+                  p.position === 'DEF' ? 'CBIT per 90' : 'CBIRT per 90'],
+                ['CS90', (p.cs90 ?? 0).toFixed(2), 'clean sheets per 90'],
+              ].map(([k, v, tip]) => (
+                <div key={k} title={tip}><span>{k}</span><b>{v}</b></div>
+              ))}
+            </div>
+            <p className="pd-rates-note">
+              Per-90 rates across the season. The opponent is priced separately
+              and shows in <b>Pts</b>.
+            </p>
+          </div>
+          {profile && (
+            <div className="pm-profile">
+              <span className="section-label">
+                Profile — percentile among {p.position}s
+              </span>
+              <Radar axes={PROFILE_AXES} series={profile} size={300} />
+            </div>
+          )}
           {trend.length >= 2 && (
             <div className="trend-row">
               <span className="section-label">Model trend</span>
