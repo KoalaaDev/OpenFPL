@@ -845,6 +845,32 @@ baselines rather than assumed. The measured hierarchy — random −6.1, human
 make a manager's decisions better": yes, by about 2 points a week over a
 competent manual pick, roughly 80 points a season, before transfers.
 
+### Phase 2.5: exploit the champion (infrastructure, built ahead of data)
+
+Round 14 closed the objective question; the open one is *where max-xP is
+wrong and what information could have corrected it*. Three systems, all
+reporting-only (the decision rule stays max-xP):
+
+* `python -m fpl_engine sensitivity --gw N [--entry E]` — decision margins
+  + bootstrap stability from the simulator draws. Fragile calls (captain
+  margin < ~0.3 xP, tight XI swaps) are the only places team news can
+  change the decision, so information effort concentrates there.
+* `python -m fpl_engine errors --season S [--replay | --gw N]` — the
+  persistent model-error database (`model_error` table): per-player
+  prediction vs realised, classified causally (did_not_play, haul_missed,
+  …). Seeded from 2024-25/2025-26 point-in-time replays; record each live
+  gw after it finishes. Systematic group biases are the signal; single
+  rows are noise.
+* `python -m fpl_engine decay` — grades archived pre-deadline snapshots
+  (availability field vs realised appearances) by hours-to-deadline;
+  fills in automatically as `data/collected/` accrues over finished
+  gameweeks. Also the accuracy floor any paid lineup source must beat.
+
+The info-value framework (mandate §2) is the join of these three:
+availability change events (data/collected/availability.jsonl) x the error
+class they should have prevented x the decision margin at that moment.
+Tests: `tests/test_phase25.py`.
+
 ## Sportmonks: audited, not usable
 
 Two independent hard blockers on the free plan, both verified against the API

@@ -174,3 +174,40 @@ information at the deadline, which must first be archived point-in-time.
   until the weekly layer is stable; the MILP already handles the
   mechanics, and decision-layer evidence says its projections are the
   binding input.
+
+## E6. Phase 2.5 exploitation infrastructure (built ahead of the data)
+
+Champion unchanged; these systems find where it is wrong and what
+information could have corrected it.
+
+* **Decision sensitivity** (`fpl_engine/xpts/sensitivity.py`, `sensitivity`
+  CLI): per-decision margins (captain vs next armband; each starter vs his
+  best legal bench swap) plus bootstrap stability over the simulator draws
+  — P(the choice survives estimation uncertainty). Fragile decisions
+  (margin < ~0.3 xP or unstable) are where information acquisition pays;
+  robust ones cannot be changed by any news short of an injury. First live
+  reading (2026-27 GW3, template): Haaland captain margin +1.03, 100%
+  stable; tightest XI call Mbeumo-over-Gabriel at 0.37 — a robust week.
+* **Model-error database** (`fpl_engine/errors.py`, `errors` CLI): every
+  gw's per-player prediction vs realised outcome persisted in
+  `model_error` with a causal-shaped classification (did_not_play /
+  unexpected_appearance / under_minutes / haul_missed /
+  blank_despite_minutes / ok / other). Seeded point-in-time from 2024-25 +
+  2025-26 replays; the live season records after each gw. Joins to the
+  availability change log on player/time — that join IS the info-value
+  framework's spine (mandate §2): information event -> did the error class
+  it should have prevented occur?
+* **Deadline-decay pipeline** (`fpl_engine/decay.py`, `decay` CLI): grades
+  every archived pre-deadline snapshot's availability field against
+  realised appearances, bucketed by hours-to-deadline. Auto-populates as
+  the scheduled collection accumulates over finished gameweeks; today it
+  correctly reports insufficient overlap. This also floors any future
+  source: a paid feed must beat the free availability field at the same
+  lead time.
+* **Mandate §6 (portfolio/joint XI optimisation) is already answered**:
+  mfru_g0 IS the joint-distribution XI optimiser (covariance, bench
+  insurance, formation interaction, per-draw autosubs) and measured +0.13
+  vs max-xP, p=0.78, n=111 (E2). Not rebuilt.
+* **Mandate §9**: MFRU frozen as-is; conditional questions (rank-state,
+  template-heavy weeks, mini-leagues) wait for rank-state data that does
+  not exist yet.

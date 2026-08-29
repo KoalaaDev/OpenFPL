@@ -252,6 +252,109 @@ def cmd_backtest(args):
         print("Saved to models/xpts/blend.json (used automatically by predict/web).")
 
 
+def cmd_decay(args):
+    from . import decay
+    db.init_db(args.db)
+    with db.session(args.db) as conn:
+        res = decay.analyse(conn, args.season)
+    if not res["buckets"]:
+        print(res["note"])
+        return 0
+    print(f"deadline decay, {res['season']} (availability field vs realised "
+          "appearances):")
+    hdr = (f"{'bucket':<14}{'n':>7}{'gws':>5}{'brier':>8}{'flagged brier':>15}"
+           f"{'flagged %':>11}")
+    print(hdr)
+    for b in res["buckets"]:
+        fb = b["brier_play_flagged"]
+        print(f"{b['bucket']:<14}{b['n']:>7}{b['gws']:>5}"
+              f"{b['brier_play']:>8.4f}"
+              f"{(f'{fb:.4f}' if fb is not None else '—'):>15}"
+              f"{b['flagged_share']:>11.3f}")
+    return 0
+
+
+def cmd_sensitivity(args):
+    import pandas as pd
+
+    from . import config as cfg
+    from .rank_backtest import template_squad
+    from .xpts import sensitivity, simulate
+    db.init_db(args.db)
+    with db.session(args.db) as conn:
+        season = args.season or cfg.CURRENT_SEASON
+        sim = simulate.simulate_gw(conn, season, args.gw, n_sims=args.sims)
+        if not len(sim["players"]):
+            print("no fixtures/simulation for that gameweek")
+            return 1
+        players = pd.read_sql_query(
+            "SELECT player_id, position, team_id FROM player WHERE season=?",
+            conn, params=(season,))
+        players = pd.DataFrame({"player_id": sim["players"]}).merge(
+            players, on="player_id", how="left")
+        if args.entry:
+            from .manager import fetch_picks
+            gw_prev = args.gw - 1
+            picks = fetch_picks(args.entry, gw_prev)
+            if not picks:
+                print(f"no picks for entry {args.entry} GW{gw_prev}")
+                return 1
+            squad = [int(p["element"]) for p in picks["picks"]]
+        else:
+            own = pd.read_sql_query(
+                "SELECT player_id, MAX(selected) selected FROM player_gw "
+                "WHERE season=? GROUP BY player_id", conn, params=(season,))
+            meta = players.merge(own, on="player_id", how="left").fillna(
+                {"selected": 0.0})
+            squad = template_squad(meta[meta["player_id"].isin(
+                set(sim["players"]))])
+        res = sensitivity.analyse_squad(sim["points"], players, squad)
+        names = dict(conn.execute(
+            "SELECT player_id, web_name FROM player WHERE season=?",
+            (season,)))
+    nm = lambda p: names.get(p, p)  # noqa: E731
+    print(f"GW{args.gw} decision sensitivity "
+          f"({'entry ' + str(args.entry) if args.entry else 'template squad'}):")
+    print(f"  captain: {nm(res['captain'])}  margin {res['captain_margin']} "
+          f"xP over {nm(res['vice'])}  | stable in "
+          f"{res['captain_stability']:.0%} of bootstraps")
+    print(f"  XI stable in {res['xi_stability']:.0%} of bootstraps")
+    print("  tightest XI calls (starter vs best bench alternative):")
+    for s in res["tightest_swaps"]:
+        print(f"    {nm(s['out'])} over {nm(s['in'])}: margin {s['margin']}")
+    print(f"  verdict: {'FRAGILE — worth watching team news' if res['fragile'] else 'robust'}")
+
+
+def cmd_errors(args):
+    from . import errors
+    db.init_db(args.db)
+    with db.session(args.db) as conn:
+        if args.replay:
+            n = errors.replay_season(conn, args.season, gws=args.gws or None,
+                                     progress=lambda m: print(m, flush=True))
+            print(f"recorded {n} error rows for {args.season}")
+        elif args.gw is not None:
+            from . import scoring as sc
+            from .xpts import engine as xe
+            preds = xe.xpts_predict_gw(conn, args.season, args.gw,
+                                       rules=sc.load_rules())
+            n = errors.record_gw(conn, args.season, args.gw, preds)
+            print(f"recorded {n} error rows for GW{args.gw}")
+        res = errors.analyse(conn, args.season)
+    if res.get("rows"):
+        print(f"\n{res['rows']} rows over {res['gws']} gws | bias "
+              f"{res['bias']:+.3f} (played {res['bias_played']:+.3f}) | "
+              f"MAE played {res['mae_played']} | minutes MAE "
+              f"{res['minutes_mae']}")
+        print(f"classes: {res['classes']}")
+        print("by position:", res["by_position"])
+        print("by price:", res["by_price"])
+        print("team bias extremes:", res["team_bias_extremes"])
+        print("worst misses:", res["worst_misses"][:5])
+    else:
+        print("no error rows recorded yet")
+
+
 def cmd_rank_backtest(args):
     from . import rank_backtest
     db.init_db(args.db)
@@ -394,6 +497,33 @@ def main(argv=None):
     sp.add_argument("--top", type=int, default=15, help="rows each way")
     sp.add_argument("--out", help="write predictions CSV")
     sp.set_defaults(func=cmd_prices)
+
+    sp = sub.add_parser("decay",
+                        help="grade archived pre-deadline snapshots by "
+                             "hours-to-deadline (fills in as data accrues)")
+    sp.add_argument("--season", default=None)
+    sp.set_defaults(func=cmd_decay)
+
+    sp = sub.add_parser("sensitivity",
+                        help="which XI/captain calls are fragile vs robust "
+                             "(margins + bootstrap stability)")
+    sp.add_argument("--gw", type=int, required=True)
+    sp.add_argument("--season", default=None)
+    sp.add_argument("--entry", type=int, default=None,
+                    help="analyse this FPL entry's 15 (default: template)")
+    sp.add_argument("--sims", type=int, default=3000)
+    sp.set_defaults(func=cmd_sensitivity)
+
+    sp = sub.add_parser("errors",
+                        help="model-error database: record and analyse "
+                             "where the champion is systematically wrong")
+    sp.add_argument("--season", default=config.CURRENT_SEASON)
+    sp.add_argument("--replay", action="store_true",
+                    help="point-in-time replay of a past season")
+    sp.add_argument("--gw", type=int, default=None,
+                    help="record one live gameweek after it finishes")
+    sp.add_argument("--gws", type=int, nargs="*", default=None)
+    sp.set_defaults(func=cmd_errors)
 
     sp = sub.add_parser("rank-backtest",
                         help="A/B the decision layer (MFRU vs max-xP) on a "
