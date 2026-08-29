@@ -252,6 +252,37 @@ def cmd_backtest(args):
         print("Saved to models/xpts/blend.json (used automatically by predict/web).")
 
 
+def cmd_rank_backtest(args):
+    from . import rank_backtest
+    db.init_db(args.db)
+    with db.session(args.db) as conn:
+        report = rank_backtest.run(conn, args.backtest_season,
+                                   gws=args.gws or None, n_sims=args.sims)
+    print(f"\nRank backtest {report['season']} (template squad held fixed; "
+          "realised points, real autosubs):")
+    print(f"{'arm':<12}{'pts/gw':>10}{'delta vs field':>16}{'gws':>6}")
+    for arm, m in report["summary"].items():
+        print(f"{arm:<12}{m['pts']:>10.2f}{m['delta']:>16.2f}{m['gws']:>6}")
+    print(f"\nSaved to data/rank_backtest_{report['season']}.json — pool "
+          "seasons with `compare-rank-backtests` before believing anything.")
+
+
+def cmd_compare_rank_backtests(args):
+    from .rank_backtest import compare
+    res = compare(args.paths, baseline=args.baseline)
+    print(f"baseline: {res['baseline']}")
+    hdr = (f"{'arm':<12}{'gws':>5}{'same cap':>9}"
+           f"{'pts base':>10}{'pts arm':>9}{'d pts':>8}{'p':>8}"
+           f"{'d delta':>9}{'p':>8}")
+    print(hdr)
+    for arm, m in res["arms"].items():
+        print(f"{arm:<12}{m['gws']:>5}{m['same_captain']:>9.2f}"
+              f"{m['pts']['baseline']:>10.2f}{m['pts']['arm']:>9.2f}"
+              f"{m['pts']['delta']:>+8.2f}{m['pts']['p']:>8.4f}"
+              f"{m['delta']['delta']:>+9.2f}{m['delta']['p']:>8.4f}")
+    print("\np is a paired t-test over gameweeks; treat p > 0.05 as unproven.")
+
+
 def cmd_run(args):
     from .pipeline import pull, predict_gw
     with db.session(args.db) as conn:
@@ -355,6 +386,20 @@ def main(argv=None):
     sp.add_argument("--top", type=int, default=15, help="rows each way")
     sp.add_argument("--out", help="write predictions CSV")
     sp.set_defaults(func=cmd_prices)
+
+    sp = sub.add_parser("rank-backtest",
+                        help="A/B the decision layer (MFRU vs max-xP) on a "
+                             "fixed template squad, realised points")
+    sp.add_argument("--backtest-season", default="2025-26")
+    sp.add_argument("--gws", type=int, nargs="*", default=None)
+    sp.add_argument("--sims", type=int, default=3000)
+    sp.set_defaults(func=cmd_rank_backtest)
+
+    sp = sub.add_parser("compare-rank-backtests",
+                        help="pool rank-backtest JSONs, paired t vs baseline")
+    sp.add_argument("paths", nargs="+")
+    sp.add_argument("--baseline", default="xp")
+    sp.set_defaults(func=cmd_compare_rank_backtests)
 
     sp = sub.add_parser("compare-backtests",
                         help="paired per-gameweek A/B of two saved backtest reports")
