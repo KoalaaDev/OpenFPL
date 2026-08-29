@@ -1084,7 +1084,7 @@ re-introduce exactly this conditioning.
 Roughly 10-15 gameweeks of collection before the differential signal can be
 tested against the model at all.
 
-### Round 13: the optimiser itself, finally replayed
+### Round 15: the optimiser itself, finally replayed
 
 Every round so far measured the *projections*. The machinery that turns them
 into decisions — the multi-period MILP, free-transfer accrual, the -4 hit
@@ -1206,7 +1206,7 @@ prediction is real but traces to an in-season upward trend in crossings
 (0.111 -> 0.134 per appearance) that any trailing estimator lags, worth about
 0.011 pts per player-gameweek. Not shipped.
 
-### Round 14: pricing information, and closing the decision layer
+### Round 16: pricing information — what a lineup feed is worth
 
 Two questions: is the model at its ceiling because the *information* is
 exhausted, and is maximising expected points the wrong objective? The first
@@ -1271,22 +1271,23 @@ so using it would not leak). The third says it is worthless for the only
 population that needs help. Twelve million managers chase last week's hauls;
 they do not relay team news. `shift(1)` stays.
 
-### The decision layer is closed, and mostly by algebra
+### The same conclusion from the transfer layer
 
-Maximising expected margin over the crowd is **identical** to maximising
-expected points. With `m` your multiplier and `EO` effective ownership,
+Rounds 13-14 close the decision layer at the **weekly** layer: the squad is
+held to the lagged-ownership template and the arms differ only in
+XI/captain/vice/bench order. That is where the EO-free theorem was derived
+(`E[Delta]` does not depend on `EO`, so no realised-mean test can validate
+`gamma != 0`) and where seventeen challengers were beaten by plain max-xP at
+n=111. None of that is re-derived here.
 
-    E[margin] = sum (m_i - EO_i) * ep_i = sum m_i * ep_i - sum EO_i * ep_i
+What was not covered there is the layer above it: a rank tilt applied to the
+**projections that drive transfers**, so the arms end up owning different
+players. Two independent nonlinearities were swept through the Round 15 replay
+harness.
 
-and the second term does not depend on what you pick. So every
-differential-aware objective that is linear in ownership — value a player at
-`ep x (1 - EO)`, penalise template picks, any of it — provably changes nothing.
-This is the simulator's "the mean is sufficient" arriving from a second
-direction.
-
-Rank-awareness can therefore only bite through nonlinearity, and the only one
-the engine can see is that players from a club share a fixture. `concentration`
-prices it exactly (see `optimise/chips.py`); pooled over 74 gameweeks:
+**Club concentration.** Players from one club share a fixture, so their
+returns are correlated. `concentration` prices that exactly (see
+`optimise/chips.py`); pooled over 74 gameweeks:
 
 | lambda | pts/season | margin sd | beat crowd | excess club stacking |
 |---|---|---|---|---|
@@ -1304,6 +1305,30 @@ little room for correlation to matter. The +1.0 arm even has the *highest*
 variance, since forcing a spread pushes into worse and more volatile players.
 The knob stays at 0.0 and is kept only because it is tested and free.
 
+**Differential exposure.** The sharper version, because ownership does not drop
+out of the *variance* even though it drops out of the mean:
+`Var(Delta) ~ sum m_i * sigma_i^2 * (1 - 2 EO_i)`, which is linear in the
+decision variables and so folds straight into the projections as
+`ep' = ep + gamma * sigma^2 * (1 - 2 EO)`. Pooled over 74 gameweeks, ownership
+lagged and sigma estimated point-in-time:
+
+| gamma | pts/season | vs 0 | p | margin sd | beat crowd |
+|---|---|---|---|---|---|
+| -0.30 protect | 2056 | -121 | 0.045 | 14.04 | 55% |
+| -0.10 | 2051 | -125 | 0.022 | 14.32 | 57% |
+| **0.00 ships** | **2173** | — | — | 14.24 | **72%** |
+| +0.10 chase | 1988 | -191 | 0.005 | 15.33 | 49% |
+| +0.30 chase | 1678 | -509 | <0.0001 | 14.63 | 36% |
+
+Unlike club concentration this lever *does* move margin sd (13.7 -> 15.3), so
+the channel is real — but the exchange rate is ruinous: ~6% more spread costs
+~180 points of mean. **Every deviation from the mean is significantly worse in
+both directions**, which is a stronger statement than the weekly layer could
+make, and it is stronger for a structural reason: at the weekly layer a tilt
+only reshuffles eleven of a fixed fifteen, while here it changes which fifteen
+you own. Round 14 bounds gamma's cost at the weekly layer; this shows it is
+actively harmful once it drives squad selection. Both say `gamma = 0`.
+
 **One implementation note, because the bug was silent.** A one-sided
 `z >= n - 1` prices a penalty correctly but leaves the objective **unbounded**
 as soon as the weight goes negative — CBC returns garbage, not an error, and
@@ -1311,10 +1336,15 @@ every solve produced an empty frame rather than raising. The excess is now
 pinned exactly with two-sided indicators (`n >= k*y_k`, `n <= (k-1) + M*y_k`),
 and `tests/test_concentration.py` asserts the negative arm stays bounded.
 
-### The model against the field
+### The model against the field, with transfers
 
-The concentration harness needed the crowd's realised score, which turns out to
-be directly computable from `player_gw.selected` and validates cleanly:
+Round 14 measures the engine against the crowd with the **squad held fixed**
+(+2.11 pts/gw for max-xP, p=0.027) — that isolates the weekly decision. This is
+the same comparison one layer up, with transfers live, so it carries the
+transfer value the fixed-squad design deliberately excludes.
+
+The crowd's realised score is directly computable from `player_gw.selected` and
+validates cleanly:
 ownership sums to **15.00** players, the implied manager counts are 10.74m and
 12.32m (the real FPL populations), and the crowd scores 52.2 / 51.5 a gameweek
 against a published average of ~50-55. No synthetic field is needed.
@@ -1327,10 +1357,11 @@ Against that field, the engine's own squad under a horizon-5 policy:
 | 2025-26 | **+171** | +4.61 | 65% |
 
 About **+224 points a season over the average manager**, with an identical 65%
-weekly hit rate in both seasons — the first end-to-end validation of the whole
-system against the field rather than against its own projections. It is
-conservative in one respect: this arm plays **no chips**, while the crowd
-baseline includes theirs.
+weekly hit rate in both seasons. It is conservative in one respect: this arm
+plays **no chips**, while the crowd baseline includes theirs. Against Round
+14's +2.11/gw at the fixed-squad layer, the gap between the two is roughly what
+the transfer policy is worth on top of the weekly decision — consistent with
+Round 15's finding that transferring at all is worth +283 to +354 a season.
 
 ### Polymarket: shown, not modelled
 
