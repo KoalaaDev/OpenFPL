@@ -225,6 +225,22 @@ CREATE INDEX IF NOT EXISTS idx_shot_player_date
 CREATE INDEX IF NOT EXISTS idx_shot_date ON understat_shot (match_date);
 
 -- Manual entity-resolution overrides (checked into version control via export).
+CREATE TABLE IF NOT EXISTS market_quote (
+    season        TEXT NOT NULL,
+    fixture_id    INTEGER NOT NULL,
+    source        TEXT NOT NULL,
+    observed_utc  TEXT NOT NULL,
+    home_id       INTEGER,
+    away_id       INTEGER,
+    p_home        REAL,
+    p_draw        REAL,
+    p_away        REAL,
+    volume        REAL,
+    liquidity     REAL,
+    ref           TEXT,
+    PRIMARY KEY (season, fixture_id, source)
+);
+
 CREATE TABLE IF NOT EXISTS entity_override (
     kind        TEXT NOT NULL,           -- 'player' | 'team'
     season      TEXT NOT NULL,
@@ -327,3 +343,31 @@ def upsert(conn: sqlite3.Connection, table: str, rows: Iterable[dict]) -> int:
     sql = f"INSERT OR REPLACE INTO {table} ({collist}) VALUES ({placeholders})"
     conn.executemany(sql, [[r.get(c) for c in cols] for r in rows])
     return len(rows)
+
+
+def ensure_market_quote(conn) -> None:
+    """Create `market_quote` on demand.
+
+    Prediction-market prices are kept OUT of `match_odds` on purpose:
+    `odds_model.fixture_odds_map` takes every row for a fixture and lets the
+    last one win, so a second source there would silently move lambda
+    depending on row order — a model change with no backtest behind it. These
+    quotes are for the UI to show, not for the engine to consume.
+    """
+    conn.executescript("""
+CREATE TABLE IF NOT EXISTS market_quote (
+    season        TEXT NOT NULL,
+    fixture_id    INTEGER NOT NULL,
+    source        TEXT NOT NULL,
+    observed_utc  TEXT NOT NULL,
+    home_id       INTEGER,
+    away_id       INTEGER,
+    p_home        REAL,
+    p_draw        REAL,
+    p_away        REAL,
+    volume        REAL,
+    liquidity     REAL,
+    ref           TEXT,
+    PRIMARY KEY (season, fixture_id, source)
+);
+""")

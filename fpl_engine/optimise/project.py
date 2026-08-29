@@ -116,6 +116,28 @@ def horizon_projections(conn, season: str, gws: list[int], *, bundle=None,
     prior_w = preseason_weight(_played_gws(conn, season))
     priors = preseason_priors(conn, season, profiles) if prior_w > 0 else {}
 
+    # Expected minutes FOR DISPLAY come from the xpts minutes model, not from
+    # `minutes.minutes_profiles`. The latter is a trailing-history estimate
+    # kept for the OpenFPL scaling factor and the pre-season prior, and it
+    # reports a nailed starter's realised average — 90.0 for a player who has
+    # started once and played the full match. The model, which is what the
+    # engine actually prices him with, says 81.2 for the same player because it
+    # carries the chance he is rested or hooked. Showing the trailing number
+    # next to model points repeats the Round 8b mistake, where the UI displayed
+    # a trailing start rate against a calibrated P(start) and was materially
+    # worse. Nothing about the projection changes here — only what is reported.
+    model_xmins: dict[int, float] = {}
+    if minutes_bundle and minutes_bundle[0] is not None and gws:
+        try:
+            from ..xpts import minutes_model as _mm
+            _as_of = features.gw_as_of(conn, season, gws[0])
+            _mf = _mm.predict_gw(conn, season, _as_of, minutes_bundle[0],
+                                 minutes_bundle[1], gw=gws[0])
+            model_xmins = {int(r.player_id): float(r.e_min)
+                           for r in _mf.itertuples()}
+        except Exception:
+            model_xmins = {}
+
     from .. import progress
     ep_by_gw: dict[int, dict[int, float]] = {}
     for g in gws:
@@ -183,7 +205,8 @@ def horizon_projections(conn, season: str, gws: list[int], *, bundle=None,
             "player_id": pid, "player": a["full_name"], "position": a["position"],
             "team_id": a["team_id"], "team": team_name.get(a["team_id"]),
             "price": a["now_cost"] or 0.0, "available": avail,
-            "xmins": prof["xmins"] if prof else None,
+            "xmins": model_xmins.get(pid,
+                                      prof["xmins"] if prof else None),
             "prior_w": prior_w if prior is not None else 0.0,
             "ep_total": total,
         }

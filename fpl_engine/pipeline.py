@@ -56,6 +56,14 @@ def _pull_odds(conn, season: str) -> dict | str:
             out["odds_api"] = f"skipped ({e})"
     else:
         out["odds_api"] = "skipped (ODDS_API_KEY not set)"
+    # Prediction-market prices. Free and keyless, and they land in their own
+    # table — they are shown next to the bookmaker's view, never fed to the
+    # model, because every Polymarket EPL market is team level.
+    try:
+        from .ingest import polymarket
+        out["polymarket"] = polymarket.ingest(conn, season)
+    except Exception as e:  # noqa: BLE001 - a market feed must never break a pull
+        out["polymarket"] = f"skipped ({e})"
     return out
 
 

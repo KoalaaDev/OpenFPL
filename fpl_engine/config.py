@@ -10,6 +10,43 @@ import os
 # --- Paths -----------------------------------------------------------------
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = os.path.join(ROOT, "data")
+
+
+def _load_env_file() -> list[str]:
+    """Read `.env` next to the project, filling in anything not already set.
+
+    On Windows this is the difference between a key working and a lost hour.
+    `setx` writes to the registry, but a process inherits its environment from
+    its PARENT — so a server started from a terminal that was already open
+    cannot see the new value, and neither can anything that terminal spawns,
+    however "fresh" it looks. Only a shell created after the `setx` picks it up.
+
+    A file has no such rule. Real environment variables still win, so this only
+    ever fills gaps.
+
+        ODDS_API_KEY=abc123      # comments and blank lines are ignored
+    """
+    loaded: list[str] = []
+    for path in (os.path.join(ROOT, ".env"), os.path.join(DATA_DIR, ".env")):
+        try:
+            with open(path, encoding="utf-8") as fh:
+                lines = fh.readlines()
+        except OSError:
+            continue
+        for raw in lines:
+            line = raw.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, _, val = line.partition("=")
+            key = key.strip()
+            val = val.strip().strip('"').strip("'")
+            if key and val and not os.environ.get(key):
+                os.environ[key] = val
+                loaded.append(key)
+    return loaded
+
+
+ENV_FILE_KEYS = _load_env_file()
 MODELS_DIR = os.path.join(ROOT, "models")
 CONFIG_DIR = os.path.join(ROOT, "config")
 CACHE_DIR = os.path.join(DATA_DIR, "cache")  # immutable, timestamped raw snapshots
