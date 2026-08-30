@@ -306,10 +306,14 @@ the choice of criterion.
 
 Stated plainly so nobody re-runs the experiment expecting a number:
 
-* **Predicted-lineup, press-conference and injury-duration models.** No free
-  feed here carries manager quotes, injury type or expected return date, and
-  FPL's `status`/`chance_next` is a *current* snapshot with no history — so
-  even the availability overlay cannot be backtested honestly.
+* **Predicted-lineup and press-conference models.** No free feed here carries
+  manager quotes, and FPL's `status`/`chance_next` is a *current* snapshot with
+  no history — so the availability overlay cannot be backtested from FPL data.
+  **Injury duration is no longer on this list**: Transfermarkt dates every
+  spell (type, start, end, days, games missed), which makes it the first
+  minutes-related signal that is both exogenous and backtestable. See the
+  section below — the headline number is misleading and the honest one is
+  small, but it is real and replicated.
 * **Manager identity and manager-specific rotation.** Not in any feed the
   pipeline reads; the club-level proxy above is the closest reachable, and it
   is worth ~0.25% of log-loss.
@@ -891,7 +895,7 @@ Checked against the sites, not the documentation:
 |---|---|
 | **FBref / Sports Reference** | returns **403 to `robots.txt` itself** for non-browser agents. Actively refusing automated access. Not scraped. |
 | **Understat** | `robots.txt` is `User-agent: * / Disallow: /`. The repo **already** depends on it (`ingest/understat.py`), which predates this work — flagged here rather than quietly extended. No new Understat scraping was added. |
-| **Transfermarkt** | permissive `robots.txt`, but its terms prohibit automated extraction. robots.txt is not a licence. Not scraped. |
+| **Transfermarkt** | permissive `robots.txt`; its terms prohibit automated extraction, and robots.txt is not a licence. Originally not scraped for that reason. **Now scraped, at the owner's explicit instruction** for personal use — see "Transfermarkt: rumours and injury history" below. The `felipeall/transfermarkt-api` wrapper was evaluated first and rejected: unmaintained since April 2025, and its own issue #121 is "500 Error Status on all GET Endpoints" (confirmed — every endpoint 500s). |
 | **Premier League official** | crawlable (24 disallow rules, almost all query-string patterns). Viable if a need appears. |
 | **FPL API** | `robots.txt` present, no disallow rules, already used by the pipeline. |
 
@@ -1408,6 +1412,92 @@ scoreline distribution directly, which pins the joint structure rather than the
 marginals. That is strictly more information than we use, and it would feed the
 simulator's correlation rather than the ranking. Untested, and expected small
 for the usual reason: it improves the fixture channel, which is second order.
+
+### Transfermarkt: rumours and injury history
+
+Scraped directly, at the owner's explicit instruction, after the third-party
+wrapper (`felipeall/transfermarkt-api`) was found unmaintained since April 2025
+with every endpoint returning 500 — its own open issue #121. Two datasets, and
+they are worth very different amounts.
+
+**Transfer rumours are a correctness fix, not an edge.** FPL reclassifies a
+player only once a move COMPLETES, so between the deal being agreed and that
+update the engine projects him onto a club's fixtures he will never play. That
+is not a mis-rating, it is the wrong club. Nothing else reaches this: FPL tells
+you afterwards (`status='u'`, "Has joined X permanently"), and Polymarket
+prices only the superstar tier (13 open markets, all Alvarez/Rashford-sized).
+
+The board gives player, current club, interested club **and that club's
+league**, a source date and Transfermarkt's own assessment. The league is what
+decides the consequence: a destination in `GB1` means a different Premier
+League run (reproject); anything else means he leaves the game and is worth
+zero. Of 25 rumours, 15 resolve to FPL players and 8 of 9 strong ones are
+exits, so the dominant effect is players who should stop being recommended.
+
+Rumours at or above 50% are priced in automatically, **weighted rather than
+switched**:
+
+    ep' = p * ep_at_destination + (1 - p) * ep_as_things_stand
+
+A hard threshold would treat a 51% rumour and a 95% one identically. Gabriel
+Jesus at 83% to Barcelona keeps 17% of his projection; Gakpo at 69% to Man City
+is repriced on City's fixtures with his own rates. `engine.xpts_predict_gw`
+takes a `team_override`, which is all the reprojection needs — everything
+downstream keys off `team_id`, so fixtures, opponent strength and the
+clean-sheet lambda follow. A manual watch remains for what the board misses.
+
+*Two parsing traps, both of which produced plausible wrong output.* The club
+regex `verein/(\d+)"[^>]*title=` cannot reach the title, because the markup is
+`verein/631"><img src="…" title="Chelsea FC"` and `[^>]*` will not cross `>` —
+it parsed zero rows. And substring club matching silently misclassified PL
+destinations: "Manchester City" does not contain "Man City", so Gakpo's move
+was filed as *leaving the league*, which is the one distinction the feature
+exists to make.
+
+**Injury history is the interesting one, and its headline number is a trap.**
+3,222 dated spells over 473 players back to 2012, typed (Hamstring 371, Knee
+195, Ankle 191, Muscle 177, Calf 86, Groin 76), with duration and games missed.
+Added to the minutes model, trained forward in time:
+
+| arm | 2024-25 | 2025-26 |
+|---|---|---|
+| baseline (no injury data) | 0.4962 | 0.4425 |
+| + currently-out only | −5.11% | −7.33% |
+| + injury history only | −1.39% | −1.96% |
+| + both | **−7.08%** | **−9.25%** |
+| **history on top of currently-out** | **−2.08%** | **−2.08%** |
+
+Do not quote the −7%/−9%. Backtests disable the availability overlay (stored
+FPL status is today's, not that gameweek's), so the baseline has *no*
+availability information at all — most of that gap is re-deriving what the live
+model already gets free from `status`/`chance_next`. Reporting it would repeat
+the `site_ep` mistake: a benchmark that looks extraordinary because the
+baseline was handicapped.
+
+The honest figure is **−2.08%**: what injury history adds once the model
+already knows he is out. It replicated to two decimals across two independent
+seasons, and it is 8x the best of six previous sharpening attempts — all of
+which were re-arrangements of data the model already had, whereas this is
+exogenous.
+
+It is **not shipped**, and two things must clear first:
+
+1. **Score it on decision metrics.** Understat's rates were 3.9% better and
+   moved nothing (every p > 0.19). Log-loss is not the bar in this repo.
+2. **Compare TM against FPL's `status`.** If it is a noisier copy of a flag we
+   already read live, the live gain is nil however real the backtest gain is.
+
+The leakage boundary is the whole risk and is enforced in
+`xpts/injury_features.py`: a spell that ENDED before the deadline is fully
+usable; one that started and had not ended contributes only the *fact* that he
+is out, never its duration or end date. Audited for the obvious failure — an
+injury sustained during a match being credited to it — and cleared: only 133
+spells begin on a fixture day, and 85% of those players did play.
+
+**The second prize may be larger than the feature.** This is a dated,
+historical availability record, which is exactly what Phase 2 is waiting a full
+season of forward collection to obtain. If it holds up, the availability→xMins
+integration becomes backtestable now rather than in 2027.
 
 ## Optimiser
 

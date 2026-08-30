@@ -246,6 +246,62 @@ information at the deadline, which must first be archived point-in-time.
   correlation with starting now is **-0.002 / +0.010**. The crowd chases last
   week's hauls; it does not relay team news. `shift(1)` stays.
 
+## E9. Transfermarkt injury history — the first exogenous minutes signal
+
+* **Why it is not attempt number seven.** The six prior sharpening attempts all
+  returned <=0.25% and all were re-arrangements of data the model already had.
+  Injury history is exogenous (minutes record THAT a player was absent, never
+  that it was a hamstring) and, unlike availability or lineups, **dated** — so
+  it clears the archive wall that stopped the other three.
+* **Corpus.** 3,222 spells, 473 players, 2012-2026, scraped directly (the
+  `transfermarkt-api` wrapper is unmaintained and 500s on every endpoint).
+  Typed: Hamstring 371, Knee 195, Ankle 191, Muscle 177, Calf 86, Groin 76.
+  569 spells fall in 2024-25 and 598 in 2025-26.
+* **Result** (train on prior seasons, held-out season, ~57k player-matches):
+  baseline 0.4962 / 0.4425; + currently-out −5.11% / −7.33%; + history only
+  −1.39% / −1.96%; + both −7.08% / −9.25%. **History on top of currently-out:
+  −2.08% in BOTH seasons.**
+* **The headline is a handicapped-baseline artefact.** Replays disable the
+  availability overlay, so the baseline knows nothing about who is fit; most of
+  the −7/−9% re-derives what the live model already gets from FPL `status`.
+  Quoting it would be E4's `site_ep` mistake in a new coat. The defensible
+  number is −2.08%.
+* **Leak audit.** The failure mode is an injury sustained during a match being
+  credited to it. 133 spells start on a fixture day and 85% of those players
+  played, so it is not driving the result. Boundary enforced in
+  `xpts/injury_features.py`: ended spells fully usable, ongoing spells
+  contribute only the fact of absence.
+* **Verdict.** **Not shipped.** Promising and replicated, but log-loss is not
+  this repo's bar. Two gates before it can: (a) score on decision metrics —
+  Understat was 3.9% better at rate estimation and moved nothing; (b) check TM
+  against FPL `status` where both exist, because a noisier copy of a flag we
+  already read live is worth nothing live.
+* **Possible second prize.** A dated historical availability record is exactly
+  what E5 is collecting forward for. If it survives (a) and (b), the
+  availability→xMins challenger becomes testable now rather than after a season
+  of collection.
+
+## E10. Transfer rumours — a correctness fix, priced in automatically
+
+* **Problem.** FPL reclassifies a player only when a move completes, so the
+  engine recommends players onto fixtures they will never play. Not a
+  mis-rating — the wrong club.
+* **Source.** Transfermarkt's PL rumour board: player, club, interested club,
+  that club's league, source date, and its own assessment. 25 rumours, 15
+  resolve to FPL players, 8 of 9 strong ones are exits.
+* **Applied**, weighted by the assessment rather than switched at a threshold:
+  `ep' = p * ep_destination + (1-p) * ep_current`, destination value zero for a
+  move out of the league. Enabled at >=50%. `engine.xpts_predict_gw` gained a
+  `team_override`, which is sufficient for reprojection since everything
+  downstream keys off `team_id`.
+* **Not a measured edge and not claimed as one.** Transfermarkt's percentage is
+  a forum-sourced opinion; this ships as a correctness fix, on the same footing
+  as excluding Assistant Managers from the backtest actuals.
+* **Two parsing traps**, both producing plausible wrong output and both now
+  tested: the club regex could not cross `"><img` to reach the title (parsed
+  zero rows), and substring club matching filed "Manchester City" as *leaving
+  the league* because it does not contain "Man City".
+
 ## Phase-2 priority gating (what is NOT being done yet, and why)
 
 * Press conferences / journalist lineups: no free archived, timestamped
