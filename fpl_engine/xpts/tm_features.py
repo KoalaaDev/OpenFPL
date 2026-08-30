@@ -48,6 +48,9 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
+EPOCH = pd.Timestamp("1970-01-01", tz="UTC")
+DAY = pd.Timedelta(days=1)
+
 TM_PLAYER = ["tm_age", "tm_height_cm", "tm_foot_left", "tm_role_line",
              "tm_role_wide", "tm_role_vs_fpl"]
 TM_TRANSFER = ["tm_days_since_move", "tm_new_signing", "tm_fee_log",
@@ -207,10 +210,10 @@ def add_features(frame: pd.DataFrame, data: dict, *,
                      ["fee_eur", "from_club_id", "is_loan"])
         # merge_asof cannot carry the matched timestamp through the numeric
         # path above, so the date comes back on its own pass
-        t2 = tr.assign(_ts=tr["tr_dt"].astype("int64") / 86_400e9)
+        t2 = tr.assign(_ts=((tr["tr_dt"] - EPOCH) / DAY))
         when = _asof(out, t2, kick, "tr_dt", ["_ts"])
         out["tm_days_since_move"] = (
-            kick.astype("int64") / 86_400e9 - when["_ts"]).clip(0, 3650)
+            (kick - EPOCH) / DAY - when["_ts"]).clip(0, 3650)
         out["tm_new_signing"] = (out["tm_days_since_move"] < 120).astype(float)
         out.loc[out["tm_days_since_move"].isna(), "tm_new_signing"] = np.nan
         out["tm_fee_log"] = np.log1p(last["fee_eur"])
@@ -249,17 +252,34 @@ def add_features(frame: pd.DataFrame, data: dict, *,
 
 def _moves_in_window(frame: pd.DataFrame, tr: pd.DataFrame, kick: pd.Series,
                      days: int) -> pd.Series:
-    """How many completed moves fall in the `days` before each kickoff."""
+    """How many completed moves fall in the `days` before each kickoff.
+
+    Same encoding trick as the injury builder: (player, day) collapses to one
+    sortable key, so the window count is two vectorised searchsorted calls
+    rather than a scan the backtest would repeat every gameweek. Days are
+    ~2e4 apart, so a 1e9 stride keeps players from colliding.
+    """
     out = pd.Series(np.nan, index=frame.index, dtype=float)
-    by = {c: g["tr_dt"].to_numpy() for c, g in tr.groupby("player_code")}
-    codes = frame["player_code"].to_numpy()
-    ks = kick.to_numpy()
-    window = np.timedelta64(days, "D")
-    vals = np.full(len(frame), np.nan)
-    for i in range(len(frame)):
-        arr = by.get(codes[i])
-        if arr is None or ks[i] != ks[i]:
-            continue
-        vals[i] = float(((arr < ks[i]) & (arr >= ks[i] - window)).sum())
-    out[:] = vals
+    if tr.empty:
+        return out
+    t = np.where(kick.notna().to_numpy(), (kick - EPOCH) / DAY, np.nan)
+    codes = pd.Index(sorted(set(tr["player_code"].astype("int64"))))
+    rank_of = pd.Series(np.arange(len(codes)), index=codes)
+    row_rank = frame["player_code"].map(rank_of)
+    known = np.isfinite(t) & row_rank.notna().to_numpy()
+    if not known.any():
+        return out
+    rr = row_rank.fillna(0).to_numpy().astype("int64")
+
+    d = tr.assign(_rank=tr["player_code"].astype("int64").map(rank_of).to_numpy(),
+                  _d=((tr["tr_dt"] - EPOCH) / DAY).to_numpy())
+    d = d.sort_values(["_rank", "_d"])
+    keys = d["_rank"].to_numpy(np.float64) * 1e9 + d["_d"].to_numpy()
+
+    def _pos(when):
+        return np.searchsorted(
+            keys, rr.astype(np.float64) * 1e9 + when, side="left")
+
+    n = _pos(t) - _pos(t - float(days))
+    out[:] = np.where(known, n.astype(float), np.nan)
     return out

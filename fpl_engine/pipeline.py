@@ -27,6 +27,7 @@ def pull(conn, *, season: str | None = None, use_cache: bool = False,
                                         history=history)
     if backfill:
         summary["backfill"] = vaastav.ingest_seasons(conn, use_cache=use_cache)
+    summary["birth_dates"] = backfill_birth_dates(conn)
     if with_understat and understat.available():
         summary["understat"] = _pull_understat(conn, season, use_cache=use_cache)
     else:
@@ -119,6 +120,27 @@ def _resolve_backfill_seasons(conn, season: str, *, use_cache: bool) -> None:
         "  WHERE p2.code = player.code AND p2.understat_id IS NOT NULL LIMIT 1) "
         "WHERE understat_id IS NULL AND code IS NOT NULL")
     conn.commit()
+
+
+def backfill_birth_dates(conn) -> dict:
+    """Carry a player's date of birth back across seasons on the stable `code`.
+
+    FPL began publishing `birth_date` in 2024-25 and it is absent before, so
+    the training seasons would otherwise have no age at all. `code` survives
+    the summer renumbering, so one row fills every other row for the same man.
+    Only a player who left the league before 2024-25 stays blank — which is
+    the gap Transfermarkt's squad pages cover.
+    """
+    conn.execute(
+        "UPDATE player SET birth_date = ("
+        "  SELECT q.birth_date FROM player q WHERE q.code = player.code "
+        "  AND q.birth_date IS NOT NULL LIMIT 1) "
+        "WHERE birth_date IS NULL AND code IS NOT NULL")
+    conn.commit()
+    have = conn.execute(
+        "SELECT COUNT(*) FROM player WHERE birth_date IS NOT NULL").fetchone()[0]
+    total = conn.execute("SELECT COUNT(*) FROM player").fetchone()[0]
+    return {"with_birth_date": int(have), "players": int(total)}
 
 
 def _pull_understat(conn, season: str, *, use_cache: bool,

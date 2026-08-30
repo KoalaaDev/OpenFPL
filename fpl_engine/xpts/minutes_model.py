@@ -87,7 +87,8 @@ LABELS = {0: "none", 1: "sub", 2: "full"}   # 0 min / 1-59 / 60+
 # number in CLAUDE.md was measured on. A block is switched on for one process
 # with $FPL_MINUTES_EXTRA (``inj``, ``tm``, ``tm_player``, …), which is how a
 # backtest runs the challenger arm without a second copy of the module.
-EXTRA_BLOCKS = {"inj": "injury", "tm": "transfermarkt"}
+EXTRA_BLOCKS = {"age": "fpl birth date", "inj": "injury",
+                "tm": "transfermarkt"}
 EXTRA_FEATURES: list[str] = []
 
 
@@ -98,7 +99,9 @@ def _resolve_extras(names: list[str]) -> list[str]:
         n = n.strip().lower()
         if not n:
             continue
-        if n == "inj":
+        if n == "age":
+            out += ["fpl_age"]
+        elif n == "inj":
             out += _inj.FEATURES
         elif n == "inj_history":
             out += _inj.HISTORY_ONLY
@@ -151,7 +154,7 @@ def _history(conn, seasons: list[str], before: str | None) -> pd.DataFrame:
     q = ("SELECT pg.season, pg.gw, pg.player_id, pg.player_code, pg.fixture_id, "
          "pg.kickoff_utc, pg.minutes, pg.starts, pg.team_id, pg.was_home, "
          "pg.price price_gw, pg.selected, pg.transfers_in, pg.transfers_out, "
-         "p.position position, p.now_cost * 10.0 price "
+         "p.position position, p.birth_date birth_date, p.now_cost * 10.0 price "
          "FROM player_gw pg JOIN player p "
          "ON p.season=pg.season AND p.player_id=pg.player_id "
          # Assistant Managers are selectable entries that score points and
@@ -192,7 +195,7 @@ def _target_rows(conn, season: str, gw: int, as_of: str) -> pd.DataFrame:
     ])[["fixture_id", "gw", "kickoff_utc", "team_id", "was_home"]]
 
     players = pd.read_sql_query(          # now_cost £m -> tenths, see _history
-        "SELECT player_id, code player_code, position, team_id, "
+        "SELECT player_id, code player_code, position, team_id, birth_date, "
         "now_cost * 10.0 price FROM player WHERE season=? "
         "AND position IN ('GK','DEF','MID','FWD')",
         conn, params=(season,))
@@ -230,12 +233,27 @@ def _target_rows(conn, season: str, gw: int, as_of: str) -> pd.DataFrame:
     return out
 
 
+EPOCH = pd.Timestamp("1970-01-01", tz="UTC")
+DAY = pd.Timedelta(days=1)
+
+
 def _team_congestion(tm: pd.DataFrame) -> pd.DataFrame:
-    """Days of rest and matches in the previous 14 days, per team-match."""
+    """Days of rest and matches in the previous 14 days, per team-match.
+
+    Days come from dividing by a Timedelta, not from rescaling the integer
+    view. pandas keeps whatever resolution a timestamp was parsed at, and
+    since pandas 2.0 an ISO8601 string parses to MICROseconds — so
+    ``astype("int64") / 86_400e9`` silently returned days/1000. ``days_rest``
+    survived that (a tree only reads the order, and nothing then hit the
+    30-day clip) but ``team_matches_14d`` did not: a 14 that means 14,000 days
+    counts every previous match of the season, so the congestion feature was
+    really a gameweek counter. The model has documented itself as carrying a
+    fixture-congestion signal that it did not have.
+    """
     tm = tm.sort_values(["season", "team_id", "kick"]).copy()
     rest, cong = [], []
     for _, d in tm.groupby(["season", "team_id"], sort=False):
-        ks = d["kick"].astype("int64").to_numpy() / 86_400e9      # days
+        ks = ((d["kick"] - EPOCH) / DAY).to_numpy()               # days
         for i, k in enumerate(ks):
             prev = ks[:i]
             rest.append(k - prev[-1] if i else np.nan)
@@ -360,6 +378,17 @@ def _frame(conn, seasons: list[str], before: str | None = None,
     to = g["transfers_out"].transform(lambda s: s.shift(1))
     df["net_transfer_frac"] = ((ti - to) / df["sel_lag"].replace(0, np.nan)
                                ).clip(-2, 2)
+
+    # FPL publishes `birth_date` from 2024-25 and the pull carries it back
+    # across seasons on the stable code, so age is free, exact and complete
+    # wherever FPL has ever listed the player.
+    if "birth_date" in df.columns:
+        bd = pd.to_datetime(df["birth_date"], errors="coerce", utc=True)
+        bd = bd.groupby(df["player_code"]).transform(
+            lambda s: s.ffill().bfill())
+        df["fpl_age"] = (df["kick"] - bd).dt.days / 365.25
+    else:
+        df["fpl_age"] = np.nan
 
     df["label"] = np.select([df["minutes"] >= 60, df["minutes"] > 0],
                             [2, 1], 0).astype(float)

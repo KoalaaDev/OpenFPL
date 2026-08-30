@@ -64,6 +64,9 @@ def ingest_season(conn, season: str, *, use_cache: bool = True) -> dict:
             "position": config.ELEMENT_TYPE_TO_POSITION.get(
                 int(p["element_type"]) if p.get("element_type") else None),
             "understat_id": None,
+            # absent before 2024-25; `backfill_birth_dates` fills those rows
+            # from a later season on the stable `code`
+            "birth_date": p.get("birth_date") or None,
         })
     db.upsert(conn, "player", players)
 
