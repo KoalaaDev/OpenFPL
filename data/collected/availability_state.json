@@ -158,7 +158,7 @@
  "128295": [
   "i",
   0.0,
-  "Unspecified injury - Unknown return date",
+  "Groin injury - Unknown return date",
   "2026-08-15T20:00:06.779594Z"
  ],
  "135720": [
@@ -2202,9 +2202,9 @@
   null
  ],
  "486520": [
-  "i",
-  0.0,
-  "Knee injury - Unknown return date",
+  "d",
+  0.25,
+  "Knee injury - 25% chance of playing",
   "2026-08-14T23:00:06.272027Z"
  ],
  "486672": [
@@ -2731,8 +2731,8 @@
  ],
  "532529": [
   "d",
-  0.25,
-  "Unspecified injury - 25% chance of playing",
+  0.5,
+  "Unspecified injury - 50% chance of playing",
   "2026-08-27T19:30:07.780933Z"
  ],
  "532605": [
