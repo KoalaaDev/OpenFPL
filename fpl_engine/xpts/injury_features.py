@@ -71,19 +71,24 @@ FEATURES = ["inj_days_365", "inj_spells_365", "inj_spells_730",
 HISTORY_ONLY = [f for f in FEATURES if f != "inj_currently_out"]
 
 
-def spells(conn, season: str) -> pd.DataFrame:
-    """Injury spells joined onto FPL `player_code` (stable across seasons)."""
+def spells(conn, season: str | None = None) -> pd.DataFrame:
+    """Injury spells joined onto FPL `player_code` (stable across seasons).
+
+    `player_code` is read straight off `tm_player`, never reconstructed from
+    `tm_player.player_id` against a season's `player` table. FPL reassigns its
+    element ids every summer — measured on this database, **99.7% of ids point
+    to a different footballer one season later** — so the id route resolves a
+    player against the current squad and then hands his injury history to
+    whoever inherited his number two seasons ago. `season` is accepted and
+    ignored, because there is nothing season-specific left to do.
+    """
     df = pd.read_sql_query(
         "SELECT i.tm_player_id, i.from_date, i.until_date, i.days, "
-        "       i.games_missed, i.injury, m.player_id "
+        "       i.games_missed, i.injury, m.player_code "
         "FROM tm_injury i JOIN tm_player m ON m.tm_player_id = i.tm_player_id "
-        "WHERE m.player_id IS NOT NULL", conn)
+        "WHERE m.player_code IS NOT NULL", conn)
     if df.empty:
         return df.assign(player_code=[], from_dt=[], until_dt=[], soft=[])
-    codes = pd.read_sql_query(
-        "SELECT player_id, code player_code FROM player WHERE season=?",
-        conn, params=(season,))
-    df = df.merge(codes, on="player_id", how="inner")
     df["from_dt"] = pd.to_datetime(df["from_date"], errors="coerce", utc=True)
     df["until_dt"] = pd.to_datetime(df["until_date"], errors="coerce", utc=True)
     df["soft"] = df["injury"].fillna("").str.lower().apply(

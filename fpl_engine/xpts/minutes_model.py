@@ -82,6 +82,69 @@ CROWD_FEATURES = ["sel_share_lag", "sel_rank_pos", "net_transfer_frac"]
 FEATURES = HISTORY_FEATURES + ROLE_FEATURES + CONTEXT_FEATURES + CROWD_FEATURES
 LABELS = {0: "none", 1: "sub", 2: "full"}   # 0 min / 1-59 / 60+
 
+# --- optional exogenous blocks (Transfermarkt) ------------------------------
+# Empty by default, so the shipped model is bit-identical to the one every
+# number in CLAUDE.md was measured on. A block is switched on for one process
+# with $FPL_MINUTES_EXTRA (``inj``, ``tm``, ``tm_player``, …), which is how a
+# backtest runs the challenger arm without a second copy of the module.
+EXTRA_BLOCKS = {"inj": "injury", "tm": "transfermarkt"}
+EXTRA_FEATURES: list[str] = []
+
+
+def _resolve_extras(names: list[str]) -> list[str]:
+    from . import injury_features as _inj, tm_features as _tm
+    out: list[str] = []
+    for n in names:
+        n = n.strip().lower()
+        if not n:
+            continue
+        if n == "inj":
+            out += _inj.FEATURES
+        elif n == "inj_history":
+            out += _inj.HISTORY_ONLY
+        elif n == "inj_out":
+            out += ["inj_currently_out"]
+        elif n == "tm":
+            out += _tm.ALL
+        elif n in _tm.FAMILIES:
+            out += _tm.FAMILIES[n]
+        else:
+            raise ValueError(f"unknown minutes-model extra block: {n!r}")
+    return list(dict.fromkeys(out))
+
+
+def set_extras(names: list[str] | str | None) -> list[str]:
+    """Switch optional feature blocks on for this process. Returns the list."""
+    global EXTRA_FEATURES
+    if not names:
+        EXTRA_FEATURES = []
+    else:
+        if isinstance(names, str):
+            names = names.split(",")
+        EXTRA_FEATURES = _resolve_extras(list(names))
+    return EXTRA_FEATURES
+
+
+def active_features() -> list[str]:
+    return FEATURES + EXTRA_FEATURES
+
+
+def _attach_extras(conn, df: pd.DataFrame) -> pd.DataFrame:
+    """Join whichever optional blocks the active feature set asks for.
+
+    Both attach on ``player_code`` and filter strictly on ``kick``, so this is
+    the same point-in-time contract the rolling features honour.
+    """
+    if not EXTRA_FEATURES or df.empty:
+        return df
+    from . import injury_features as _inj, tm_features as _tm
+    if any(f in EXTRA_FEATURES for f in _inj.FEATURES):
+        df = _inj.add_features(df, _inj.spells(conn))
+    if any(f in EXTRA_FEATURES for f in _tm.ALL):
+        df = _tm.add_features(df, _tm.load(conn),
+                              pl_clubs=_tm.pl_club_ids(conn))
+    return df
+
 
 # ---------------------------------------------------------------- frame -----
 def _history(conn, seasons: list[str], before: str | None) -> pd.DataFrame:
@@ -301,7 +364,8 @@ def _frame(conn, seasons: list[str], before: str | None = None,
     df["label"] = np.select([df["minutes"] >= 60, df["minutes"] > 0],
                             [2, 1], 0).astype(float)
     df.loc[df["minutes"].isna(), "label"] = np.nan
-    return df.drop(columns=["_pm", "_ms", "_m5"])
+    df = df.drop(columns=["_pm", "_ms", "_m5"])
+    return _attach_extras(conn, df)
 
 
 # ---------------------------------------------------------------- train -----
@@ -312,7 +376,7 @@ def _fit(frame: pd.DataFrame, seasons: list[str], device: str | None):
         objective="multi:softprob", num_class=3, n_estimators=400, max_depth=5,
         learning_rate=0.06, subsample=0.9, colsample_bytree=0.8,
         eval_metric="mlogloss", device=device or "cpu")
-    clf.fit(tr[FEATURES], tr["label"].astype(int))
+    clf.fit(tr[active_features()], tr["label"].astype(int))
     return clf, tr
 
 
@@ -323,7 +387,7 @@ def _fit_minutes(tr: pd.DataFrame, device: str | None):
     m = xgb.XGBRegressor(n_estimators=400, max_depth=5, learning_rate=0.06,
                          subsample=0.9, colsample_bytree=0.8,
                          objective="reg:squarederror", device=device or "cpu")
-    m.fit(played[FEATURES], played["minutes"])
+    m.fit(played[active_features()], played["minutes"])
     return m
 
 
@@ -343,7 +407,7 @@ def _fit_start(tr: pd.DataFrame, device: str | None):
                           max_depth=5, learning_rate=0.06, subsample=0.9,
                           colsample_bytree=0.8, eval_metric="logloss",
                           device=device or "cpu")
-    m.fit(tr[FEATURES], y)
+    m.fit(tr[active_features()], y)
     return m
 
 
@@ -363,7 +427,8 @@ def train(conn, *, seasons: list[str] | None = None,
         probe, _ = _fit(frame, seasons[:-1], device)
         va = frame[frame["label"].notna() & (frame["season"] == valid_season)]
         if len(va):
-            acc = float((probe.predict(va[FEATURES]) == va["label"]).mean())
+            acc = float((probe.predict(va[active_features()])
+                         == va["label"]).mean())
     clf, tr = _fit(frame, seasons, device)
     # E[minutes | he plays], fitted on appearances only. Rebuilding expected
     # minutes as P(plays) x this beats the class-mean reconstruction it
@@ -378,7 +443,7 @@ def train(conn, *, seasons: list[str] | None = None,
     clf.save_model(model_path)
     reg.save_model(reg_path)
     start.save_model(start_path)
-    meta = {"features": FEATURES, "train_seasons": seasons,
+    meta = {"features": active_features(), "train_seasons": seasons,
             "valid_season": valid_season, "holdout_accuracy": acc,
             "mean_minutes": {"sub": m_sub, "full": m_full}}
     with open(meta_path, "w", encoding="utf-8") as fh:
@@ -400,7 +465,7 @@ def load(tag: str | None = None):
         return None, None
     with open(meta_path, encoding="utf-8") as fh:
         meta = json.load(fh)
-    if meta.get("features") != FEATURES:
+    if meta.get("features") != active_features():
         return None, None      # stale cache: the feature set has changed
     clf = xgb.XGBClassifier()
     clf.load_model(model_path)

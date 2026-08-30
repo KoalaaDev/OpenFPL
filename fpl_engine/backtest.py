@@ -168,11 +168,14 @@ def _metrics(pred: pd.DataFrame, actual_gw: pd.DataFrame) -> dict | None:
 
 def run(conn, season: str = "2025-26", *, gws: list[int] | None = None,
         openfpl_every: int = 4, retrain_minutes: bool = False,
-        with_openfpl: bool = True) -> dict:
+        with_openfpl: bool = True, out_dir: str | None = None) -> dict:
     train_seasons = [s for s in config.BACKFILL_SEASONS if s < season]
     # cached under the replayed season: a model that has never seen it must
-    # never become the one that serves live predictions
-    tag = f"bt{season}"
+    # never become the one that serves live predictions. An optional feature
+    # block gets its own tag too, so an A/B does not make each arm retrain the
+    # other's cache away.
+    extra = "".join(sorted(minutes_model.EXTRA_FEATURES))
+    tag = f"bt{season}" + (f".x{abs(hash(extra)) % 10**8}" if extra else "")
     if retrain_minutes or minutes_model.load(tag)[0] is None:
         progress.step(f"Training minutes model on {train_seasons}…")
         meta = minutes_model.train(conn, seasons=train_seasons, tag=tag)
@@ -275,7 +278,9 @@ def run(conn, season: str = "2025-26", *, gws: list[int] | None = None,
     report = {"season": season, "gws": gws, "summary": summary,
               "blend": blend_info,
               "minutes_holdout_accuracy": meta.get("holdout_accuracy")}
-    out_path = os.path.join(config.DATA_DIR, f"backtest_{season}.json")
+    out_dir = out_dir or config.DATA_DIR
+    os.makedirs(out_dir, exist_ok=True)
+    out_path = os.path.join(out_dir, f"backtest_{season}.json")
     with open(out_path, "w", encoding="utf-8") as fh:
         json.dump({**report, "per_gw": {m: {str(g): v for g, v in res.items()}
                                         for m, res in per_model.items()}},

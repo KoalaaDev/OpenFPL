@@ -12,6 +12,7 @@ Examples
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 import warnings
 
@@ -42,6 +43,37 @@ def cmd_pull(args):
     print("Pull complete:")
     for k, v in summary.items():
         print(f"  {k}: {v}")
+
+
+def cmd_transfermarkt(args):
+    """Crawl Transfermarkt's dated datasets: squads, transfers, values, injuries.
+
+    Single threaded and rate limited. Squads are crawled per season because the
+    identity map has to cover players who have since left the league — a
+    feature is only backtestable for players the backtest can see.
+    """
+    from .ingest import transfermarkt as tm
+    seasons = args.seasons or (config.BACKFILL_SEASONS + [config.CURRENT_SEASON])
+    with db.session(args.db) as conn:
+        tm.init(conn); tm.init2(conn)
+        if not args.skip_squads:
+            print(f"[tm] squads for {', '.join(seasons)}…")
+            print("  ", tm.ingest_squads(conn, seasons, progress=print))
+        targets = tm.crawl_targets(conn) if not args.resolved_only else \
+            tm.crawl_targets(conn, resolved_only=True)
+        print(f"[tm] {len(targets)} players to crawl")
+        if not args.skip_values:
+            print("[tm] market-value history…")
+            print("  ", tm.ingest_market_values(conn, targets=targets,
+                                                progress=print))
+        if not args.skip_transfers:
+            print("[tm] transfer history…")
+            print("  ", tm.ingest_transfers(conn, targets=targets,
+                                            progress=print))
+        if not args.skip_injuries:
+            print("[tm] injury history…")
+            print("  ", tm.ingest_injuries_for(conn, targets=targets,
+                                               progress=print))
 
 
 def cmd_backfill(args):
@@ -233,7 +265,8 @@ def cmd_backtest(args):
         report = backtest.run(conn, args.backtest_season, gws=args.gws or None,
                               openfpl_every=args.openfpl_every,
                               retrain_minutes=args.retrain_minutes,
-                              with_openfpl=not args.no_openfpl)
+                              with_openfpl=not args.no_openfpl,
+                              out_dir=args.out_dir)
     print(f"\nBacktest {report['season']} "
           f"(minutes-model holdout acc {report['minutes_holdout_accuracy']}):")
     cols = ["spearman", "spearman_played", "p_at_20", "top11", "top30",
@@ -306,6 +339,12 @@ def cmd_run(args):
 
 
 def main(argv=None):
+    # Optional exogenous feature blocks for the minutes model, switched on for
+    # one process only. Absent, every model is exactly the shipped one.
+    if os.environ.get("FPL_MINUTES_EXTRA"):
+        from .xpts import minutes_model as _mm
+        print("[minutes] extra blocks:",
+              _mm.set_extras(os.environ["FPL_MINUTES_EXTRA"]))
     p = argparse.ArgumentParser(prog="fpl_engine",
                                 description="Free, automatic FPL data pipeline -> SQLite -> OpenFPL")
     p.add_argument("--db", help="SQLite path (default data/fpl.sqlite or $FPL_DB_PATH)")
@@ -327,6 +366,17 @@ def main(argv=None):
     sp.add_argument("--cache", action="store_true")
     sp.add_argument("--seasons", nargs="*", help="e.g. 2023-24 2024-25")
     sp.set_defaults(func=cmd_backfill)
+
+    sp = sub.add_parser("transfermarkt",
+                        help="crawl Transfermarkt squads, transfers, values, injuries")
+    sp.add_argument("--seasons", nargs="*")
+    sp.add_argument("--skip-squads", action="store_true")
+    sp.add_argument("--skip-values", action="store_true")
+    sp.add_argument("--skip-transfers", action="store_true")
+    sp.add_argument("--skip-injuries", action="store_true")
+    sp.add_argument("--resolved-only", action="store_true",
+                    help="only players resolved onto an FPL code")
+    sp.set_defaults(func=cmd_transfermarkt)
 
     sp = sub.add_parser("build", help="build point-in-time samples for a gw")
     sp.add_argument("--gw", type=int, required=True)
@@ -375,6 +425,7 @@ def main(argv=None):
                     help="skip the OpenFPL comparison entirely")
     sp.add_argument("--retrain-minutes", action="store_true",
                     help="force retraining the minutes classifier")
+    sp.add_argument("--out-dir", help="write the report here instead of data/")
     sp.set_defaults(func=cmd_backtest)
 
     sp = sub.add_parser("simulate",
