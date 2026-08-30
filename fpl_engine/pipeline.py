@@ -64,6 +64,14 @@ def _pull_odds(conn, season: str) -> dict | str:
         out["polymarket"] = polymarket.ingest(conn, season)
     except Exception as e:  # noqa: BLE001 - a market feed must never break a pull
         out["polymarket"] = f"skipped ({e})"
+    # Transfer rumours. Surfaced as suggestions only: FPL reclassifies a player
+    # after a move completes, so between the deal and that update the engine
+    # projects him onto a club he has left.
+    try:
+        from .ingest import transfermarkt
+        out["rumours"] = transfermarkt.ingest(conn, season)
+    except Exception as e:  # noqa: BLE001
+        out["rumours"] = f"skipped ({e})"
     return out
 
 

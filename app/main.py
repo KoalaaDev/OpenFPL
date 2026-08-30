@@ -195,6 +195,17 @@ def job(job_id: str):
 
 # --- drafts ---------------------------------------------------------------
 
+@app.get("/api/transferwatch")
+def api_transfer_watch():
+    return services.transfer_watch_payload()
+
+
+@app.put("/api/transferwatch")
+def api_save_transfer_watch(body: dict):
+    services.save_transfer_watch(body or {})
+    return services.transfer_watch_payload()
+
+
 @app.get("/api/drafts")
 def drafts_get():
     return services.load_drafts()

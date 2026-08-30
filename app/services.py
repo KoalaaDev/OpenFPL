@@ -30,6 +30,7 @@ DRAFTS_PATH = os.path.join(WEB_CACHE, "drafts.json")
 HISTORY_PATH = os.path.join(WEB_CACHE, "projection_history.json")
 HISTORY_KEEP = 40            # snapshots kept (one per build, >=1h apart)
 MYTEAM_PATH = os.path.join(WEB_CACHE, "my_team.json")
+TRANSFER_WATCH_PATH = os.path.join(WEB_CACHE, "transfer_watch.json")
 
 FPL_BASE = "https://fantasy.premierleague.com/api"
 _TTL = 600.0
@@ -564,6 +565,190 @@ def entry_payload(entry_id: int) -> dict:
 # one local file and take precedence over the public picks endpoints.
 # --------------------------------------------------------------------------
 
+def _price_in_rumours(conn, season: str, gw: int, cache: dict) -> None:
+    """Fold strong transfer rumours into the projection for one gameweek.
+
+    FPL keeps a player at his old club until a move completes, so without this
+    the engine recommends players onto fixtures they will never play. A rumour
+    at or above `AUTO_MIN_PROBABILITY` is therefore priced in directly, and the
+    solver picks it up because it reads this same cache.
+
+    Weighted, not switched:
+
+        ep' = p * ep_at_destination + (1 - p) * ep_as_things_stand
+
+    A move abroad has destination value zero — he leaves the game. A move
+    inside the league is his own rates against the new club's fixtures, taken
+    as a RATIO from the component engine so the OpenFPL/xPts blend behind `ep`
+    survives intact.
+
+    Never raises: a rumour feed must not be able to break a projection build.
+    """
+    try:
+        from fpl_engine.ingest import transfermarkt
+        adj = transfermarkt.auto_adjustments(conn, season)
+    except Exception:
+        return
+    if not adj:
+        return
+
+    ratios: dict[int, float] = {}
+    movers = {pid: a["to_team"] for pid, a in adj.items()
+              if a.get("to_team") and not a.get("leaves_league")}
+    if movers:
+        try:
+            from fpl_engine.xpts import engine as xpts_engine
+            now = xpts_engine.xpts_predict_gw(conn, season, gw)
+            alt = xpts_engine.xpts_predict_gw(conn, season, gw,
+                                              team_override=movers)
+            if now is not None and alt is not None and not now.empty:
+                a = now.set_index("player_id")["prediction"].to_dict()
+                b = alt.set_index("player_id")["prediction"].to_dict()
+                for pid in movers:
+                    base = float(a.get(pid) or 0.0)
+                    if base > 0.01:
+                        ratios[pid] = float(b.get(pid) or 0.0) / base
+        except Exception:
+            ratios = {}
+
+    key = str(gw)
+    for pid, a in adj.items():
+        rec = cache["players"].get(str(pid))
+        if not rec or key not in (rec.get("ep") or {}):
+            continue
+        base = float(rec["ep"][key])
+        w = a["weight"]
+        dest = 0.0 if a["leaves_league"] else base * ratios.get(pid, 1.0)
+        rec["ep"][key] = round(w * dest + (1.0 - w) * base, 3)
+        rec["rumour"] = {
+            "to_club": a["to_club"], "to_team": a["to_team"],
+            "leaves_league": a["leaves_league"],
+            "probability": a["probability"],
+            "source_date": a["source_date"],
+        }
+        rec.setdefault("ep_unadjusted", {})[key] = round(base, 3)
+
+
+def _transfer_rumours() -> dict[str, dict]:
+    """Scraped rumours, keyed by FPL player_id — SUGGESTIONS, never applied.
+
+    Transfermarkt's assessment is a forum-sourced opinion, not a measured
+    probability, and the name resolution behind it is fuzzy. Both are reasons
+    to put a human between the rumour and the projection: a wrong match moves
+    the wrong player onto the wrong club's fixtures. The board also does not
+    carry every rumour going, so the manual watch stays the primary route and
+    this only saves typing when the two agree.
+    """
+    try:
+        from fpl_engine.ingest import transfermarkt
+        with db.connect() as conn:
+            rows = transfermarkt.current(conn, config.CURRENT_SEASON)
+    except Exception:
+        return {}
+    out: dict[str, dict] = {}
+    for r in rows:
+        key = str(int(r["player_id"]))
+        prev = out.get(key)
+        if prev and (prev.get("probability") or -1) >= (r["probability"] or -1):
+            continue                       # keep the strongest rumour per player
+        out[key] = {
+            "to_team": r["to_team_id"],
+            "to_club": r["to_club"],
+            "leaves_league": r["to_team_id"] is None,
+            "probability": r["probability"],
+            "source_date": r["source_date"],
+            "from_club": r["from_club"],
+        }
+    return out
+
+
+def load_transfer_watch() -> dict:
+    """Players you believe are on the way out, and where to.
+
+    FPL reclassifies a player only once a transfer COMPLETES — until then he is
+    listed at his old club with status "a", so the engine happily projects him
+    onto a run of fixtures he will never play. That is not a small mis-rating,
+    it is the wrong club entirely, and no free feed carries transfer rumours:
+    FPL tells you afterwards, and prediction markets only price the superstar
+    tier. So the fact comes from you, off the news, and the model supplies the
+    consequence.
+
+    Shape: {"players": {"<player_id>": {"to_team": int|None, "note": str}}}
+    """
+    if os.path.exists(TRANSFER_WATCH_PATH):
+        try:
+            with open(TRANSFER_WATCH_PATH, encoding="utf-8") as f:
+                doc = json.load(f)
+            if isinstance(doc, dict) and isinstance(doc.get("players"), dict):
+                return doc
+        except (OSError, ValueError):
+            pass
+    return {"players": {}}
+
+
+def save_transfer_watch(doc: dict) -> dict:
+    os.makedirs(WEB_CACHE, exist_ok=True)
+    clean = {}
+    for pid, v in (doc.get("players") or {}).items():
+        try:
+            key = str(int(pid))
+        except (TypeError, ValueError):
+            continue
+        to_team = (v or {}).get("to_team")
+        clean[key] = {
+            "to_team": int(to_team) if to_team not in (None, "", "null") else None,
+            "note": str((v or {}).get("note") or "")[:200],
+        }
+    out = {"players": clean, "saved_at": time.time()}
+    tmp = TRANSFER_WATCH_PATH + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(out, f)
+    os.replace(tmp, TRANSFER_WATCH_PATH)
+    return out
+
+
+def transfer_watch_payload() -> dict:
+    """The watch, plus what each move would do to the player's projection.
+
+    `alt` is his own rates against the destination's fixtures. It answers "is
+    he still worth it if he goes?", which is the question you can actually act
+    on. It deliberately does NOT model the role change — his P(start) is earned
+    at his current club, and what happens to it behind a different squad is not
+    something this data can tell you.
+    """
+    watch = load_transfer_watch()
+    players = watch.get("players") or {}
+    rumours = _transfer_rumours()
+    if not players:
+        return {"players": {}, "alt": {}, "rumours": rumours}
+    cache = _load_proj_cache()
+    gws = sorted(int(g) for g in (cache.get("gws") or {}))
+    alt: dict[str, dict] = {}
+    if not gws:
+        return {"players": players, "alt": alt, "rumours": rumours}
+
+    overrides = {int(pid): v["to_team"] for pid, v in players.items()
+                 if v.get("to_team")}
+    if not overrides:
+        return {"players": players, "alt": alt, "rumours": rumours}
+    try:
+        from fpl_engine.xpts import engine as xpts_engine
+        with db.connect() as conn:
+            for g in gws:
+                frame = xpts_engine.xpts_predict_gw(
+                    conn, config.CURRENT_SEASON, g, team_override=overrides)
+                if frame is None or frame.empty:
+                    continue
+                sub = frame[frame["player_id"].isin(overrides)]
+                for r in sub.itertuples():
+                    rec = alt.setdefault(str(int(r.player_id)), {"ep": {}})
+                    rec["ep"][str(g)] = round(float(r.prediction), 3)
+    except Exception as exc:                      # never break the tab
+        return {"players": players, "alt": {}, "rumours": rumours,
+                "error": str(exc)}
+    return {"players": players, "alt": alt, "rumours": rumours}
+
+
 def load_my_team() -> dict | None:
     if os.path.exists(MYTEAM_PATH):
         with open(MYTEAM_PATH, encoding="utf-8") as f:
@@ -765,6 +950,7 @@ def build_projections(job_id: str | None, gws: list[int], *,
                         None if xm is None else round(xm, 1))
                     rec["xmins"] = xm          # kept: older callers read this
                     rec["ep"][str(g)] = round(float(getattr(r, f"ep_gw{g}")), 3)
+                _price_in_rumours(conn, season, g, cache)
                 cache["gws"][str(g)] = {"built_at": time.time()}
             cache["updated_at"] = time.time()
             _save_proj_cache(cache)

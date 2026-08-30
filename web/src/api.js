@@ -60,6 +60,13 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ entry, cookie }),
     }).then(j),
+  transferWatch: () => fetch('/api/transferwatch').then(j),
+  saveTransferWatch: (doc) =>
+    fetch('/api/transferwatch', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(doc),
+    }).then(j),
   drafts: () => fetch('/api/drafts').then(j),
   saveDrafts: (doc) =>
     fetch('/api/drafts', {

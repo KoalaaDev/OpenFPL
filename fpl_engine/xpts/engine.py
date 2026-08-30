@@ -80,7 +80,8 @@ def xpts_predict_gw(conn, season: str, gw: int, *, as_of: str | None = None,
                     use_availability: bool = True,
                     minutes_bundle=None, rules: dict | None = None,
                     penalty_takers: dict[int, int] | None = None,
-                    odds_weight: float | None = None) -> pd.DataFrame:
+                    odds_weight: float | None = None,
+                    team_override: dict[int, int] | None = None) -> pd.DataFrame:
     """Expected points per player for one gameweek (point-in-time at as_of).
 
     Returns player_id-indexed frame with the prediction and its components.
@@ -108,6 +109,14 @@ def xpts_predict_gw(conn, season: str, gw: int, *, as_of: str | None = None,
     df = mins.merge(rates.drop(columns=["position"]), on="player_id", how="left")
     team_of = {r["player_id"]: r["team_id"] for r in conn.execute(
         "SELECT player_id, team_id FROM player WHERE season=?", (season,))}
+    # `team_override` answers "what is he worth if he moves?" — his own rates
+    # against a different club's fixtures. FPL only reclassifies a player once
+    # a transfer completes, so between the deal being agreed and that update
+    # the engine projects him onto the wrong club's run entirely. Everything
+    # downstream keys off team_id, so overriding it here is enough: fixtures,
+    # opponent strength and the clean-sheet lambda all follow.
+    if team_override:
+        team_of = {**team_of, **{int(k): int(v) for k, v in team_override.items()}}
     df["team_id"] = df["player_id"].map(team_of)
 
     # per-team fixture list: (λ_for, λ_against). Market odds, where stored,

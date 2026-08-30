@@ -9,7 +9,8 @@ import { availPct, badgeUrl, epColor, epOf, fdrColor, fmt1, money, photoUrl } fr
    the model output (fixture-aware); the per-90 columns are current season
    rates (xG-based once the season has data, else last-season history). */
 export default function PlayerModal({ pid, draft, plan, actions, close }) {
-  const { byId, teams, proj, projHistory, players } = useStore()
+  const { byId, teams, proj, projHistory, players, watch,
+          setTransferWatch } = useStore()
   const fixOf = useFixtureLookup()
   const [fdrMode, setFdrMode] = useState('diff_att')
   const p = byId.get(pid)
@@ -210,6 +211,9 @@ export default function PlayerModal({ pid, draft, plan, actions, close }) {
               ))}
             </tbody>
           </table>
+          <TransferWatch pid={pid} p={p} teams={teams} gws={gws}
+            watch={watch} setTransferWatch={setTransferWatch} rows={rows} />
+
           <div className="pd-rates">
             <span className="section-label">Season rates</span>
             <div className="pd-rates-row">
@@ -271,6 +275,106 @@ export default function PlayerModal({ pid, draft, plan, actions, close }) {
           )}
         </div>
       </div>
+    </div>
+  )
+}
+
+/* "He is off to Spurs" — the model cannot know that, but it can price it.
+
+   No free feed carries transfer rumours: FPL reclassifies a player only after
+   the move completes, and prediction markets only cover the superstar tier. So
+   the fact comes from you and the consequence comes from the engine, which
+   reprojects him onto the destination's fixtures using his own rates. */
+function TransferWatch({ pid, p, teams, gws, watch, setTransferWatch, rows }) {
+  const entry = watch?.players?.[String(pid)]
+  const alt = watch?.alt?.[String(pid)]
+  const [open, setOpen] = useState(false)
+  const clubs = useMemo(
+    () => Object.entries(teams || {})
+      .map(([id, t]) => ({ id: Number(id), name: t.name }))
+      .sort((a, b) => a.name.localeCompare(b.name)), [teams])
+
+  const now = rows.reduce((a, r) => a + r.ep, 0)
+  const after = alt
+    ? gws.reduce((a, g) => a + (alt.ep?.[String(g)] ?? 0), 0)
+    : null
+  const dest = entry?.to_team ? teams?.[String(entry.to_team)]?.name : null
+
+  const rumour = watch?.rumours?.[String(pid)]
+
+  if (!entry && !open) {
+    return (
+      <div className="tw-row">
+        {rumour ? (
+          <div className="tw-suggest">
+            <span className="tw-tag">rumour</span>
+            <span className="tw-sug-text">
+              {rumour.leaves_league
+                ? <>linked with <b>{rumour.to_club}</b> — would leave the Premier League</>
+                : <>linked with <b>{rumour.to_club}</b></>}
+              {rumour.probability != null && rumour.probability >= 0
+                ? <> · Transfermarkt rates it <b>{rumour.probability}%</b></> : null}
+            </span>
+            <button className="pill-btn accent"
+              onClick={() => setTransferWatch(pid, {
+                to_team: rumour.to_team ?? null,
+                note: `Transfermarkt: ${rumour.to_club}`,
+              })}>
+              Apply
+            </button>
+          </div>
+        ) : null}
+        <button className="pill-btn" onClick={() => setOpen(true)}
+          title="Mark him as leaving and reproject him on the new club's fixtures">
+          ⇄ {rumour ? 'Set manually' : 'Transfer rumour?'}
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="tw-panel">
+      <div className="tw-head">
+        <span className="section-label">Reported move</span>
+        {entry && (
+          <button className="pill-btn" style={{ marginLeft: 'auto' }}
+            onClick={() => { setTransferWatch(pid, null); setOpen(false) }}>
+            ✕ Clear
+          </button>
+        )}
+      </div>
+      <div className="tw-controls">
+        <select className="pill-btn" style={{ background: 'var(--panel)', appearance: 'auto' }}
+          value={entry?.to_team ?? ''}
+          onChange={(e) => setTransferWatch(pid, {
+            to_team: e.target.value ? Number(e.target.value) : null,
+            note: entry?.note || '',
+          })}>
+          <option value="">Leaving the Premier League</option>
+          {clubs.filter((c) => c.id !== p.team_id).map((c) => (
+            <option key={c.id} value={c.id}>Joining {c.name}</option>
+          ))}
+        </select>
+      </div>
+      {entry?.to_team && after != null ? (
+        <div className="tw-compare">
+          <div><span>at {teams?.[String(p.team_id)]?.name}</span><b>{fmt1(now)}</b></div>
+          <span className="tw-arrow">→</span>
+          <div><span>at {dest}</span><b>{fmt1(after)}</b></div>
+          <div className={`tw-delta ${after >= now ? 'up' : 'down'}`}>
+            {after >= now ? '+' : ''}{fmt1(after - now)} over {gws.length} GW
+          </div>
+        </div>
+      ) : entry ? (
+        <p className="tw-note">
+          Out of the Premier League — he scores nothing and must be sold.
+          {entry.to_team ? '' : ' Pick a club above to see the reprojection.'}
+        </p>
+      ) : null}
+      <p className="tw-note">
+        Fixtures only. His P(start) is earned at his current club; how a move
+        changes his role is not something this data can tell you.
+      </p>
     </div>
   )
 }

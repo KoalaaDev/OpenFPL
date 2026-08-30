@@ -13,6 +13,7 @@ export function StoreProvider({ children }) {
   const [projHistory, setProjHistory] = useState([])
   const [draftsDoc, setDraftsDoc] = useState({ drafts: [] })
   const [activeDraftId, setActiveDraftId] = useState(null)
+  const [watch, setWatch] = useState({ players: {}, alt: {} })
   const [entryId, setEntryId] = useState(null)
   const [entry, setEntry] = useState(null)
   const [toast, setToast] = useState(null)
@@ -31,6 +32,7 @@ export function StoreProvider({ children }) {
     api.players().then(setPlayersDoc).catch(() => {})
     api.fixtures().then(setFixtures).catch(() => {})
     refreshProjections()
+    api.transferWatch().then(setWatch).catch(() => {})
     api.drafts().then((d) => {
       setDraftsDoc(d)
       if (d.drafts?.length) setActiveDraftId(d.drafts[0].id)
@@ -57,6 +59,22 @@ export function StoreProvider({ children }) {
     })
   }, [])
 
+  /* Mark a player as leaving (optionally naming the destination) and the
+     engine reprojects him onto that club's fixtures. FPL only reclassifies a
+     player once the transfer completes, so until then he is projected on a run
+     he will never play — the fact has to come from you, off the news. */
+  const setTransferWatch = useCallback(async (pid, entry) => {
+    const players = { ...(watch.players || {}) }
+    if (entry) players[String(pid)] = entry
+    else delete players[String(pid)]
+    setWatch((w) => ({ ...w, players }))          // optimistic
+    try {
+      setWatch(await api.saveTransferWatch({ players }))
+    } catch {
+      api.transferWatch().then(setWatch).catch(() => {})
+    }
+  }, [watch.players])
+
   const byId = useMemo(() => {
     const m = new Map()
     for (const p of playersDoc?.players || []) m.set(p.id, p)
@@ -80,6 +98,7 @@ export function StoreProvider({ children }) {
     drafts: draftsDoc.drafts || [], setDrafts,
     activeDraftId, setActiveDraftId,
     entryId, setEntryId, entry, refreshEntry,
+    watch, setTransferWatch,
     toast, setToast,
   }
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
