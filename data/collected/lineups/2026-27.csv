@@ -1,0 +1,23 @@
+observed_utc,gw,team_abbr,side,status,position,slot,player,rotowire_id
+2026-08-31T09:40:26.107068+00:00,3,AVL,home,predicted,GK,1,Zion Suzuki,35017
+2026-08-31T09:40:26.107068+00:00,3,AVL,home,predicted,DL,2,Ian Maatsen,32666
+2026-08-31T09:40:26.107068+00:00,3,AVL,home,predicted,DC,3,Pau Torres,25009
+2026-08-31T09:40:26.107068+00:00,3,AVL,home,predicted,DC,4,Victor Lindelof,18234
+2026-08-31T09:40:26.107068+00:00,3,AVL,home,predicted,DR,5,Matty Cash,31043
+2026-08-31T09:40:26.107068+00:00,3,AVL,home,predicted,DMC,6,Boubacar Kamara,23566
+2026-08-31T09:40:26.107068+00:00,3,AVL,home,predicted,DMC,7,Leon Goretzka,17825
+2026-08-31T09:40:26.107068+00:00,3,AVL,home,predicted,AML,8,Emiliano Buendia,20646
+2026-08-31T09:40:26.107068+00:00,3,AVL,home,predicted,AMC,9,Ross Barkley,17201
+2026-08-31T09:40:26.107068+00:00,3,AVL,home,predicted,AMR,10,John McGinn,28588
+2026-08-31T09:40:26.107068+00:00,3,AVL,home,predicted,FW,11,Nicolas Jackson,35956
+2026-08-31T09:40:26.107068+00:00,3,ARS,away,predicted,GK,1,David Raya,31126
+2026-08-31T09:40:26.107068+00:00,3,ARS,away,predicted,DL,2,Riccardo Calafiori,30620
+2026-08-31T09:40:26.107068+00:00,3,ARS,away,predicted,DC,3,Gabriel,23477
+2026-08-31T09:40:26.107068+00:00,3,ARS,away,predicted,DC,4,Cristhian Mosquera,35765
+2026-08-31T09:40:26.107068+00:00,3,ARS,away,predicted,DR,5,Ben White,29182
+2026-08-31T09:40:26.107068+00:00,3,ARS,away,predicted,DMC,6,Declan Rice,23542
+2026-08-31T09:40:26.107068+00:00,3,ARS,away,predicted,DMC,7,Myles Lewis-Skelly,40827
+2026-08-31T09:40:26.107068+00:00,3,ARS,away,predicted,AML,8,Christos Tzolis,33736
+2026-08-31T09:40:26.107068+00:00,3,ARS,away,predicted,AMC,9,Martin Odegaard,18746
+2026-08-31T09:40:26.107068+00:00,3,ARS,away,predicted,AMR,10,Bukayo Saka,29889
+2026-08-31T09:40:26.107068+00:00,3,ARS,away,predicted,FW,11,Kai Havertz,23157

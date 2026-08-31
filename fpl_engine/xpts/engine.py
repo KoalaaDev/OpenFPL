@@ -136,16 +136,21 @@ def xpts_predict_gw(conn, season: str, gw: int, *, as_of: str | None = None,
                     team_override: dict[int, int] | None = None,
                     minutes_override: "pd.DataFrame | None" = None,
                     oracle: dict | None = None,
-                    rate_scale: dict | None = None) -> pd.DataFrame:
+                    rate_scale: dict | None = None,
+                    rate_override: "pd.DataFrame | None" = None,
+                    lambda_override: dict | None = None) -> pd.DataFrame:
     """Expected points per player for one gameweek (point-in-time at as_of).
 
     Returns player_id-indexed frame with the prediction and its components.
     ``penalty_takers`` maps player_id -> penalties_order (1 = first choice),
     available live from bootstrap; first-choice takers get a small xG90 boost.
 
-    ``rate_scale`` multiplies a named rate column before it is used — a
-    research affordance for asking "what if this rate were calibrated
-    differently", never set on a shipped path.
+    ``rate_scale`` multiplies a named rate column before it is used;
+    ``rate_override`` replaces named rate columns per player outright, and
+    ``lambda_override`` replaces a fixture's (lambda_for, lambda_against).
+    All three are research affordances for asking "what would a better
+    ESTIMATOR be worth", as distinct from the outcome oracle's "what would
+    clairvoyance be worth", and none is ever set on a shipped path.
 
     ``minutes_override`` and ``oracle`` exist for the ORACLE DECOMPOSITION —
     "what would a perfect estimate of X be worth?" — and are None on every
@@ -199,6 +204,9 @@ def xpts_predict_gw(conn, season: str, gw: int, *, as_of: str | None = None,
     team_fixtures: dict[int, list[tuple[float, float]]] = {}
     for f in fixtures:
         lh, la = tm.fixture(f["hcode"], f["acode"])
+        lo = (lambda_override or {}).get(f["fixture_id"])
+        if lo:
+            lh, la = float(lo[0]), float(lo[1])
         od = omap.get(f["fixture_id"])
         if od:
             lh = (1 - ow) * lh + ow * od[0]
@@ -224,6 +232,13 @@ def xpts_predict_gw(conn, season: str, gw: int, *, as_of: str | None = None,
     gc_per, gc_pts = rules["goals_conceded"]["per"], rules["goals_conceded"]["points"]
     dc_pts = (rules.get("defensive_contribution") or {}).get("points", 0)
 
+    if rate_override is not None and len(rate_override):
+        ro = rate_override.set_index("player_id")
+        for _col in ro.columns:
+            if _col in df.columns:
+                _new = df["player_id"].map(ro[_col])
+                df[_col] = pd.to_numeric(_new, errors="coerce").fillna(
+                    pd.to_numeric(df[_col], errors="coerce"))
     for _col, _mul in (rate_scale or {}).items():
         if _col in df.columns:
             df[_col] = pd.to_numeric(df[_col], errors="coerce") * float(_mul)

@@ -169,6 +169,22 @@ construction: it only changes predictions for players the metric excludes. It
 is still worth +0.28 points per pick. Any test of an availability signal on
 that metric alone cannot see its own channel.
 
+**3a. A perfect RATE estimate is worth nothing — the ceiling really is luck.**
+The oracle above substitutes outcomes, so it measures clairvoyance. Replacing
+each rate with its leave-one-gameweek-out SEASON value instead — perfect
+knowledge of the player's true rate, none of the match — moves nothing
+(`spearman_played` −0.0017, top11 −0.02, rmse significantly *worse*), and a
+perfect LOCAL rate over a ±4-gameweek window is significantly worse still
+(−0.0050**, top11 −0.11, captain −0.81). So there is no estimator headroom in
+the attacking channel and no exploitable non-stationarity: form at that
+resolution is noise, and chasing it hurts even with hindsight. Team lambda
+scores exactly +0.0000. DefCon is the one rate with any headroom, at +0.0014**.
+This is why Understat's rates, the constant sweep, the set-piece decomposition
+and adaptive shrinkage all moved nothing — they were improving an estimator
+already at the variance-limited optimum. Use the SHRUNK oracle: the raw
+leave-one-out rate is a noisier estimator that merely sees the future, and
+scores −0.0084***.
+
 **3. Most of the ceiling is luck, not modelling.** Attack, bonus and clean
 sheets are ~5.6 of the 7.3 points-per-pick ceiling and none of them is knowable
 before kickoff. The reachable components sum to under 2. **The free-data points
@@ -178,6 +194,16 @@ feed, already priced at ~+89 points a season (§16).
 **The valuable part of minutes is the 60-minute class, not the exact figure.**
 It carries 85% of the minutes rank gain and 77% of its points gain. Buy a feed
 for "does he start and last an hour", not for "how many minutes".
+
+**And that feed is now being collected.** `acquire/sources/predicted_lineups.py`
+archives RotoWire's confirmed and predicted XIs on every scheduled run
+(`data/collected/lineups/<season>.csv`, append-only, a line only when a
+forecast changes). Each side carries its own status and the distinction is
+load-bearing: a CONFIRMED XI is published about an hour before kickoff, i.e.
+AFTER the deadline, so it is the ground truth to score predictions against and
+never an input. No third party archives past predictions, so forward
+collection is the only route — and per §16 it becomes priceable after roughly
+five gameweeks rather than the season-plus a decision backtest would need.
 
 ### Two rejections re-tested on the metric that could see them, and both hold
 

@@ -679,3 +679,89 @@ Nothing in the engine. The three components worth most are luck; the reachable
 ones are worth under 2 points per pick between them and two of the three have
 now been re-tested and held. The next real gain is an external information
 source for the 60-minute class, and E8 has already priced it.
+
+## E14. The ceiling, split: estimator error vs irreducible variance
+
+E13's oracle substitutes what ACTUALLY HAPPENED, so it measures clairvoyance —
++6.36 points per pick for knowing this week's goals. That is not a work item,
+because nobody can know it, and it does not answer the question the repo needs
+answered: **how good could an estimator get?**
+
+So this substitutes a RATE instead of an outcome: each player's
+leave-one-gameweek-out season rate, computed with hindsight across the whole
+season but with the gameweek being predicted removed. It knows his true rate
+and nothing about the match. Three tiers:
+
+    baseline --(estimator error)--> rate oracle --(variance)--> outcome oracle
+
+74 paired gameweeks, both seasons:
+
+| perfect ESTIMATE of | spearman_played | top11 | top30 | rmse |
+|---|---|---|---|---|
+| attacking rates (season, shrunk) | −0.0017 | −0.02 | −0.07 | +0.0058*** |
+| all player rates | −0.0002 | +0.06 | −0.04 | +0.0047** |
+| team lambda | **+0.0000** | −0.02 | −0.00 | −0.0012 |
+| everything | −0.0006 | −0.01 | −0.08 | +0.0032* |
+| DefCon rate | **+0.0014**** | −0.00 | −0.01 | −0.0006* |
+| *(for scale) attacking OUTCOME* | *+0.134* | *+5.68* | *+3.80* | *−0.465* |
+
+**A perfect rate estimate is worth nothing.** Not "a little" — nothing, and on
+`spearman_played` and rmse it is significantly worse, while knowing the outcome
+is worth +5.68 points per pick. The attacking ceiling is **irreducible
+match-to-match variance, not estimator error.**
+
+That single measurement explains four earlier results at once: Understat's
+3.9%-better rates moving nothing, the 24-variant constant sweep moving nothing,
+the set-piece decomposition moving nothing, and adaptive shrinkage moving
+nothing. All four were improving an estimator already at the variance-limited
+optimum.
+
+### The local arm closes the form question too
+
+A season rate is stationary by construction, so if a player's true rate really
+moves — a role change, a genuine hot streak — a season oracle cannot see it and
+would understate the ceiling. So the same oracle was rebuilt over a window
+centred on the gameweek (±4, excluding it):
+
+| arm | spearman_played | top11 | captain | rmse |
+|---|---|---|---|---|
+| perfect LOCAL attacking rate | **−0.0050**** | −0.11 | −0.81 | +0.0104*** |
+| perfect LOCAL rates, all | **−0.0061**** | −0.20 | −0.80 | +0.0109*** |
+
+**Significantly worse.** Even with perfect hindsight, a local rate degrades the
+model, because a ±4-gameweek window of goals is dominated by sampling noise.
+There is no exploitable non-stationarity: "form" at this resolution is noise,
+and chasing it is harmful even when you know it exactly. This is the strongest
+available statement of a result the repo had only ever seen indirectly.
+
+*A trap worth recording.* The first version used the RAW leave-one-out rate and
+made the model clearly worse (`spearman_played` −0.0084***, rmse +0.0158***).
+That is not a finding about rates: a striker's 10 goals in 25 90s carries a
+sampling sd of ~0.13 on a 0.40 rate, so the "oracle" was a NOISIER estimator
+that merely happened to see the future. Shrinking it with the same
+empirical-Bayes constant the shipped estimator uses is the fair test — and the
+gap between the two rows is a clean measure of how much the shipped shrinkage
+is worth.
+
+### What is left, and the collector that follows from it
+
+Every rate channel is closed and the team-lambda channel scores exactly
++0.0000. The only component with reachable headroom is whether a player starts
+and lasts an hour — and E8 established the model is already CORRECTLY
+calibrated in the band where it is unsure, because the manager has not decided.
+Only an outside forecast resolves it.
+
+`acquire/sources/predicted_lineups.py` collects one: RotoWire publishes
+confirmed and predicted Premier League XIs, server-rendered, free, with a
+per-player position in the same vocabulary Understat uses. Each side carries
+its own status, and the distinction is load-bearing — a CONFIRMED XI lands
+about an hour before kickoff, i.e. AFTER the deadline, so it is ground truth to
+score forecasts against and never an input. Conflating the two would
+manufacture an oracle out of a feed.
+
+Nobody archives past predictions, so this cannot be backtested from history;
+forward collection through the scheduled Action is the only route, and E8b says
+it becomes priceable after ~5 gameweeks (~90 ambiguous rows each, ~450
+observations) rather than the season-plus a decision backtest would need. The
+bar is the model's own ~55% in that band, and each point above it is worth
+roughly `(accuracy − 0.55)/0.45 × 89` points a season.
