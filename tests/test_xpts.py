@@ -86,3 +86,48 @@ def test_scoring_yaml_drives_combination():
     assert rules["appearance"]["played_60"] == 2
     assert rules["goals_conceded"]["per"] >= 1
     assert isinstance(rules["assist"], int)
+
+
+def test_the_oracle_hook_is_off_by_default_and_a_no_op_when_empty():
+    """The decomposition must not be able to change a shipped prediction.
+
+    `oracle` swaps a component's MODELLED contribution for the realised one as
+    a delta on the finished total, so an empty substitution set has to
+    reproduce the baseline exactly rather than approximately.
+    """
+    import inspect
+    from fpl_engine.xpts import engine
+
+    sig = inspect.signature(engine.xpts_predict_gw)
+    for name in ("minutes_override", "oracle", "rate_scale"):
+        assert sig.parameters[name].default is None
+
+
+def test_realised_component_points_follow_the_scoring_rules():
+    from fpl_engine import scoring
+    from fpl_engine.xpts.engine import _realised
+
+    rules = scoring.load_rules()
+    row = {"goals_scored": 2, "assists": 1, "clean_sheets": 1,
+           "goals_conceded": 3, "saves": 7, "bonus": 3, "yellow_cards": 1,
+           "red_cards": 0, "defcon": 11, "minutes": 90}
+    assert _realised("goals", row, "MID", rules) == 2 * rules["goal"]["MID"]
+    assert _realised("assists", row, "DEF", rules) == rules["assist"]
+    assert _realised("cs", row, "GK", rules) == rules["clean_sheet"]["GK"]
+    # 3 conceded is one bracket of two, not one and a half
+    assert _realised("conceded", row, "DEF", rules) == -1
+    assert _realised("conceded", row, "MID", rules) == 0.0
+    # 7 saves is two points, not 2.33
+    assert _realised("saves", row, "GK", rules) == 2
+    assert _realised("saves", row, "DEF", rules) == 0.0
+    assert _realised("bonus", row, "FWD", rules) == 3
+    assert _realised("cards", row, "MID", rules) == rules["card"]["yellow"]
+    # 11 actions clears a defender's threshold of 10 and misses a midfielder's 12
+    assert _realised("defcon", row, "DEF", rules) == 2
+    assert _realised("defcon", row, "MID", rules) == 0.0
+    assert _realised("appearance", row, "MID", rules) == 2
+    assert _realised("appearance", {"minutes": 20}, "MID", rules) == 1
+    assert _realised("appearance", {"minutes": 0}, "MID", rules) == 0.0
+    # a player with no row did not feature in the data at all, which is not
+    # the same as scoring zero
+    assert _realised("goals", None, "MID", rules) is None

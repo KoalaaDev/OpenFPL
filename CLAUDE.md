@@ -118,7 +118,12 @@ minutes substituted in, everything else untouched) gains:
 |---|---|---|---|---|---|
 | oracle minutes − baseline | **+0.21** | **+0.21** | +0.05 | **+0.67 … +0.88** | +0.08 … +0.49 |
 
-Nothing else in the engine is worth a fraction of that. Two consequences:
+**That claim used to end "nothing else in the engine is worth a fraction of
+that", and it was wrong — it had never been tested against any other oracle.**
+Substituting each component in turn (see the decomposition below) puts perfect
+attacking returns at **+0.23** `spearman_played`, ahead of minutes, and at
+**+6.4 points per pick** against minutes' **+0.8**. Minutes is the largest
+REACHABLE lever, not the largest lever. Two consequences still follow:
 
 1. **Spend effort on minutes, not on rate constants.** A one-at-a-time sweep of
    every constant in `rates.py`, `team_model.py`, `engine.py` and
@@ -128,6 +133,72 @@ Nothing else in the engine is worth a fraction of that. Two consequences:
 2. **Even a perfect minutes model leaves `spearman_played` at ~0.59.** FPL
    points are extremely noisy. Improvements of a few hundredths are real and
    worth having; anything claiming much more is a bug or a leak.
+
+### The oracle decomposition: rank and points are different questions
+
+Every component replaced with what actually happened, one at a time, 74 paired
+gameweeks (`xpts_predict_gw(oracle=...)`, off on every shipped path). The
+minutes row reproduces the +0.21 above, which is the harness's calibration
+check.
+
+| perfect knowledge of | spearman_played | top11 pts/pick | captain | reachable before the deadline? |
+|---|---|---|---|---|
+| everything | +0.605 | +7.30 | +10.18 | — |
+| **attack (goals+assists)** | **+0.228** | **+6.36** | **+9.46** | no |
+| goals alone | +0.134 | +5.68 | +8.72 | no |
+| **bonus** | +0.130 | **+5.49** | +5.97 | no |
+| clean sheets | +0.184 | +2.35 | +0.91 | partly |
+| assists | +0.099 | +2.54 | +4.00 | no |
+| **minutes** | **+0.200** | +0.76 | +0.34 | **yes — a lineup feed** |
+| the 60-minute class alone | +0.170 | +0.58 | +0.39 | **yes** |
+| DefCon | +0.057 | +0.70 | −0.09 | yes (it is a rate) |
+| appearance points | +0.149 | +0.46 | +0.36 | yes |
+| availability (who does not play) | **+0.000** | +0.28 | +0.26 | yes |
+| conceded / saves / cards | +0.07 / +0.01 / +0.05 | ~0.1 | 0 | partly |
+
+Three things fall out of it.
+
+**1. The metric decides the answer.** On rank, minutes is joint-top. On points
+per pick it is worth an eighth of attacking returns. A change judged on
+`spearman_played` alone is being judged on the question where minutes dominates
+— which is the question this repo happens to have been asking.
+
+**2. `spearman_played` is structurally blind to availability.** Perfect
+knowledge of who does not play scores exactly **+0.0000** on it, by
+construction: it only changes predictions for players the metric excludes. It
+is still worth +0.28 points per pick. Any test of an availability signal on
+that metric alone cannot see its own channel.
+
+**3. Most of the ceiling is luck, not modelling.** Attack, bonus and clean
+sheets are ~5.6 of the 7.3 points-per-pick ceiling and none of them is knowable
+before kickoff. The reachable components sum to under 2. **The free-data points
+ceiling is close to exhausted**, and the one paid lever is a predicted-lineup
+feed, already priced at ~+89 points a season (§16).
+
+**The valuable part of minutes is the 60-minute class, not the exact figure.**
+It carries 85% of the minutes rank gain and 77% of its points gain. Buy a feed
+for "does he start and last an hour", not for "how many minutes".
+
+### Two rejections re-tested on the metric that could see them, and both hold
+
+The decomposition says the clean-sheet channel is worth +2.35 points per pick
+and DefCon +0.70 — both previously judged on metrics that under-weight them.
+Re-run on the full set, 74 paired gameweeks:
+
+| arm | spearman_played | top11 | top30 | captain |
+|---|---|---|---|---|
+| `ODDS_WEIGHT` 0 (off) vs 0.85 | −0.0016 | −0.036 | −0.021 | −0.46 |
+| `ODDS_WEIGHT` 1.0 vs 0.85 | −0.0002 | +0.030 | +0.005 | +0.05 |
+| DefCon rate x1.13 (the measured shortfall) | +0.0001 | −0.015 | −0.018 | 0.00 |
+| DefCon rate x1.26 | +0.0002 | +0.014 | −0.007 | 0.00 |
+
+Nothing is significant. Odds lean the right way — switching them off costs
+0.036 points per pick and half a captain point — but not resolvably at n=74.
+Both standing conclusions survive their sharper test. *(The first attempt at
+the odds arm returned exact zeros: this database had odds for the live season
+only, so every weight was really zero. `ingest_football_data` over the backfill
+seasons was the fix — a reminder that an A/B of a parameter with no data behind
+it looks exactly like a parameter that does not matter.)*
 
 ### Tested and rejected (do not re-litigate without new information)
 

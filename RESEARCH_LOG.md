@@ -594,3 +594,88 @@ Worth noting where this sits: the invariant was added in Round 9 after four
 identity defects, and has now caught its second and third (the Transfermarkt
 `player_id` join in E11a, and this). That is the argument for the `verify`
 command in one line.
+
+## E13. Where the upgrade comes from — every component, replayed against truth
+
+Asked directly rather than inferred: replace ONE component of the engine with
+what actually happened, leave everything else alone, and score it on the
+decision metrics. `xpts_predict_gw` gained `minutes_override` and `oracle`,
+both None on every shipped path (asserted bit-identical on a real gameweek).
+74 paired gameweeks; the minutes row reproduces §8's known +0.21, which is the
+harness's calibration check.
+
+| perfect knowledge of | spearman_played | p@20 | top11 | top30 | captain |
+|---|---|---|---|---|---|
+| everything | +0.605 | +0.760 | +7.30 | +5.28 | +10.18 |
+| **attack (goals+assists)** | **+0.228** | +0.457 | **+6.36** | +4.35 | **+9.46** |
+| goals | +0.134 | +0.400 | +5.68 | +3.80 | +8.72 |
+| **bonus** | +0.130 | +0.478 | **+5.49** | +3.62 | +5.97 |
+| clean sheets | +0.184 | +0.077 | +2.35 | +2.25 | +0.91 |
+| assists | +0.099 | +0.087 | +2.54 | +1.66 | +4.00 |
+| **minutes** | **+0.200** | +0.038 | +0.76 | +0.58 | +0.34 |
+| 60-minute class only | +0.170 | +0.025 | +0.58 | +0.50 | +0.39 |
+| appearance points | +0.149 | +0.012 | +0.46 | +0.43 | +0.36 |
+| DefCon | +0.057 | +0.023 | +0.70 | +0.47 | −0.09 |
+| conceded | +0.074 | +0.005 | +0.07 | +0.25 | 0.00 |
+| cards | +0.046 | +0.003 | +0.02 | +0.08 | 0.00 |
+| saves | +0.012 | +0.012 | +0.09 | +0.11 | 0.00 |
+| **availability (who sits out)** | **+0.000** | +0.009 | +0.28 | +0.23 | +0.26 |
+
+### Three findings
+
+**1. §8's "nothing else is worth a fraction of that" was never tested.** It is
+right on rank — minutes at +0.200 is second only to attack at +0.228 — and
+wrong on points by a factor of eight: +0.76 against +6.36 points per pick.
+Minutes is the largest REACHABLE lever, not the largest lever. The claim in
+CLAUDE.md is corrected.
+
+**2. `spearman_played` cannot see availability at all.** Perfect knowledge of
+who does not play scores **exactly +0.0000** on it — by construction, since it
+only moves predictions for players the metric excludes — while being worth
++0.28 points per pick. (Consistency check: E11's Transfermarkt injury FLAG did
+move `spearman_played` +0.0085, because it also reshuffles the men who did
+play through their exposure. The pure availability oracle does not.) Any test
+of an availability signal on that metric alone is blind to its own channel.
+
+**3. Roughly 5.6 of the 7.3 points-per-pick ceiling is not knowable before
+kickoff.** Attack, bonus and clean sheets dominate the total and none of them
+can be resolved by any pre-deadline information; the reachable components sum
+to under 2. **The free-data points ceiling is close to exhausted.** The one
+paid lever remains a predicted-lineup feed, priced at ~+89/season in E8 — and
+the decomposition sharpens what to buy: the 60-minute class carries **85% of
+the minutes rank gain and 77% of its points gain**, so the product to price is
+"does he start and last an hour", not "how many minutes".
+
+### Two rejections re-tested on the metric that could finally see them
+
+The decomposition prices the clean-sheet channel at +2.35 points per pick and
+DefCon at +0.70. Both had been dismissed on metrics that under-weight them —
+`ODDS_WEIGHT` on `spearman_played`/top30, DefCon at "0.011 pts per
+player-gameweek". Re-run on the full metric set:
+
+| arm | spearman_played | top11 | top30 | captain |
+|---|---|---|---|---|
+| `ODDS_WEIGHT` 0 vs 0.85 | −0.0016 | −0.036 | −0.021 | −0.46 |
+| `ODDS_WEIGHT` 0.5 vs 0.85 | +0.0001 | +0.007 | −0.002 | +0.12 |
+| `ODDS_WEIGHT` 1.0 vs 0.85 | −0.0002 | +0.030 | +0.005 | +0.05 |
+| DefCon rate x1.13 | +0.0001 | −0.015 | −0.018 | 0.00 |
+| DefCon rate x1.26 | +0.0002 | +0.014 | −0.007 | 0.00 |
+
+Nothing significant. Odds lean the right way — switching them off costs 0.036
+points per pick and half a captain point in both seasons — but not resolvably.
+**Both standing conclusions survive.**
+
+*A methodological trap, recorded because it produced a perfect null.* The first
+odds run returned **exact zeros on every metric for every weight**. This
+database carried odds for the live season only, so `fixture_odds_map` was empty
+and every weight was really zero. An A/B of a parameter with no data behind it
+is indistinguishable from a parameter that does not matter — and the zeros are
+the tell, since a real null is noisy. `ingest_football_data` over the backfill
+seasons was the fix.
+
+### What this says to do next
+
+Nothing in the engine. The three components worth most are luck; the reachable
+ones are worth under 2 points per pick between them and two of the three have
+now been re-tested and held. The next real gain is an external information
+source for the 60-minute class, and E8 has already priced it.

@@ -135,12 +135,17 @@ def xpts_predict_gw(conn, season: str, gw: int, *, as_of: str | None = None,
                     odds_weight: float | None = None,
                     team_override: dict[int, int] | None = None,
                     minutes_override: "pd.DataFrame | None" = None,
-                    oracle: dict | None = None) -> pd.DataFrame:
+                    oracle: dict | None = None,
+                    rate_scale: dict | None = None) -> pd.DataFrame:
     """Expected points per player for one gameweek (point-in-time at as_of).
 
     Returns player_id-indexed frame with the prediction and its components.
     ``penalty_takers`` maps player_id -> penalties_order (1 = first choice),
     available live from bootstrap; first-choice takers get a small xG90 boost.
+
+    ``rate_scale`` multiplies a named rate column before it is used — a
+    research affordance for asking "what if this rate were calibrated
+    differently", never set on a shipped path.
 
     ``minutes_override`` and ``oracle`` exist for the ORACLE DECOMPOSITION —
     "what would a perfect estimate of X be worth?" — and are None on every
@@ -218,6 +223,10 @@ def xpts_predict_gw(conn, season: str, gw: int, *, as_of: str | None = None,
     p_app_any, p_app_60 = rules["appearance"]["played_any"], rules["appearance"]["played_60"]
     gc_per, gc_pts = rules["goals_conceded"]["per"], rules["goals_conceded"]["points"]
     dc_pts = (rules.get("defensive_contribution") or {}).get("points", 0)
+
+    for _col, _mul in (rate_scale or {}).items():
+        if _col in df.columns:
+            df[_col] = pd.to_numeric(df[_col], errors="coerce") * float(_mul)
 
     sub = set((oracle or {}).get("substitute") or ())
     actual = (oracle or {}).get("actual")
