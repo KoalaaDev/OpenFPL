@@ -1297,3 +1297,277 @@ def status_payload() -> dict:
             "proj_updated_at": cache.get("updated_at"),
             "default_entry": manager.DEFAULT_ENTRY,
             "jobs_running": [j["kind"] for j in jobs.running()]}
+
+
+# --------------------------------------------------------------------------
+# Transfermarkt context: what failed the model bar but informs a human.
+#
+# Injury history, age, contract expiry, market-value trajectory, recency of a
+# transfer and the club's manager were all measured against the minutes model
+# and against decision metrics, and none of them earned a place inside the
+# objective (see CLAUDE.md). That is not the same as being useless. A manager
+# deciding between two similar players wants to know that one is three
+# hamstrings into two years, is 33, is out of contract in June and has just
+# been made available; the model does not, because it cannot show that any of
+# it changes a projection.
+#
+# So it follows the rule the price model and Polymarket already follow: shown
+# next to the recommendation, never inside it.
+# --------------------------------------------------------------------------
+
+_TM_TTL = 900.0
+
+
+def _team_names(season: str) -> list[dict]:
+    with db.connect() as conn:
+        return [dict(r) for r in conn.execute(
+            "SELECT team_id, name FROM team WHERE season=?", (season,))]
+
+
+def _tm_injury_summary(rows: list[dict], now) -> dict:
+    """Current spell (if any) and the recurrence history behind it."""
+    import datetime as _dt
+    ongoing, ended = None, []
+    for r in rows:
+        start = r.get("from_dt")
+        until = r.get("until_dt")
+        if start is None:
+            continue
+        if until is None or until >= now:
+            if ongoing is None or start > ongoing["from_dt"]:
+                ongoing = r
+        else:
+            ended.append(r)
+    y1 = now - _dt.timedelta(days=365)
+    y2 = now - _dt.timedelta(days=730)
+    recent = [r for r in ended if r["until_dt"] >= y1]
+    two_yr = [r for r in ended if r["until_dt"] >= y2]
+    kinds: dict[str, int] = {}
+    for r in two_yr:
+        k = (r.get("injury") or "").strip()
+        if k:
+            kinds[k] = kinds.get(k, 0) + 1
+    last_return = max((r["until_dt"] for r in ended), default=None)
+    def _num(r, k):
+        # a NULL column comes back as NaN, and `NaN or 0` is NaN, not 0
+        v = r.get(k)
+        try:
+            v = float(v)
+        except (TypeError, ValueError):
+            return 0.0
+        return 0.0 if v != v else v
+
+    out = {
+        "spells_365": len(recent),
+        "days_365": int(sum(_num(r, "days") for r in recent)),
+        "spells_730": len(two_yr),
+        "games_missed_365": int(sum(_num(r, "games_missed") for r in recent)),
+        "days_since_return": (now - last_return).days if last_return else None,
+        # the repeat offenders, which is what a human actually reads
+        "recurring": sorted([k for k, n in kinds.items() if n >= 2]),
+        "common": sorted(kinds.items(), key=lambda kv: -kv[1])[:3],
+    }
+    if ongoing is not None:
+        out["current"] = {
+            "injury": ongoing.get("injury"),
+            "since": ongoing["from_dt"].date().isoformat(),
+            "days_out": (now - ongoing["from_dt"]).days,
+            # Transfermarkt's FORECAST return date for an unfinished spell —
+            # an estimate, and labelled as one in the UI
+            "expected_back": (ongoing["until_dt"].date().isoformat()
+                              if ongoing.get("until_dt") is not None else None),
+        }
+    return out
+
+
+def transfermarkt_context() -> dict:
+    """Per-player Transfermarkt context for the current season, keyed by id.
+
+    Never raises: this is decoration, and a scraped table must not be able to
+    stop the page rendering.
+    """
+    season = config.CURRENT_SEASON
+    cached = _mem.get("_tm_ctx")
+    if cached and cached[0] == season and time.time() - cached[1] < _TM_TTL:
+        return cached[2]
+    out: dict = {"players": {}, "clubs": {}}
+    try:
+        import pandas as pd
+        now = pd.Timestamp.now(tz="UTC")
+        with db.connect() as conn:
+            ident = pd.read_sql_query(
+                "SELECT m.tm_player_id, m.player_code, p.player_id, p.team_id "
+                "FROM tm_player m JOIN player p ON p.code = m.player_code "
+                "WHERE m.player_code IS NOT NULL AND p.season = ?",
+                conn, params=(season,))
+            if ident.empty:
+                _mem["_tm_ctx"] = (season, time.time(), out)
+                return out
+            by_tm = dict(zip(ident["tm_player_id"], ident["player_id"]))
+
+            inj = pd.read_sql_query(
+                "SELECT tm_player_id, from_date, until_date, days, "
+                "games_missed, injury FROM tm_injury", conn)
+            if not inj.empty:
+                inj["from_dt"] = pd.to_datetime(inj["from_date"],
+                                                errors="coerce", utc=True)
+                inj["until_dt"] = pd.to_datetime(inj["until_date"],
+                                                 errors="coerce", utc=True)
+                inj = inj.dropna(subset=["from_dt"])
+
+            squad = pd.read_sql_query(
+                "SELECT tm_player_id, dob, height_cm, foot, detail_position, "
+                "contract_until, market_value, tm_club_id FROM tm_squad "
+                "WHERE season = ?", conn, params=(season,))
+            mv = pd.read_sql_query(
+                "SELECT tm_player_id, value_date, value_eur FROM tm_market_value "
+                "WHERE value_eur IS NOT NULL", conn)
+            if not mv.empty:
+                mv["dt"] = pd.to_datetime(mv["value_date"], errors="coerce",
+                                          utc=True)
+                mv = mv.dropna(subset=["dt"]).sort_values("dt")
+            tr = pd.read_sql_query(
+                "SELECT tm_player_id, transfer_date, from_club, to_club, "
+                "fee_eur, fee_text FROM tm_transfer", conn)
+            if not tr.empty:
+                tr["dt"] = pd.to_datetime(tr["transfer_date"], errors="coerce",
+                                          utc=True)
+                tr = tr.dropna(subset=["dt"]).sort_values("dt")
+            mgr = pd.read_sql_query(
+                "SELECT tm_club_id, manager, appointed, left_date "
+                "FROM tm_manager_spell", conn)
+
+        inj_by = ({t: g.to_dict("records") for t, g in inj.groupby("tm_player_id")}
+                  if not inj.empty else {})
+        sq_by = ({int(r["tm_player_id"]): r for _, r in squad.iterrows()}
+                 if not squad.empty else {})
+        mv_by = ({t: g for t, g in mv.groupby("tm_player_id")}
+                 if not mv.empty else {})
+        tr_by = ({t: g for t, g in tr.groupby("tm_player_id")}
+                 if not tr.empty else {})
+
+        pl_names = {r["name"]: int(r["team_id"]) for r in
+                    _team_names(season)}
+        for tm_id, pid in by_tm.items():
+            rec: dict = {}
+            rows = inj_by.get(tm_id)
+            if rows:
+                rec["injury"] = _tm_injury_summary(rows, now)
+            s = sq_by.get(int(tm_id))
+            if s is not None:
+                dob = pd.to_datetime(s.get("dob"), errors="coerce", utc=True)
+                if pd.notna(dob):
+                    rec["age"] = round((now - dob).days / 365.25, 1)
+                for k in ("height_cm", "foot", "detail_position",
+                          "contract_until"):
+                    v = s.get(k)
+                    if v is not None and not (isinstance(v, float) and pd.isna(v)):
+                        rec[k] = v if k != "height_cm" else int(v)
+            g = mv_by.get(tm_id)
+            if g is not None and len(g):
+                cur = float(g["value_eur"].iloc[-1])
+                peak = float(g["value_eur"].max())
+                prev = g[g["dt"] <= now - pd.Timedelta(days=365)]
+                rec["market_value"] = cur
+                rec["mv_peak"] = peak
+                rec["mv_from_peak"] = round(cur / peak, 3) if peak else None
+                if len(prev):
+                    was = float(prev["value_eur"].iloc[-1])
+                    if was > 0:
+                        rec["mv_change_365"] = round(cur / was - 1.0, 3)
+                rec["mv_series"] = [
+                    {"d": d.date().isoformat(), "v": float(v)}
+                    for d, v in zip(g["dt"].tail(12), g["value_eur"].tail(12))]
+            g = tr_by.get(tm_id)
+            if g is not None and len(g):
+                past = g[g["dt"] < now]
+                if len(past):
+                    last = past.iloc[-1]
+                    days = int((now - last["dt"]).days)
+                    # A move WITHIN the league leaves a Premier League
+                    # trail; a move into it does not, and that is the whole
+                    # difference to a manager reading the card.
+                    from_pl = None
+                    try:
+                        from fpl_engine.ingest import transfermarkt as _tm
+                        from_pl = _tm.resolve_club(
+                            str(last.get("from_club") or ""), pl_names) is not None
+                    except Exception:                # noqa: BLE001
+                        from_pl = None
+                    rec["last_transfer"] = {
+                        "date": last["dt"].date().isoformat(),
+                        "from_club": last.get("from_club"),
+                        "from_pl": from_pl,
+                        "to_club": last.get("to_club"),
+                        "fee_eur": (float(last["fee_eur"])
+                                    if last.get("fee_eur") is not None
+                                    and not pd.isna(last["fee_eur"]) else None),
+                        "fee_text": last.get("fee_text"),
+                        "days_ago": days,
+                        "new_signing": days < 120,
+                    }
+            if rec:
+                out["players"][str(int(pid))] = rec
+
+        if not mgr.empty and not squad.empty:
+            club_team = (ident.merge(
+                squad[["tm_player_id", "tm_club_id"]], on="tm_player_id")
+                .groupby(["tm_club_id", "team_id"]).size().reset_index(
+                    name="n").sort_values("n", ascending=False)
+                .drop_duplicates("team_id"))
+            mgr["appointed_dt"] = pd.to_datetime(mgr["appointed"],
+                                                 errors="coerce", utc=True)
+            mgr["left_dt"] = pd.to_datetime(mgr["left_date"], errors="coerce",
+                                            utc=True)
+            # "still in post" is NOT "no departure date". Transfermarkt puts
+            # the CONTRACT END in that column for some clubs — Michael Carrick
+            # reads 2028-06-30 — so a NULL test drops the sitting manager of
+            # any club that fills it in. The spell that COVERS today is the
+            # right test, and where a caretaker overlaps, the later
+            # appointment wins.
+            mgr["until_dt"] = mgr["left_dt"].fillna(
+                pd.Timestamp("2100-01-01", tz="UTC"))
+            live = mgr[mgr["appointed_dt"].notna()
+                       & (mgr["appointed_dt"] <= now)
+                       & (mgr["until_dt"] > now)]
+            for _, c in club_team.iterrows():
+                m = live[live["tm_club_id"] == c["tm_club_id"]]
+                if not len(m):
+                    continue
+                m = m.sort_values("appointed_dt").iloc[-1]
+                days = int((now - m["appointed_dt"]).days)
+                out["clubs"][str(int(c["team_id"]))] = {
+                    "manager": m["manager"],
+                    "appointed": m["appointed_dt"].date().isoformat(),
+                    "days_in_post": days,
+                    "new": days < 90,
+                }
+    except Exception:  # noqa: BLE001 - decoration must never break the page
+        # A silent except is how a broken join looks exactly like an empty
+        # table. $FPL_DEBUG re-raises so the difference is visible.
+        if os.environ.get("FPL_DEBUG"):
+            raise
+        out = {"players": {}, "clubs": {}}
+    out = _json_safe(out)
+    _mem["_tm_ctx"] = (season, time.time(), out)
+    return out
+
+
+def _json_safe(o):
+    """NaN and Inf are not JSON. pandas produces both from a NULL column, and
+    the encoder raises rather than emitting `null`, so one missing contract
+    date would take the whole endpoint down."""
+    import math as _m
+    if isinstance(o, dict):
+        return {k: _json_safe(v) for k, v in o.items()}
+    if isinstance(o, (list, tuple)):
+        return [_json_safe(v) for v in o]
+    if isinstance(o, float):
+        return o if _m.isfinite(o) else None
+    if o is not None and not isinstance(o, (str, int, bool)):
+        try:
+            f = float(o)
+            return f if _m.isfinite(f) else None
+        except (TypeError, ValueError):
+            return str(o)
+    return o

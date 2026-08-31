@@ -76,17 +76,81 @@ def _gw_fixtures(conn, season: str, gw: int) -> list:
         "WHERE tm.season=? AND tm.gw=? AND tm.was_home=1", (season, gw)).fetchall()
 
 
+
+def _realised(name: str, row: dict | None, pos: str, rules: dict):
+    """A component's ACTUAL points for the gameweek, or None when unknown.
+
+    Used only by the oracle decomposition. A player with no row did not feature
+    in the database at all, which is not the same as scoring zero, so he is
+    left on the modelled value.
+    """
+    if not row:
+        return None
+    import math as _m
+
+    def _n(k):
+        v = row.get(k)
+        try:
+            return float(v) if v is not None else 0.0
+        except (TypeError, ValueError):
+            return 0.0
+
+    if name == "goals":
+        return _n("goals_scored") * rules["goal"].get(pos, 4)
+    if name == "assists":
+        return _n("assists") * rules["assist"]
+    if name == "cs":
+        return _n("clean_sheets") * rules["clean_sheet"].get(pos, 0)
+    if name == "conceded":
+        if pos not in ("GK", "DEF"):
+            return 0.0
+        gc = rules["goals_conceded"]
+        return _m.floor(_n("goals_conceded") / gc["per"]) * gc["points"]
+    if name == "saves":
+        if pos != "GK":
+            return 0.0
+        return _m.floor(_n("saves") / rules["saves_per_point"])
+    if name == "bonus":
+        return _n("bonus")
+    if name == "cards":
+        return (_n("yellow_cards") * rules["card"]["yellow"]
+                + _n("red_cards") * rules["card"]["red"])
+    if name == "defcon":
+        dc = rules.get("defensive_contribution") or {}
+        thr = (dc.get("threshold") or {}).get(pos)
+        if not thr:
+            return 0.0
+        return (dc.get("points", 0) if _n("defcon") >= thr else 0.0)
+    if name == "appearance":
+        mins, app = _n("minutes"), rules["appearance"]
+        return (app["played_60"] if mins >= 60
+                else (app["played_any"] if mins > 0 else 0.0))
+    return None
+
+
 def xpts_predict_gw(conn, season: str, gw: int, *, as_of: str | None = None,
                     use_availability: bool = True,
                     minutes_bundle=None, rules: dict | None = None,
                     penalty_takers: dict[int, int] | None = None,
                     odds_weight: float | None = None,
-                    team_override: dict[int, int] | None = None) -> pd.DataFrame:
+                    team_override: dict[int, int] | None = None,
+                    minutes_override: "pd.DataFrame | None" = None,
+                    oracle: dict | None = None) -> pd.DataFrame:
     """Expected points per player for one gameweek (point-in-time at as_of).
 
     Returns player_id-indexed frame with the prediction and its components.
     ``penalty_takers`` maps player_id -> penalties_order (1 = first choice),
     available live from bootstrap; first-choice takers get a small xG90 boost.
+
+    ``minutes_override`` and ``oracle`` exist for the ORACLE DECOMPOSITION —
+    "what would a perfect estimate of X be worth?" — and are None on every
+    shipped path, which stays bit-identical. ``minutes_override`` replaces the
+    minutes model's output frame; ``oracle`` is
+    ``{"substitute": {"goals", "bonus", ...}, "actual": frame}``, and each
+    named component's MODELLED contribution is swapped for the realised one
+    after the fixture loop. The swap is a delta on the finished total rather
+    than a different way of computing it, so an empty ``substitute`` set
+    reproduces the baseline exactly.
     """
     rules = rules or scoring.load_rules()
     as_of = as_of or first_kickoff(conn, season, gw)
@@ -102,8 +166,9 @@ def xpts_predict_gw(conn, season: str, gw: int, *, as_of: str | None = None,
     if clf is None:
         raise RuntimeError("minutes model could not be trained — is player_gw "
                            "populated? run `python -m fpl_engine pull` first")
-    mins = minutes_model.predict_gw(conn, season, as_of, clf, meta, gw=gw,
-                                    use_availability=use_availability)
+    mins = (minutes_override if minutes_override is not None
+            else minutes_model.predict_gw(conn, season, as_of, clf, meta, gw=gw,
+                                          use_availability=use_availability))
     rates = rates_mod.fit(conn, season, as_of, rules=rules)
     bonus_coef = rates.attrs.get("bonus_coef", {})   # merge drops attrs
     df = mins.merge(rates.drop(columns=["position"]), on="player_id", how="left")
@@ -154,6 +219,11 @@ def xpts_predict_gw(conn, season: str, gw: int, *, as_of: str | None = None,
     gc_per, gc_pts = rules["goals_conceded"]["per"], rules["goals_conceded"]["points"]
     dc_pts = (rules.get("defensive_contribution") or {}).get("points", 0)
 
+    sub = set((oracle or {}).get("substitute") or ())
+    actual = (oracle or {}).get("actual")
+    act = ({int(k): v for k, v in actual.set_index("player_id").to_dict("index").items()}
+           if actual is not None and len(actual) else {})
+
     rows = []
     for r in df.itertuples():
         fx = team_fixtures.get(r.team_id, [])
@@ -167,6 +237,9 @@ def xpts_predict_gw(conn, season: str, gw: int, *, as_of: str | None = None,
             xg90 += 0.10
         total = 0.0
         e_goals = e_assists = e_cs = 0.0
+        comp = {k: 0.0 for k in ("goals", "assists", "cs", "conceded",
+                                 "saves", "bonus", "cards", "defcon",
+                                 "appearance", "residual")}
         for lam_for, lam_against in fx:
             scaler = float(np.clip(lam_for / league, *ATTACK_SCALER_CAP))
             g = xg90 * exposure * scaler
@@ -176,23 +249,44 @@ def xpts_predict_gw(conn, season: str, gw: int, *, as_of: str | None = None,
             e_assists += a
             e_cs += cs
             total += g * p_goal.get(pos, 4) + a * rules["assist"]
+            comp["goals"] += g * p_goal.get(pos, 4)
+            comp["assists"] += a * rules["assist"]
             total += cs * p_cs.get(pos, 0)
+            comp["cs"] += cs * p_cs.get(pos, 0)
             if pos in ("GK", "DEF"):
-                total += (gc_pts * _e_floor_div(lam_against * max(p_play, 0.0),
-                                                gc_per))
+                _gc = gc_pts * _e_floor_div(lam_against * max(p_play, 0.0),
+                                            gc_per)
+                total += _gc
+                comp["conceded"] += _gc
             if pos == "GK":
                 sv = float(np.clip((lam_against / league) ** SAVES_OPP_EXP,
                                    *SAVES_OPP_CAP))
-                total += _e_floor_div((r.saves90 or 0.0) * exposure * sv,
-                                      rules["saves_per_point"])
+                _sv = _e_floor_div((r.saves90 or 0.0) * exposure * sv,
+                                   rules["saves_per_point"])
+                total += _sv
+                comp["saves"] += _sv
             bc = bonus_coef.get(pos)
             if bc:   # E[bonus] from expected events + player deviation
-                total += bc[0] * g + bc[1] * a + bc[2] * cs + bc[3] * p_play
+                _b = bc[0] * g + bc[1] * a + bc[2] * cs + bc[3] * p_play
+                total += _b
+                comp["bonus"] += _b
             total += (r.bonus_resid90 or 0.0) * exposure
+            comp["bonus"] += (r.bonus_resid90 or 0.0) * exposure
             total += (r.yellow_cards90 or 0.0) * exposure * rules["card"]["yellow"]
+            comp["cards"] += (r.yellow_cards90 or 0.0) * exposure * rules["card"]["yellow"]
             total += (r.defcon_cross90 or 0.0) * exposure * dc_pts
+            comp["defcon"] += (r.defcon_cross90 or 0.0) * exposure * dc_pts
             total += (r.residual90 or 0.0) * exposure
+            comp["residual"] += (r.residual90 or 0.0) * exposure
             total += (r.p_sub or 0.0) * p_app_any + (r.p_full or 0.0) * p_app_60
+            comp["appearance"] += ((r.p_sub or 0.0) * p_app_any
+                                   + (r.p_full or 0.0) * p_app_60)
+        if sub:
+            a_row = act.get(int(r.player_id))
+            for name in sub:
+                real = _realised(name, a_row, pos, rules)
+                if real is not None:
+                    total += real - comp.get(name, 0.0)
         rows.append({
             "player_id": r.player_id, "position": pos, "team_id": r.team_id,
             "n_fixtures": len(fx),

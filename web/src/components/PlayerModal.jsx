@@ -10,7 +10,7 @@ import { availPct, badgeUrl, epColor, epOf, fdrColor, fmt1, money, photoUrl } fr
    rates (xG-based once the season has data, else last-season history). */
 export default function PlayerModal({ pid, draft, plan, actions, close }) {
   const { byId, teams, proj, projHistory, players, watch,
-          setTransferWatch } = useStore()
+          setTransferWatch, context } = useStore()
   const fixOf = useFixtureLookup()
   const [fdrMode, setFdrMode] = useState('diff_att')
   const p = byId.get(pid)
@@ -259,6 +259,8 @@ export default function PlayerModal({ pid, draft, plan, actions, close }) {
               </span>
             </div>
           )}
+          <Dossier ctx={context?.players?.[String(pid)]}
+                   club={context?.clubs?.[String(p.team_id)]} />
           {p.recent_mins?.length > 0 && (
             <div className="recent-mins">
               <span className="section-label">Recent minutes</span>
@@ -406,6 +408,133 @@ function Tile({ k, v, bar, sub, warn }) {
       {bar != null && (
         <div className="tilebar">
           <div style={{ width: `${Math.max(3, Math.min(100, bar * 100))}%` }} />
+        </div>
+      )}
+    </div>
+  )
+}
+
+
+/* Transfermarkt dossier — shown BESIDE the recommendation, never inside it.
+
+   Every field here was measured against the minutes model and against decision
+   metrics and none of it earned a place in the objective: injury history moves
+   no decision (spearman_played -0.0013, and worse in the opening gameweeks),
+   and age, market value, transfers and squad competition together are worth
+   about 1-2% of log-loss and nothing at all in points per pick.
+
+   That is not the same as being useless to a person. Choosing between two
+   players the model rates alike, it matters that one is three hamstrings into
+   two years, is 33, is out of contract in June, and signed six weeks ago. So
+   it follows the rule the price model and Polymarket already follow: reported
+   next to the recommendation, never folded into it. */
+function Dossier({ ctx, club }) {
+  if (!ctx && !club) return null
+  const inj = ctx?.injury
+  const cur = inj?.current
+  const tr = ctx?.last_transfer
+  const eur = (v) => (v == null ? null
+    : v >= 1e9 ? `€${(v / 1e9).toFixed(2)}bn`
+    : v >= 1e6 ? `€${(v / 1e6).toFixed(v >= 1e7 ? 0 : 1)}m`
+    : `€${Math.round(v / 1e3)}k`)
+  const day = (d) => (d ? new Date(d).toLocaleDateString(undefined,
+    { day: 'numeric', month: 'short', year: '2-digit' }) : null)
+  const contractSoon = ctx?.contract_until
+    && (new Date(ctx.contract_until) - new Date()) / 86400000 < 365
+
+  const chips = []
+  if (ctx?.age != null) chips.push(['age', `${ctx.age}`])
+  if (ctx?.detail_position) chips.push(['role', ctx.detail_position])
+  if (ctx?.market_value) chips.push(['value', eur(ctx.market_value)])
+  if (ctx?.mv_change_365 != null) {
+    const v = ctx.mv_change_365
+    chips.push(['1yr', `${v >= 0 ? '+' : ''}${Math.round(v * 100)}%`,
+      v >= 0.05 ? 'up' : v <= -0.05 ? 'down' : null])
+  }
+  if (ctx?.contract_until) {
+    chips.push(['contract', day(ctx.contract_until), contractSoon ? 'warn' : null])
+  }
+  if (ctx?.foot && ctx.foot !== 'right') chips.push(['foot', ctx.foot])
+
+  return (
+    <div className="tm-dossier">
+      <span className="section-label">
+        Transfermarkt — context, not a projection
+      </span>
+
+      {cur && (
+        <div className="tm-alert">
+          <span className="tm-tag out">out</span>
+          <span>
+            <b>{cur.injury || 'Injured'}</b> since {day(cur.since)} ({cur.days_out}d)
+            {cur.expected_back
+              ? <> · Transfermarkt expects him back <b>{day(cur.expected_back)}</b>
+                  <span className="tm-hint"> (their forecast, not a fact)</span></>
+              : <> · <span className="tm-hint">no return date given</span></>}
+          </span>
+        </div>
+      )}
+
+      {tr?.new_signing && (
+        <div className="tm-alert new">
+          <span className="tm-tag new">new</span>
+          <span>
+            Signed from <b>{tr.from_club || '?'}</b> {tr.days_ago}d ago
+            {tr.fee_text ? <> · {tr.fee_text}</> : null}
+            <span className="tm-hint">
+              {tr.from_pl === false
+                ? ' — no Premier League history to trail'
+                : tr.from_pl === true
+                  ? ' — his trailing form is from another club'
+                  : ''}
+            </span>
+          </span>
+        </div>
+      )}
+
+      {chips.length > 0 && (
+        <div className="tm-chips">
+          {chips.map(([k, v, tone]) => (
+            <span key={k} className={`tm-chip${tone ? ` ${tone}` : ''}`}>
+              <em>{k}</em>{v}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {inj && (inj.spells_730 > 0 || inj.days_since_return != null) && (
+        <div className="tm-inj">
+          <span className="tm-inj-head">Injury record</span>
+          <span className="tm-inj-line">
+            {inj.spells_365} spell{inj.spells_365 === 1 ? '' : 's'} and{' '}
+            <b>{inj.days_365} days</b> out in the last year
+            {inj.games_missed_365 > 0
+              ? <> · {inj.games_missed_365} game{inj.games_missed_365 === 1 ? '' : 's'} missed</>
+              : null}
+            {inj.spells_730 !== inj.spells_365
+              ? <> · {inj.spells_730} spells in two years</> : null}
+            {!cur && inj.days_since_return != null && inj.days_since_return < 400
+              ? <> · back <b>{inj.days_since_return}d</b> ago</> : null}
+          </span>
+          {inj.recurring?.length > 0 && (
+            <span className="tm-inj-line warn">
+              recurring: {inj.recurring.join(', ')}
+            </span>
+          )}
+          {inj.common?.length > 0 && !inj.recurring?.length && (
+            <span className="tm-inj-line muted">
+              {inj.common.map(([k, n]) => n > 1 ? `${k} x${n}` : k).join(' · ')}
+            </span>
+          )}
+        </div>
+      )}
+
+      {club && (
+        <div className="tm-inj-line muted">
+          Manager <b>{club.manager}</b> — {club.days_in_post >= 400
+            ? `${(club.days_in_post / 365.25).toFixed(1)} yr` 
+            : `${club.days_in_post}d`} in post
+          {club.new ? <span className="tm-tag new" style={{ marginLeft: 6 }}>new</span> : null}
         </div>
       )}
     </div>
