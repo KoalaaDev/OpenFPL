@@ -16,6 +16,7 @@ export const api = {
   players: () => fetch('/api/players').then(j),
   fixtures: () => fetch('/api/fixtures').then(j),
   prices: (limit = 30) => fetch(`/api/prices?limit=${limit}`).then(j),
+  context: () => fetch('/api/context').then(j),
   projections: () => fetch('/api/projections').then(j),
   projectionHistory: () => fetch('/api/projections/history').then(j),
   buildProjections: (gws, force = false) =>

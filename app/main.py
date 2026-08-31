@@ -73,6 +73,17 @@ def api_img(kind: str, code: str):
                         headers={"Cache-Control": "public, max-age=604800, immutable"})
 
 
+@app.get("/api/context")
+def api_context():
+    """Transfermarkt context: injuries, age, contract, value, manager.
+
+    Reported next to the recommendation, never inside it — none of this
+    earned a place in the objective (see CLAUDE.md), and all of it informs
+    a human choosing between two players the model rates alike.
+    """
+    return services.transfermarkt_context()
+
+
 @app.get("/api/prices")
 def api_prices(limit: int = 30):
     return services.prices_payload(limit=limit)

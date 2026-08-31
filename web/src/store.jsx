@@ -14,6 +14,9 @@ export function StoreProvider({ children }) {
   const [draftsDoc, setDraftsDoc] = useState({ drafts: [] })
   const [activeDraftId, setActiveDraftId] = useState(null)
   const [watch, setWatch] = useState({ players: {}, alt: {} })
+  // Transfermarkt context: injuries, age, contract, value, manager.
+  // Decoration — never feeds a projection, so a failure is silent.
+  const [context, setContext] = useState({ players: {}, clubs: {} })
   const [entryId, setEntryId] = useState(null)
   const [entry, setEntry] = useState(null)
   const [toast, setToast] = useState(null)
@@ -33,6 +36,7 @@ export function StoreProvider({ children }) {
     api.fixtures().then(setFixtures).catch(() => {})
     refreshProjections()
     api.transferWatch().then(setWatch).catch(() => {})
+    api.context().then(setContext).catch(() => {})
     api.drafts().then((d) => {
       setDraftsDoc(d)
       if (d.drafts?.length) setActiveDraftId(d.drafts[0].id)
@@ -72,6 +76,7 @@ export function StoreProvider({ children }) {
       setWatch(await api.saveTransferWatch({ players }))
     } catch {
       api.transferWatch().then(setWatch).catch(() => {})
+    api.context().then(setContext).catch(() => {})
     }
   }, [watch.players])
 
@@ -99,6 +104,7 @@ export function StoreProvider({ children }) {
     activeDraftId, setActiveDraftId,
     entryId, setEntryId, entry, refreshEntry,
     watch, setTransferWatch,
+    context,
     toast, setToast,
   }
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>

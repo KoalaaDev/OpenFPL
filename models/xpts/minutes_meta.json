@@ -29,18 +29,22 @@
     "team_gw_fixtures",
     "sel_share_lag",
     "sel_rank_pos",
-    "net_transfer_frac"
+    "net_transfer_frac",
+    "role_is_am",
+    "role_is_dm",
+    "role_vs_fpl_line"
   ],
   "train_seasons": [
     "2022-23",
     "2023-24",
     "2024-25",
-    "2025-26"
+    "2025-26",
+    "2026-27"
   ],
-  "valid_season": "2025-26",
-  "holdout_accuracy": 0.8242511849934447,
+  "valid_season": "2026-27",
+  "holdout_accuracy": 0.6844660194174758,
   "mean_minutes": {
-    "sub": 22.221507607192255,
-    "full": 85.33970696204553
+    "sub": 22.20637412134034,
+    "full": 85.32047281323877
   }
 }

@@ -59,6 +59,7 @@ CREATE TABLE IF NOT EXISTS player (
     now_cost    REAL,                    -- current price in £m (e.g. 5.5)
     status      TEXT,                    -- FPL availability code (a/d/i/s/u)
     chance_next REAL,                    -- chance of playing next round in [0,1]
+    birth_date  TEXT,                    -- ISO; FPL publishes it from 2024-25
     PRIMARY KEY (season, player_id)
 );
 CREATE INDEX IF NOT EXISTS ix_player_code ON player(code);
@@ -296,6 +297,10 @@ _COLUMN_MIGRATIONS = {
         ("penalties_order", "INTEGER"),
         ("corners_order", "INTEGER"),
         ("freekicks_order", "INTEGER"),
+        # FPL's own date of birth. Published from 2024-25 onward, absent
+        # before; `code` is stable, so an earlier season inherits it from a
+        # later one and only players who left before 2024-25 stay blank.
+        ("birth_date", "TEXT"),
     ],
 }
 

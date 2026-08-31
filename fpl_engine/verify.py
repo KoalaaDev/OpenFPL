@@ -54,6 +54,12 @@ class Report:
         return not self.errors
 
 
+def _has_table(conn, name: str) -> bool:
+    return bool(conn.execute(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?",
+        (name,)).fetchone())
+
+
 def _one(conn, sql, params=()):
     row = conn.execute(sql, params).fetchone()
     return row[0] if row else 0
@@ -110,6 +116,39 @@ def run(conn) -> Report:
     if n:
         warn("refs.shots_resolve",
              "shots whose shooter is not resolved to any FPL player", n)
+
+    # ---- Transfermarkt identity -------------------------------------------
+    # The fifth identity defect: `tm_player` carried only a per-season FPL
+    # element id, and FPL reassigns those every summer — 99.7% of ids point to
+    # a different footballer one season later. Joining a Transfermarkt player
+    # through `player_id` hands his injury and transfer record to whoever
+    # inherited his number, silently. Identity travels on `player.code`.
+    if _has_table(conn, "tm_player"):
+        n = _one(conn, "SELECT COUNT(*) FROM tm_player m WHERE m.player_code "
+                       "IS NOT NULL AND NOT EXISTS (SELECT 1 FROM player p "
+                       "WHERE p.code = m.player_code)")
+        if n:
+            err("identity.tm_code_resolves",
+                "tm_player.player_code values that match no FPL player", n)
+        n = _one(conn, "SELECT COUNT(*) FROM (SELECT player_code FROM tm_player "
+                       "WHERE player_code IS NOT NULL GROUP BY player_code "
+                       "HAVING COUNT(*) > 1)")
+        if n:
+            err("identity.tm_one_to_one",
+                "FPL players claimed by more than one Transfermarkt id — one "
+                "man's history attached to another is worse than none", n)
+        for table, label in (("tm_injury", "injury spells"),
+                             ("tm_transfer", "transfers"),
+                             ("tm_market_value", "valuations")):
+            if not _has_table(conn, table):
+                continue
+            n = _one(conn, f"SELECT COUNT(*) FROM {table} t LEFT JOIN tm_player m "
+                           "ON m.tm_player_id = t.tm_player_id "
+                           "WHERE m.player_code IS NULL")
+            if n:
+                warn(f"coverage.{table}",
+                     f"{label} whose player is not resolved onto an FPL code "
+                     "(every feature built from them is NaN)", n)
 
     # ---- non-players -------------------------------------------------------
     placeholders = ",".join("?" * len(PLAYER_POSITIONS))

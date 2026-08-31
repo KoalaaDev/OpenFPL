@@ -27,6 +27,7 @@ def pull(conn, *, season: str | None = None, use_cache: bool = False,
                                         history=history)
     if backfill:
         summary["backfill"] = vaastav.ingest_seasons(conn, use_cache=use_cache)
+    summary["birth_dates"] = backfill_birth_dates(conn)
     if with_understat and understat.available():
         summary["understat"] = _pull_understat(conn, season, use_cache=use_cache)
     else:
@@ -118,7 +119,60 @@ def _resolve_backfill_seasons(conn, season: str, *, use_cache: bool) -> None:
         "  SELECT p2.understat_id FROM player p2 "
         "  WHERE p2.code = player.code AND p2.understat_id IS NOT NULL LIMIT 1) "
         "WHERE understat_id IS NULL AND code IS NOT NULL")
+    reconcile_understat_ids(conn)
     conn.commit()
+
+
+def reconcile_understat_ids(conn) -> dict:
+    """One player, one Understat id — and refuse rather than pick.
+
+    The cross-season fill above only touches rows that are NULL, so when two
+    seasons resolve the SAME man to DIFFERENT ids nothing reconciles them, and
+    `player.code` ends up pointing at two footballers. That is not theoretical:
+    FPL's Amad Diallo resolved to Understat 8127 ("Amad Diallo Traore",
+    Manchester United) in two seasons and to 12200 ("Amadou Diallo", Newcastle
+    United) in three — a different player entirely, whose shots and match roles
+    were then attached to him for most of the database.
+
+    There is no safe automatic tiebreak. Neither the number of seasons nor the
+    volume of match data picks the right id here: the wrong one wins on both.
+    So a code claiming more than one id is unset in every season and reported,
+    the same rule the resolver already applies to two players claiming one id —
+    handing a player another man's history is worse than having none. An
+    `entity_override` row pins a case a human has actually checked.
+    """
+    bad = [int(r[0]) for r in conn.execute(
+        "SELECT code FROM player WHERE understat_id IS NOT NULL "
+        "AND code IS NOT NULL GROUP BY code "
+        "HAVING COUNT(DISTINCT understat_id) > 1")]
+    if bad:
+        conn.executemany(
+            "UPDATE player SET understat_id = NULL WHERE code = ?",
+            [(c,) for c in bad])
+        progress.log(f"    {len(bad)} player(s) claimed more than one Understat "
+                     f"id across seasons; unset (ambiguous): {bad[:10]}")
+    return {"ambiguous_codes": len(bad)}
+
+
+def backfill_birth_dates(conn) -> dict:
+    """Carry a player's date of birth back across seasons on the stable `code`.
+
+    FPL began publishing `birth_date` in 2024-25 and it is absent before, so
+    the training seasons would otherwise have no age at all. `code` survives
+    the summer renumbering, so one row fills every other row for the same man.
+    Only a player who left the league before 2024-25 stays blank — which is
+    the gap Transfermarkt's squad pages cover.
+    """
+    conn.execute(
+        "UPDATE player SET birth_date = ("
+        "  SELECT q.birth_date FROM player q WHERE q.code = player.code "
+        "  AND q.birth_date IS NOT NULL LIMIT 1) "
+        "WHERE birth_date IS NULL AND code IS NOT NULL")
+    conn.commit()
+    have = conn.execute(
+        "SELECT COUNT(*) FROM player WHERE birth_date IS NOT NULL").fetchone()[0]
+    total = conn.execute("SELECT COUNT(*) FROM player").fetchone()[0]
+    return {"with_birth_date": int(have), "players": int(total)}
 
 
 def _pull_understat(conn, season: str, *, use_cache: bool,

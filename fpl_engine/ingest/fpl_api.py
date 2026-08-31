@@ -68,6 +68,7 @@ def ingest_bootstrap(conn, season: str | None = None, *, use_cache: bool = False
             "understat_id": existing.get(e["id"]),
             "now_cost": (e.get("now_cost") or 0) / 10.0,  # tenths of £m -> £m
             "status": e.get("status"),
+            "birth_date": e.get("birth_date") or None,
             "chance_next": (e["chance_of_playing_next_round"] / 100.0
                             if e.get("chance_of_playing_next_round") is not None else None),
             # published set-piece duty (1 = first choice), current season only

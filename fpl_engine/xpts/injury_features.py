@@ -62,6 +62,9 @@ import pandas as pd
 
 # Soft-tissue injuries are the recurrence-prone ones; a hamstring predicts
 # another hamstring in a way an ankle knock does not.
+EPOCH = pd.Timestamp("1970-01-01", tz="UTC")
+DAY = pd.Timedelta(days=1)
+
 SOFT_TISSUE = ("hamstring", "muscle", "muscular", "calf", "groin", "thigh",
                "adductor", "strain")
 
@@ -71,19 +74,24 @@ FEATURES = ["inj_days_365", "inj_spells_365", "inj_spells_730",
 HISTORY_ONLY = [f for f in FEATURES if f != "inj_currently_out"]
 
 
-def spells(conn, season: str) -> pd.DataFrame:
-    """Injury spells joined onto FPL `player_code` (stable across seasons)."""
+def spells(conn, season: str | None = None) -> pd.DataFrame:
+    """Injury spells joined onto FPL `player_code` (stable across seasons).
+
+    `player_code` is read straight off `tm_player`, never reconstructed from
+    `tm_player.player_id` against a season's `player` table. FPL reassigns its
+    element ids every summer — measured on this database, **99.7% of ids point
+    to a different footballer one season later** — so the id route resolves a
+    player against the current squad and then hands his injury history to
+    whoever inherited his number two seasons ago. `season` is accepted and
+    ignored, because there is nothing season-specific left to do.
+    """
     df = pd.read_sql_query(
         "SELECT i.tm_player_id, i.from_date, i.until_date, i.days, "
-        "       i.games_missed, i.injury, m.player_id "
+        "       i.games_missed, i.injury, m.player_code "
         "FROM tm_injury i JOIN tm_player m ON m.tm_player_id = i.tm_player_id "
-        "WHERE m.player_id IS NOT NULL", conn)
+        "WHERE m.player_code IS NOT NULL", conn)
     if df.empty:
         return df.assign(player_code=[], from_dt=[], until_dt=[], soft=[])
-    codes = pd.read_sql_query(
-        "SELECT player_id, code player_code FROM player WHERE season=?",
-        conn, params=(season,))
-    df = df.merge(codes, on="player_id", how="inner")
     df["from_dt"] = pd.to_datetime(df["from_date"], errors="coerce", utc=True)
     df["until_dt"] = pd.to_datetime(df["until_date"], errors="coerce", utc=True)
     df["soft"] = df["injury"].fillna("").str.lower().apply(
@@ -91,51 +99,101 @@ def spells(conn, season: str) -> pd.DataFrame:
     return df.dropna(subset=["from_dt", "player_code"])
 
 
+def _positions(code_rank: np.ndarray, when: np.ndarray,
+               sorted_keys: np.ndarray, starts: np.ndarray) -> np.ndarray:
+    """How many of each player's spells lie strictly before `when`.
+
+    A per-row scan is the obvious way to write this and costs 68 seconds on a
+    115k-row frame — which a 38-gameweek backtest would pay once per gameweek.
+    Encoding (player, day) as one sortable key turns the whole thing into a
+    single vectorised searchsorted: days are ~2e4 apart, so a 1e9 stride keeps
+    the players from ever colliding.
+    """
+    key = code_rank.astype(np.float64) * 1e9 + when
+    return np.searchsorted(sorted_keys, key, side="left") - starts[code_rank]
+
+
 def add_features(frame: pd.DataFrame, sp: pd.DataFrame) -> pd.DataFrame:
     """Attach point-in-time injury features to a minutes-model frame.
 
     `frame` needs `player_code` and `kick` (the fixture's kickoff). Every value
-    is computed only from spells strictly before that kickoff.
+    is computed only from spells strictly before that kickoff: a spell that had
+    ENDED contributes its duration, and one still running contributes only the
+    fact that he is out — its end date is the future.
     """
     out = frame.copy()
     for f in FEATURES:
         out[f] = 0.0
+    out["inj_days_since_return"] = 999.0
     if sp is None or sp.empty:
-        out["inj_days_since_return"] = 999.0
         return out
 
+    # Days since the epoch, as floats. Dividing by a Timedelta rather than
+    # rescaling `astype("int64")` is deliberate: pandas 2.x keeps whatever
+    # resolution a timestamp was built at, so the integer view is nanoseconds
+    # for one column and microseconds for the next — a silent 1000x.
     kick = pd.to_datetime(out["kick"], errors="coerce", utc=True)
-    by_code = {c: g for c, g in sp.groupby("player_code")}
-    n = len(out)
-    days365 = np.zeros(n); spells365 = np.zeros(n); spells730 = np.zeros(n)
-    soft730 = np.zeros(n); since = np.full(n, 999.0); out_now = np.zeros(n)
-    codes = out["player_code"].to_numpy()
-    ks = kick.to_numpy()
+    ok = kick.notna().to_numpy()
+    t = np.where(ok, (kick - EPOCH) / DAY, np.nan)
 
-    for i in range(n):
-        g = by_code.get(codes[i])
-        if g is None or pd.isna(ks[i]):
-            continue
-        t = pd.Timestamp(ks[i])
-        started = g[g["from_dt"] < t]
-        if started.empty:
-            continue
-        ended = started[started["until_dt"].notna() & (started["until_dt"] < t)]
-        if not ended.empty:
-            d365 = ended[ended["until_dt"] >= t - pd.Timedelta(days=365)]
-            days365[i] = float(d365["days"].fillna(0).sum())
-            spells365[i] = float(len(d365))
-            d730 = ended[ended["until_dt"] >= t - pd.Timedelta(days=730)]
-            spells730[i] = float(len(d730))
-            soft730[i] = float(d730["soft"].sum())
-            since[i] = float((t - ended["until_dt"].max()).days)
-        ongoing = started[started["until_dt"].isna() | (started["until_dt"] >= t)]
-        out_now[i] = float(len(ongoing) > 0)
+    g = sp.dropna(subset=["from_dt"]).copy()
+    g["_from"] = ((g["from_dt"] - EPOCH) / DAY).to_numpy()
+    until = np.where(g["until_dt"].notna().to_numpy(),
+                     ((g["until_dt"] - EPOCH) / DAY).to_numpy(), np.nan)
+    # an unfinished spell has no end: it must sort after every real date so it
+    # never counts as "ended", and never becomes the last return date
+    g["_until"] = np.where(np.isnan(until), 1e8, until)
+    g["_days"] = pd.to_numeric(g["days"], errors="coerce").fillna(0.0)
 
-    out["inj_days_365"] = days365
-    out["inj_spells_365"] = spells365
-    out["inj_spells_730"] = spells730
-    out["inj_soft_730"] = soft730
-    out["inj_days_since_return"] = np.clip(since, 0, 999)
-    out["inj_currently_out"] = out_now
+    codes = pd.Index(sorted(set(g["player_code"].astype("int64"))))
+    rank_of = pd.Series(np.arange(len(codes)), index=codes)
+    row_rank = out["player_code"].map(rank_of)
+    known = ok & row_rank.notna().to_numpy()
+    if not known.any():
+        return out
+    rr = row_rank.fillna(0).to_numpy().astype("int64")
+    g["_rank"] = g["player_code"].astype("int64").map(rank_of).to_numpy()
+
+    def _sorted(by):
+        d = g.sort_values(["_rank", by])
+        keys = d["_rank"].to_numpy(np.float64) * 1e9 + d[by].to_numpy()
+        starts = np.searchsorted(keys, np.arange(len(codes),
+                                                 dtype=np.float64) * 1e9)
+        return d, keys, starts
+
+    d_end, k_end, s_end = _sorted("_until")
+    d_beg, k_beg, s_beg = _sorted("_from")
+
+    n_end = _positions(rr, t, k_end, s_end)
+    n_beg = _positions(rr, t, k_beg, s_beg)
+    n_365 = _positions(rr, t - 365.0, k_end, s_end)
+    n_730 = _positions(rr, t - 730.0, k_end, s_end)
+
+    # prefix sums inside each player's block, so a window is one subtraction
+    def _prefix(col):
+        v = np.concatenate([[0.0], np.cumsum(d_end[col].to_numpy(np.float64))])
+        return v
+    pre_days, pre_soft = _prefix("_days"), _prefix("soft")
+    pre_n = np.arange(len(d_end) + 1, dtype=np.float64)
+    base = s_end[rr]
+    hi, l365, l730 = base + n_end, base + n_365, base + n_730
+
+    days365 = pre_days[hi] - pre_days[l365]
+    spells365 = pre_n[hi] - pre_n[l365]
+    spells730 = pre_n[hi] - pre_n[l730]
+    soft730 = pre_soft[hi] - pre_soft[l730]
+
+    last_end = d_end["_until"].to_numpy(np.float64)
+    since = np.full(len(out), 999.0)
+    has_end = known & (n_end > 0)
+    since[has_end] = t[has_end] - last_end[(hi - 1)[has_end]]
+
+    zero = ~known
+    for name, arr in (("inj_days_365", days365), ("inj_spells_365", spells365),
+                      ("inj_spells_730", spells730), ("inj_soft_730", soft730)):
+        arr = np.where(zero, 0.0, arr)
+        out[name] = arr
+    out["inj_days_since_return"] = np.clip(np.where(zero, 999.0, since), 0, 999)
+    out["inj_currently_out"] = np.where(zero, 0.0,
+                                        (n_beg - n_end > 0).astype(float))
     return out

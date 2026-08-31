@@ -78,9 +78,92 @@ ROLE_FEATURES = ["price_rank", "avg_mins_when_started", "start_rate_l10",
                  "consec_starts", "pos_mins_share_l5", "mins_std_l5", "started_l1"]
 CONTEXT_FEATURES = ["days_rest", "team_matches_14d", "is_home", "team_gw_fixtures"]
 CROWD_FEATURES = ["sel_share_lag", "sel_rank_pos", "net_transfer_frac"]
+# The line Understat says he last STARTED on. FPL's four-way label calls a
+# defensive midfielder and an attacking midfielder both "MID" and their minutes
+# differ; this is the gap between the two. NaN without `pull --understat`,
+# which the classifier tolerates — the model then behaves as it did before.
+# The only one of six tactical families that survived a held-out test.
+LINE_FEATURES = ["role_is_am", "role_is_dm", "role_vs_fpl_line"]
 
-FEATURES = HISTORY_FEATURES + ROLE_FEATURES + CONTEXT_FEATURES + CROWD_FEATURES
+FEATURES = (HISTORY_FEATURES + ROLE_FEATURES + CONTEXT_FEATURES
+            + CROWD_FEATURES + LINE_FEATURES)
 LABELS = {0: "none", 1: "sub", 2: "full"}   # 0 min / 1-59 / 60+
+
+# --- optional exogenous blocks (Transfermarkt) ------------------------------
+# Empty by default, so the shipped model is bit-identical to the one every
+# number in CLAUDE.md was measured on. A block is switched on for one process
+# with $FPL_MINUTES_EXTRA (``inj``, ``tm``, ``tm_player``, …), which is how a
+# backtest runs the challenger arm without a second copy of the module.
+EXTRA_BLOCKS = {"age": "fpl birth date", "inj": "injury",
+                "tm": "transfermarkt", "tac": "tactics/manager"}
+EXTRA_FEATURES: list[str] = []
+
+
+def _resolve_extras(names: list[str]) -> list[str]:
+    from . import injury_features as _inj, tm_features as _tm
+    from . import tactics_features as _tac
+    out: list[str] = []
+    for n in names:
+        n = n.strip().lower()
+        if not n:
+            continue
+        if n == "age":
+            out += ["fpl_age", "age_known"]
+        elif n == "inj":
+            out += _inj.FEATURES
+        elif n == "inj_history":
+            out += _inj.HISTORY_ONLY
+        elif n == "inj_out":
+            out += ["inj_currently_out"]
+        elif n == "tm":
+            out += _tm.ALL
+        elif n == "tac":
+            out += _tac.ALL
+        elif n in _tm.FAMILIES:
+            out += _tm.FAMILIES[n]
+        elif n in _tac.FAMILIES:
+            out += _tac.FAMILIES[n]
+        else:
+            raise ValueError(f"unknown minutes-model extra block: {n!r}")
+    return list(dict.fromkeys(out))
+
+
+def set_extras(names: list[str] | str | None) -> list[str]:
+    """Switch optional feature blocks on for this process. Returns the list."""
+    global EXTRA_FEATURES
+    if not names:
+        EXTRA_FEATURES = []
+    else:
+        if isinstance(names, str):
+            names = names.split(",")
+        EXTRA_FEATURES = _resolve_extras(list(names))
+    return EXTRA_FEATURES
+
+
+def active_features() -> list[str]:
+    return FEATURES + EXTRA_FEATURES
+
+
+def _attach_extras(conn, df: pd.DataFrame) -> pd.DataFrame:
+    """Join whichever optional blocks the active feature set asks for.
+
+    Both attach on ``player_code`` and filter strictly on ``kick``, so this is
+    the same point-in-time contract the rolling features honour.
+    """
+    if not EXTRA_FEATURES or df.empty:
+        return df
+    from . import injury_features as _inj, tm_features as _tm
+    from . import tactics_features as _tac
+    if any(f in EXTRA_FEATURES for f in _inj.FEATURES):
+        df = _inj.add_features(df, _inj.spells(conn))
+    if any(f in EXTRA_FEATURES for f in _tm.ALL):
+        df = _tm.add_features(df, _tm.load(conn),
+                              pl_clubs=_tm.pl_club_ids(conn))
+    if any(f in EXTRA_FEATURES for f in _tac.ALL):
+        seasons = sorted(df["season"].dropna().unique().tolist())
+        df = _tac.add_features(df, _tac.load(conn),
+                               opponents=_tac.opponent_map(conn, seasons))
+    return df
 
 
 # ---------------------------------------------------------------- frame -----
@@ -88,7 +171,7 @@ def _history(conn, seasons: list[str], before: str | None) -> pd.DataFrame:
     q = ("SELECT pg.season, pg.gw, pg.player_id, pg.player_code, pg.fixture_id, "
          "pg.kickoff_utc, pg.minutes, pg.starts, pg.team_id, pg.was_home, "
          "pg.price price_gw, pg.selected, pg.transfers_in, pg.transfers_out, "
-         "p.position position, p.now_cost * 10.0 price "
+         "p.position position, p.birth_date birth_date, p.now_cost * 10.0 price "
          "FROM player_gw pg JOIN player p "
          "ON p.season=pg.season AND p.player_id=pg.player_id "
          # Assistant Managers are selectable entries that score points and
@@ -129,7 +212,7 @@ def _target_rows(conn, season: str, gw: int, as_of: str) -> pd.DataFrame:
     ])[["fixture_id", "gw", "kickoff_utc", "team_id", "was_home"]]
 
     players = pd.read_sql_query(          # now_cost £m -> tenths, see _history
-        "SELECT player_id, code player_code, position, team_id, "
+        "SELECT player_id, code player_code, position, team_id, birth_date, "
         "now_cost * 10.0 price FROM player WHERE season=? "
         "AND position IN ('GK','DEF','MID','FWD')",
         conn, params=(season,))
@@ -167,12 +250,27 @@ def _target_rows(conn, season: str, gw: int, as_of: str) -> pd.DataFrame:
     return out
 
 
+EPOCH = pd.Timestamp("1970-01-01", tz="UTC")
+DAY = pd.Timedelta(days=1)
+
+
 def _team_congestion(tm: pd.DataFrame) -> pd.DataFrame:
-    """Days of rest and matches in the previous 14 days, per team-match."""
+    """Days of rest and matches in the previous 14 days, per team-match.
+
+    Days come from dividing by a Timedelta, not from rescaling the integer
+    view. pandas keeps whatever resolution a timestamp was parsed at, and
+    since pandas 2.0 an ISO8601 string parses to MICROseconds — so
+    ``astype("int64") / 86_400e9`` silently returned days/1000. ``days_rest``
+    survived that (a tree only reads the order, and nothing then hit the
+    30-day clip) but ``team_matches_14d`` did not: a 14 that means 14,000 days
+    counts every previous match of the season, so the congestion feature was
+    really a gameweek counter. The model has documented itself as carrying a
+    fixture-congestion signal that it did not have.
+    """
     tm = tm.sort_values(["season", "team_id", "kick"]).copy()
     rest, cong = [], []
     for _, d in tm.groupby(["season", "team_id"], sort=False):
-        ks = d["kick"].astype("int64").to_numpy() / 86_400e9      # days
+        ks = ((d["kick"] - EPOCH) / DAY).to_numpy()               # days
         for i, k in enumerate(ks):
             prev = ks[:i]
             rest.append(k - prev[-1] if i else np.nan)
@@ -298,10 +396,39 @@ def _frame(conn, seasons: list[str], before: str | None = None,
     df["net_transfer_frac"] = ((ti - to) / df["sel_lag"].replace(0, np.nan)
                                ).clip(-2, 2)
 
+    # FPL publishes `birth_date` from 2024-25 and the pull carries it back
+    # across seasons on the stable code, so age is free wherever FPL has ever
+    # listed the player. It is the one thing that separates the two kinds of
+    # player with no Premier League history at all: among men with under five
+    # career appearances every trailing feature is identical, and P(60+) still
+    # runs from 0.00 at 15-18 to 0.40 at 24-27.
+    #
+    # The remainder is IMPUTED rather than left missing, and that is not a
+    # convenience. FPL began publishing the field in 2024-25, so coverage runs
+    # 56% / 60% / 88% / 99% across seasons: a tree left to learn the missing
+    # branch learns it on a training population that has all but vanished by
+    # serve time. Held out on 2025-26 the raw column was WORSE than no age at
+    # all (+0.34% log-loss on the cold-start segment) while the imputed one is
+    # better (-1.57%), and the difference is entirely this shift.
+    if "birth_date" in df.columns:
+        bd = pd.to_datetime(df["birth_date"], errors="coerce", utc=True)
+        bd = bd.groupby(df["player_code"]).transform(
+            lambda s: s.ffill().bfill())
+        age = (df["kick"] - bd).dt.days / 365.25
+        med = age.groupby(df["position"]).transform("median")
+        df["fpl_age"] = age.fillna(med).fillna(age.median())
+        df["age_known"] = age.notna().astype(float)
+    else:
+        df["fpl_age"] = np.nan
+        df["age_known"] = 0.0
+
     df["label"] = np.select([df["minutes"] >= 60, df["minutes"] > 0],
                             [2, 1], 0).astype(float)
     df.loc[df["minutes"].isna(), "label"] = np.nan
-    return df.drop(columns=["_pm", "_ms", "_m5"])
+    df = df.drop(columns=["_pm", "_ms", "_m5"])
+    from . import tactics_features as _tac
+    df = _tac.add_line_features(df, _tac.load_roles(conn))
+    return _attach_extras(conn, df)
 
 
 # ---------------------------------------------------------------- train -----
@@ -312,7 +439,7 @@ def _fit(frame: pd.DataFrame, seasons: list[str], device: str | None):
         objective="multi:softprob", num_class=3, n_estimators=400, max_depth=5,
         learning_rate=0.06, subsample=0.9, colsample_bytree=0.8,
         eval_metric="mlogloss", device=device or "cpu")
-    clf.fit(tr[FEATURES], tr["label"].astype(int))
+    clf.fit(tr[active_features()], tr["label"].astype(int))
     return clf, tr
 
 
@@ -323,7 +450,7 @@ def _fit_minutes(tr: pd.DataFrame, device: str | None):
     m = xgb.XGBRegressor(n_estimators=400, max_depth=5, learning_rate=0.06,
                          subsample=0.9, colsample_bytree=0.8,
                          objective="reg:squarederror", device=device or "cpu")
-    m.fit(played[FEATURES], played["minutes"])
+    m.fit(played[active_features()], played["minutes"])
     return m
 
 
@@ -343,7 +470,7 @@ def _fit_start(tr: pd.DataFrame, device: str | None):
                           max_depth=5, learning_rate=0.06, subsample=0.9,
                           colsample_bytree=0.8, eval_metric="logloss",
                           device=device or "cpu")
-    m.fit(tr[FEATURES], y)
+    m.fit(tr[active_features()], y)
     return m
 
 
@@ -363,7 +490,8 @@ def train(conn, *, seasons: list[str] | None = None,
         probe, _ = _fit(frame, seasons[:-1], device)
         va = frame[frame["label"].notna() & (frame["season"] == valid_season)]
         if len(va):
-            acc = float((probe.predict(va[FEATURES]) == va["label"]).mean())
+            acc = float((probe.predict(va[active_features()])
+                         == va["label"]).mean())
     clf, tr = _fit(frame, seasons, device)
     # E[minutes | he plays], fitted on appearances only. Rebuilding expected
     # minutes as P(plays) x this beats the class-mean reconstruction it
@@ -378,7 +506,7 @@ def train(conn, *, seasons: list[str] | None = None,
     clf.save_model(model_path)
     reg.save_model(reg_path)
     start.save_model(start_path)
-    meta = {"features": FEATURES, "train_seasons": seasons,
+    meta = {"features": active_features(), "train_seasons": seasons,
             "valid_season": valid_season, "holdout_accuracy": acc,
             "mean_minutes": {"sub": m_sub, "full": m_full}}
     with open(meta_path, "w", encoding="utf-8") as fh:
@@ -400,7 +528,7 @@ def load(tag: str | None = None):
         return None, None
     with open(meta_path, encoding="utf-8") as fh:
         meta = json.load(fh)
-    if meta.get("features") != FEATURES:
+    if meta.get("features") != active_features():
         return None, None      # stale cache: the feature set has changed
     clf = xgb.XGBClassifier()
     clf.load_model(model_path)

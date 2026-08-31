@@ -130,3 +130,53 @@ def test_a_non_player_price_does_not_trip_the_unit_check(conn):
     conn.commit()
     r = verify.run(conn)
     assert "units.player_gw_price_is_tenths" not in {f.check for f in r.errors}
+
+
+# --------------------------------------------------- Transfermarkt identity --
+def _tm_tables(c):
+    from fpl_engine.ingest import transfermarkt as tm
+    tm.init(c)
+    tm.init2(c)
+
+
+def test_a_transfermarkt_id_pointing_at_no_player_is_an_error(conn):
+    _tm_tables(conn)
+    conn.execute("INSERT INTO tm_player (tm_player_id, tm_name, player_code) "
+                 "VALUES (1, 'A', 999999)")
+    conn.commit()
+    r = verify.run(conn)
+    assert any(f.check == "identity.tm_code_resolves" for f in r.errors)
+
+
+def test_two_transfermarkt_ids_claiming_one_player_is_an_error(conn):
+    # the Gabriel / Gabriel Jesus failure in a new source: one man's injury and
+    # transfer record attached to another is worse than having none at all
+    _tm_tables(conn)
+    conn.executemany("INSERT INTO tm_player (tm_player_id, tm_name, "
+                     "player_code) VALUES (?,?,?)",
+                     [(1, "Gabriel", 101), (2, "Gabriel Jesus", 101)])
+    conn.commit()
+    r = verify.run(conn)
+    assert any(f.check == "identity.tm_one_to_one" for f in r.errors)
+
+
+def test_a_clean_transfermarkt_map_raises_nothing(conn):
+    _tm_tables(conn)
+    conn.executemany("INSERT INTO tm_player (tm_player_id, tm_name, "
+                     "player_code) VALUES (?,?,?)", [(1, "A", 101), (2, "B", 102)])
+    conn.commit()
+    r = verify.run(conn)
+    assert not [f for f in r.errors if f.check.startswith("identity.tm")]
+
+
+def test_unresolved_transfermarkt_rows_are_reported_as_coverage(conn):
+    _tm_tables(conn)
+    conn.execute("INSERT INTO tm_player (tm_player_id, tm_name, player_code) "
+                 "VALUES (1, 'A', NULL)")
+    conn.execute("INSERT INTO tm_injury (tm_player_id, from_date, injury, "
+                 "until_date, days, games_missed, season_label, observed_utc) "
+                 "VALUES (1, '2025-01-01', 'Knock', '2025-01-10', 9, 2, "
+                 "'25/26', '2026-08-30T00:00:00Z')")
+    conn.commit()
+    r = verify.run(conn)
+    assert any(f.check == "coverage.tm_injury" for f in r.warnings)

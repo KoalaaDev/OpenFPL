@@ -262,3 +262,27 @@ def test_a_stale_two_model_cache_is_rejected(tmp_path, monkeypatch):
         json.dumps({"features": mm.FEATURES, "mean_minutes": {}}),
         encoding="utf-8")
     assert mm.load() == (None, None)      # start.json missing
+
+
+def test_fixture_congestion_is_counted_in_days_not_in_the_frames_time_unit():
+    """pandas keeps whatever resolution a timestamp was parsed at.
+
+    Since pandas 2.0 an ISO8601 string parses to MICROseconds, so the old
+    ``astype("int64") / 86_400e9`` returned days/1000. ``days_rest`` survived
+    it (a tree reads only the order), but a 14-day window that really means
+    14,000 days counts every previous match of the season — the congestion
+    feature was a gameweek counter.
+    """
+    import pandas as pd
+    from fpl_engine.xpts import minutes_model as mm
+
+    kicks = pd.to_datetime(pd.Series([
+        "2025-08-16T14:00:00Z", "2025-08-19T19:00:00Z",   # 3 days later
+        "2025-08-23T14:00:00Z", "2025-10-01T14:00:00Z",   # then a long gap
+    ]), utc=True, format="ISO8601")
+    tm = pd.DataFrame({"season": "2025-26", "team_id": 1,
+                       "fixture_id": [1, 2, 3, 4], "kick": kicks})
+    out = mm._team_congestion(tm).sort_values("kick")
+    assert list(out["days_rest"].round(2)[1:]) == [3.21, 3.79, 39.0]
+    # three matches inside a fortnight, then a lone one after the gap
+    assert list(out["team_matches_14d"]) == [0.0, 1.0, 2.0, 0.0]
