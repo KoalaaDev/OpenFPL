@@ -78,8 +78,15 @@ ROLE_FEATURES = ["price_rank", "avg_mins_when_started", "start_rate_l10",
                  "consec_starts", "pos_mins_share_l5", "mins_std_l5", "started_l1"]
 CONTEXT_FEATURES = ["days_rest", "team_matches_14d", "is_home", "team_gw_fixtures"]
 CROWD_FEATURES = ["sel_share_lag", "sel_rank_pos", "net_transfer_frac"]
+# The line Understat says he last STARTED on. FPL's four-way label calls a
+# defensive midfielder and an attacking midfielder both "MID" and their minutes
+# differ; this is the gap between the two. NaN without `pull --understat`,
+# which the classifier tolerates — the model then behaves as it did before.
+# The only one of six tactical families that survived a held-out test.
+LINE_FEATURES = ["role_is_am", "role_is_dm", "role_vs_fpl_line"]
 
-FEATURES = HISTORY_FEATURES + ROLE_FEATURES + CONTEXT_FEATURES + CROWD_FEATURES
+FEATURES = (HISTORY_FEATURES + ROLE_FEATURES + CONTEXT_FEATURES
+            + CROWD_FEATURES + LINE_FEATURES)
 LABELS = {0: "none", 1: "sub", 2: "full"}   # 0 min / 1-59 / 60+
 
 # --- optional exogenous blocks (Transfermarkt) ------------------------------
@@ -419,6 +426,8 @@ def _frame(conn, seasons: list[str], before: str | None = None,
                             [2, 1], 0).astype(float)
     df.loc[df["minutes"].isna(), "label"] = np.nan
     df = df.drop(columns=["_pm", "_ms", "_m5"])
+    from . import tactics_features as _tac
+    df = _tac.add_line_features(df, _tac.load_roles(conn))
     return _attach_extras(conn, df)
 
 

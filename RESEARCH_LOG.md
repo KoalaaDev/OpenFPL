@@ -469,3 +469,128 @@ top-30 pts/pick**, all p < 0.003. That is the first *decision-metric* price
 this repo has been able to put on availability at all (§8: "no replay here can
 measure it"), and since FPL's live `status` is strictly stronger, it is a lower
 bound on what the availability overlay is already earning.
+
+## E12. The Tactics/Manager expert — rejected, except the part that is not tactics
+
+Pre-registered question: *does manager/tactical context provide independent
+predictive information the model is currently missing?* Built as one isolated
+expert with six separable families, tested incrementally, on genuinely
+held-out seasons. **The managerial answer is no.**
+
+### Sources, and what does not exist
+
+| source | verdict |
+|---|---|
+| **StatsBomb open data** | Premier League **2003/04 and 2015/16 only** — checked against `competitions.json`. Neither overlaps a replayed season. No event-level tactical data is reachable. |
+| **Transfermarkt staff history** | 927 dated managerial spells across the 27 clubs in this database: appointment date, departure date. Usable. |
+| **Understat** | PPDA and deep completions per team-match (3,078 rows), and the per-match ROLE a player occupied (40,116 rows) — the only free per-match role feed. Pulled for every backfilled season for the first time; the pipeline had only ever fetched the current season and one before. |
+
+So possession, field tilt, crossing frequency, attacking width and build-up
+style have **no free per-match history here**. PPDA and deep completions are
+the two style axes that exist. Approximating the rest from articles about
+managers would be inventing data, so it was not done.
+
+### Family ablation, three seeds, two independently held-out seasons
+
+Log-loss vs baseline (negative is better):
+
+| family | 2024-25 | 2025-26 | verdict |
+|---|---|---|---|
+| manager identity, tenure, continuity | **+0.61%** | **+0.38%** | worse in both — reject |
+| formation (shape, stability, changes) | **+0.23%** | **+0.25%** | worse in both — reject |
+| playing style (PPDA, deep, opponent's) | −0.07% | −0.13% | ~zero — reject |
+| manager x opponent | −0.09% | +0.03% | ~zero — reject |
+| manager x player role | −0.85% | −1.21% | replicates |
+| **the player's own line** | **−1.31%** | **−1.42%** | replicates |
+| the whole expert | −1.08% | −1.51% | |
+| **on top of everything else** | **−0.88%** | **−1.45%** | replicates |
+
+### The falsification localises it, and it is not managerial
+
+| decomposition | 2024-25 | 2025-26 |
+|---|---|---|
+| coverage indicator alone | −0.38% | −0.13% |
+| squad competition (slots, share of the line) | −0.31% | −0.19% |
+| **which line he plays** | **−1.26%** | **−1.25%** |
+| both together | −1.31% | −1.42% |
+| + coverage indicator on top | −1.40% | −1.34% |
+
+Competition for the shirt is worth barely more than the coverage indicator.
+The whole effect is **which line he actually plays**, and `manager x role` only
+worked because it partly re-encodes the same fact. This is not a discovery
+about managers. It is that **FPL's four-way position label is too coarse**: it
+calls a DMC and an AMC both "MID" and their minutes differ.
+
+### A defect worth recording, because it cost points at the top of the board
+
+The first version coded an unresolved role `0`, which asserts "he is neither an
+attacking nor a defensive midfielder" rather than "we have not seen his line".
+Understat resolves ~65% of players and names a role only for a starter, so a
+third of rows carried that false denial. Decision metrics, 74 paired gameweeks:
+
+| | unknown coded 0 | unknown coded NaN |
+|---|---|---|
+| spearman_played | +0.0055*** | +0.0046*** |
+| **top11** | **−0.141 (p=0.008)** | −0.050 (p=0.39) |
+| captain | −0.473 (p=0.084) | −0.351 (p=0.13) |
+
+Significant harm to the starting XI, in both seasons independently, from a
+missing-value convention. Generalise it: **an absent observation is not a
+negative one**, and a tree will happily learn the difference if you let it.
+
+### Decision metrics for the survivor — and what ships
+
+Three features (`role_is_am`, `role_is_dm`, `role_vs_fpl_line`) reproduce the
+whole family, so that is the shipped unit. 74 paired gameweeks vs baseline:
+
+| | pooled | 2024-25 | 2025-26 |
+|---|---|---|---|
+| spearman | +0.0024*** | +0.0028*** | +0.0020*** |
+| **spearman_played** | **+0.0047 (p=0.0007)** | +0.0039** | +0.0055** |
+| rmse | −0.0049*** | −0.0042*** | −0.0056*** |
+| p_at_20 | +0.0020 | +0.0068 | −0.0027 |
+| top11 / top30 | −0.055 / +0.029 | +0.010 / +0.022 | −0.120 / +0.037 |
+| captain | −0.351 | −0.351 | −0.351 |
+
+**The captain column is three observations, not a finding.** The pick changes
+in 3 of 74 gameweeks (one in 2024-25 worth −13, two in 2025-26 worth −13
+between them), and the identical −0.3514 in both seasons is arithmetic
+coincidence. It carries no information either way.
+
+**Shipped**, into `minutes_model.FEATURES`. `spearman_played` is the metric
+§8b used to ship the hybrid E[minutes] estimator (+0.0010, p=0.010) and to
+reject isotonic calibration (−0.0012); this is **4.6x** the size of the change
+that earned its place, significant in each season separately. Stated honestly:
+it is a rank-quality gain and **not** a proven points gain — top11, top30 and
+prec@20 are all null. It is NaN without `pull --understat`, which the
+classifier tolerates by behaving as it did before.
+
+### The standing wall this removes, and the one it leaves
+
+CLAUDE.md listed manager identity as unreachable. It is reachable, dated, and
+**worth nothing** — which is a better outcome than leaving it as an open
+question. What remains untestable is the interaction the brief cared most
+about: with no event data overlapping a replayed season, "does this manager
+play inverted wingers differently" cannot be asked here at all.
+
+### E12a. A sixth identity defect, found by the invariant it was written for
+
+Pulling Understat for every backfilled season (which the pipeline had never
+done) tripped `identity.stable_across_seasons`. FPL's **Amad Diallo** resolved
+to Understat **8127** ("Amad Diallo Traore", Manchester United) in two seasons
+and to **12200** ("Amadou Diallo", Newcastle United) in three — a different
+footballer, whose shots and match roles were attached to him across most of the
+database. The fuzzy name pass fired before the club check and matched the wrong
+man; the cross-season fill only touches NULLs, so nothing reconciled the two.
+
+**There is no safe automatic tiebreak.** The wrong id won on the number of
+seasons (3 vs 2) *and* on stored match volume (1 row vs 0), so both obvious
+rules pick the impostor. `pipeline.reconcile_understat_ids` therefore unsets
+every season for a code that claims more than one id and reports it — the
+resolver's existing collision rule, applied in the other direction. An
+`entity_override` row remains the way to pin a case a human has checked.
+
+Worth noting where this sits: the invariant was added in Round 9 after four
+identity defects, and has now caught its second and third (the Transfermarkt
+`player_id` join in E11a, and this). That is the argument for the `verify`
+command in one line.

@@ -316,12 +316,15 @@ Stated plainly so nobody re-runs the experiment expecting a number:
   metric. See the Transfermarkt section. What the exercise did buy is a price
   for availability itself: +0.134 top-30 pts/pick against a baseline denied it,
   which is a lower bound on what the live overlay already earns.
-* **Manager identity and manager-specific rotation.** The club-level proxy
-  above is worth ~0.25% of log-loss. Transfermarkt does carry dated manager
-  appointments, so identity and tenure are reachable; event-level tactical
-  data is not. **StatsBomb's open data holds only Premier League 2003/04 and
-  2015/16** — checked against `competitions.json`, not assumed — so neither
-  overlaps a season this repo replays.
+* **Manager identity and manager-specific rotation. Settled: reachable, and
+  worth nothing.** Transfermarkt carries 927 dated managerial spells; added as
+  a feature family they make the minutes model **worse** in both held-out
+  seasons (+0.61% / +0.38% log-loss). Formation is likewise worse in both
+  (+0.23% / +0.25%) and pressing style is zero. See the tactics section.
+  Manager x player-role interactions cannot be tested properly here:
+  **StatsBomb's open data holds only Premier League 2003/04 and 2015/16** —
+  checked against `competitions.json`, not assumed — so no event-level source
+  overlaps a replayed season.
 * **Tactical regimes / positional role changes.** Needs Understat resolved
   (`pull --understat` — `player.understat_id` is otherwise NULL and every
   Understat feature is silently NaN) and really needs event data with pitch
@@ -1602,6 +1605,59 @@ been documenting a fixture-congestion signal it did not have.
 Divide by a `Timedelta`, never by a magic constant against an integer view;
 `tests/test_minutes_model.py` pins it.
 
+## The tactics expert: six families, one survivor, and it is not tactics
+
+Asked as a pre-registered question — *does manager/tactical context carry
+information the model is missing?* — with six separable families, tested
+incrementally on genuinely held-out seasons. `xpts/tactics_features.py`.
+
+**Sources.** Transfermarkt's staff history gives 927 DATED managerial spells
+across the 27 clubs in this database; the dates are the point, since a name is
+a categorical with no history but an appointment date makes "who was in charge
+that day, and for how long" point-in-time. Understat gives PPDA and deep
+completions per team-match, and the per-match ROLE a player occupied (AMR, DMC,
+FWL) — the only free per-match role feed there is, now pulled for every
+backfilled season rather than the current one and one before.
+
+**Not reachable, checked rather than approximated:** possession, field tilt,
+crossing frequency, attacking width and build-up style have no free per-match
+history here, and no event-level source overlaps a replayed season.
+
+| family | 2024-25 | 2025-26 | verdict |
+|---|---|---|---|
+| manager identity, tenure, continuity | **+0.61%** | **+0.38%** | worse in both |
+| formation (shape, stability, changes) | **+0.23%** | **+0.25%** | worse in both |
+| playing style (PPDA, deep, opponent's) | −0.07% | −0.13% | ~zero |
+| manager x opponent | −0.09% | +0.03% | ~zero |
+| manager x player role | −0.85% | −1.21% | replicates |
+| **the player's own line** | **−1.31%** | **−1.42%** | replicates |
+
+**The falsification says it is not managerial.** The coverage indicator alone
+is worth −0.38%/−0.13% and squad competition −0.31%/−0.19%, while *which line
+he plays* carries −1.26%/−1.25% — the whole family. `manager x role` only
+worked because it partly re-encodes the same fact. The finding is that **FPL's
+four-way label is too coarse**: it calls a DMC and an AMC both "MID".
+
+**A missing-value defect that cost real points.** Coding an unresolved role `0`
+asserts "he is neither an attacking nor a defensive midfielder" rather than "we
+have not seen his line", and a third of rows carried that false denial. It cost
+**top11 −0.141 (p=0.008)** — significant harm to the starting XI in both
+seasons — and vanished (−0.050, p=0.39) once unknown became NaN. *An absent
+observation is not a negative one.*
+
+**What ships:** three features (`role_is_am`, `role_is_dm`, `role_vs_fpl_line`)
+that reproduce the whole family, now in `minutes_model.FEATURES`. Over 74
+paired gameweeks: `spearman_played` **+0.0047 (p=0.0007)**, significant in each
+season separately (+0.0039, +0.0055), `rmse` −0.0049***, and top11/top30/
+prec@20 all null. That is 4.6x the `spearman_played` gain the hybrid E[minutes]
+estimator shipped on — but it is a rank-quality gain, **not** a proven points
+gain, and it is stated that way. NaN without `pull --understat`, which the
+classifier tolerates by behaving as it did before.
+
+*The captain column in that comparison is three observations.* The pick changes
+in 3 of 74 gameweeks; the identical −0.35 in both seasons is arithmetic
+coincidence and carries no information either way.
+
 ## Optimiser
 
 `optimise/milp.py` is a multi-period mixed-integer program (PuLP + bundled CBC,
@@ -1634,6 +1690,14 @@ Run: `python -m pytest tests/ -q`
 * **`player relevant fpl points`** (5 columns): OpenFPL's exact definition is
   not reconstructable from this repo's artefacts, so a documented best-effort
   (`total_points - appearance_points`) is used. All other FPL columns match.
+* **One player, one Understat id.** The cross-season fill only touches NULLs,
+  so two seasons resolving the same man to different ids went unreconciled:
+  FPL's Amad Diallo was Understat 8127 ("Amad Diallo Traore", Man Utd) in two
+  seasons and 12200 ("Amadou Diallo", Newcastle) in three — a different player.
+  Neither the season count (3 vs 2) nor the stored match volume (1 vs 0) picks
+  the right one, so `pipeline.reconcile_understat_ids` unsets every season for
+  a code claiming more than one id and reports it. `entity_override` pins a
+  case a human has checked.
 * **Understat resolution is 83% per season**, and the unresolved 17% keep
   `understat_id` NULL so their Understat features stay NaN (the FPL xG
   stand-ins apply). Resolution now runs for every backfilled season and
@@ -1643,9 +1707,11 @@ Run: `python -m pytest tests/ -q`
   for a player's per-match log across all seasons, `main/getPlayersStats/` for
   ids/names used in resolution; all need `X-Requested-With: XMLHttpRequest`).
   `pull --understat` (the web Data button has it on) covers the current and
-  previous season; current-season players are fetched live, the rest cached.
+  previous season by default; `_pull_understat(..., history_seasons=4)` covers
+  every backfilled one, which is what the per-match ROLE features need.
   Understat features are NaN when it is unreachable; the models tolerate this
-  via `np.nan_to_num`. To limit the damage, FPL's own (Opta) expected stats —
+  via `np.nan_to_num`, and the three shipped role features degrade to NaN so
+  the minutes classifier behaves as it did before they existed. To limit the damage, FPL's own (Opta) expected stats —
   stored per match in `player_gw.xg/xa/xgi/xgc` (plus per-gw `price`, the crowd signals `selected/transfers_in/transfers_out`, and raw DefCon counts `defcon/tackles/cbi/recoveries` from 2025-26 on) and `team_match.xg/xga` (team
   xG = summed player xG, xGA = opponent's) — stand in for the Understat
   metrics they map onto (`player xg/xa`, `team/opponent xg/xga`) whenever the
@@ -1731,7 +1797,8 @@ python -m fpl_engine init-db
 python -m fpl_engine verify          # data invariants; non-zero exit on error
 python -m fpl_engine pull            # FPL live + vaastav backfill + odds -> SQLite (free;
                                      #   set $ODDS_API_KEY for upcoming-fixture odds)
-python -m fpl_engine transfermarkt   # squads, transfers, market values, injuries (rate limited)
+python -m fpl_engine transfermarkt   # squads, transfers, values, injuries, managers (rate limited)
+python -m fpl_engine pull --understat      # needed for the shipped role features
 python -m fpl_engine predict --gw 1        # end-to-end predictions
 python -m fpl_engine run --gw 1            # pull + build + predict
 python -m fpl_engine optimise --entry 883566 --horizon 5   # transfers / squad

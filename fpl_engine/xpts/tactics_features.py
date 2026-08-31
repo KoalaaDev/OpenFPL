@@ -68,15 +68,19 @@ TAC_STYLE = ["tac_ppda_l5", "tac_deep_l5", "tac_deep_allowed_l5",
              "tac_ppda_gap"]
 TAC_FORMATION = [f"form_{b.lower()}_l5" for b in BUCKETS[1:]] + [
     "form_entropy_l5", "form_changed_l1", "form_seen_l5"]
-TAC_ROLE = ["role_slots_l5", "role_share_l5", "role_is_am", "role_is_dm",
-            "role_vs_fpl_line"]
+# The line he actually plays. Separated from the competition features because
+# the ablation puts the whole effect here: FPL calls a DMC and an AMC both
+# "MID", and those two have very different minutes.
+TAC_LINE = ["role_is_am", "role_is_dm", "role_vs_fpl_line"]
+TAC_ROLE = ["role_slots_l5", "role_share_l5"] + TAC_LINE
 TAC_MGR_ROLE = ["mgr_role_share", "mgr_role_share_vs_league"]
 TAC_MGR_OPP = ["mgr_ppda_vs_strong", "mgr_deep_vs_strong"]
 
 FAMILIES = {"tac_manager": TAC_MANAGER, "tac_style": TAC_STYLE,
             "tac_formation": TAC_FORMATION, "tac_role": TAC_ROLE,
+            "tac_line": TAC_LINE,
             "tac_mgr_role": TAC_MGR_ROLE, "tac_mgr_opp": TAC_MGR_OPP}
-ALL = [f for fam in FAMILIES.values() for f in fam]
+ALL = list(dict.fromkeys(f for fam in FAMILIES.values() for f in fam))
 
 # where FPL's four-way label would put each line, so a role can be differenced
 # against it (an FPL "MID" who is really a DM is the case that matters)
@@ -536,8 +540,16 @@ def add_features(frame: pd.DataFrame, data: dict, *,
         out.loc[idx, "role_share_l5"] = pd.to_numeric(
             j["role_share_l5"], errors="coerce").to_numpy()
         bucket.loc[idx] = j["bucket"].to_numpy()
-        out["role_is_am"] = (bucket == "AM").astype(float)
-        out["role_is_dm"] = (bucket == "DM").astype(float)
+        # "unknown" is not "no". Understat resolves ~65% of players and only
+        # names a role for someone who STARTED, so an uncovered row is a
+        # player whose line we have not seen — coding him 0 asserts he is
+        # neither an attacking nor a defensive midfielder, which is a claim,
+        # not an absence. NaN lets the tree branch on the missingness itself.
+        known = bucket.notna().to_numpy()
+        out["role_is_am"] = np.where(known, (bucket == "AM").astype(float),
+                                     np.nan)
+        out["role_is_dm"] = np.where(known, (bucket == "DM").astype(float),
+                                     np.nan)
         line = bucket.map(BUCKET_LINE)
         out["role_vs_fpl_line"] = pd.to_numeric(line, errors="coerce") - \
             out["position"].map(FPL_LINE)
@@ -571,3 +583,69 @@ def opponent_map(conn, seasons: list[str]) -> pd.DataFrame:
         ])[["season", "fixture_id", "team_id", "opponent_id"]]
     out = pd.concat([played, fx], ignore_index=True) if not fx.empty else played
     return out.dropna().drop_duplicates(["season", "fixture_id", "team_id"])
+
+
+# ==========================================================================
+# The one family that survived, on its own cheap path.
+#
+# Of six tactical families this is the only one that carries information —
+# and it is not a tactical fact at all. FPL's four-way label calls a defensive
+# midfielder and an attacking midfielder both "MID", and their minutes differ.
+# Understat names the role a player actually occupied in each match, so the
+# gap between the two is readable.
+#
+# Kept separate from `add_features` because the shipped minutes model builds
+# its frame once per gameweek in a backtest, and it should not pay for the
+# manager, style and formation joins that were all rejected.
+# ==========================================================================
+
+def load_roles(conn) -> pd.DataFrame:
+    """Per-match roles on `player.code`, or an empty frame without Understat."""
+    try:
+        roles = pd.read_sql_query(
+            "SELECT u.match_date, u.position, p.code player_code "
+            "FROM understat_player_match u JOIN player p "
+            "ON p.season = u.season AND p.understat_id = u.understat_id", conn)
+    except Exception:                                # noqa: BLE001
+        return pd.DataFrame()
+    if roles.empty:
+        return roles
+    roles["date"] = pd.to_datetime(roles["match_date"], errors="coerce",
+                                   utc=True)
+    roles["bucket"] = roles["position"].map(ROLE_BUCKET)
+    # only a starter is given a role; "Sub" maps to nothing
+    return roles.dropna(subset=["date", "player_code", "bucket"])
+
+
+def add_line_features(frame: pd.DataFrame, roles: pd.DataFrame) -> pd.DataFrame:
+    """The line he last started on, strictly before this kickoff.
+
+    An unresolved player keeps NaN rather than a zero. "Unknown" is not "no":
+    coding it 0 asserts he is neither an attacking nor a defensive midfielder,
+    and that claim cost 0.14 actual points per pick across the starting XI
+    (top11 -0.141, p=0.008) until it was removed.
+    """
+    out = frame.copy()
+    for f in TAC_LINE:
+        out[f] = np.nan
+    if roles is None or roles.empty:
+        return out
+    kick = pd.to_datetime(out["kick"], errors="coerce", utc=True)
+    left = pd.DataFrame({"player_code": out["player_code"].to_numpy(),
+                         "_t": kick.to_numpy()})
+    left["_i"] = np.arange(len(left))
+    left = left.dropna(subset=["player_code", "_t"]).sort_values("_t")
+    if left.empty:
+        return out
+    r = roles[["player_code", "date", "bucket"]].sort_values("date")
+    j = pd.merge_asof(left, r, left_on="_t", right_on="date",
+                      by="player_code", allow_exact_matches=False)
+    idx = out.index[j["_i"].to_numpy()]
+    bucket = pd.Series(j["bucket"].to_numpy(), index=idx)
+    known = bucket.notna()
+    out.loc[idx[known], "role_is_am"] = (bucket[known] == "AM").astype(float)
+    out.loc[idx[known], "role_is_dm"] = (bucket[known] == "DM").astype(float)
+    line = bucket[known].map(BUCKET_LINE).astype(float)
+    out.loc[idx[known], "role_vs_fpl_line"] = (
+        line - out.loc[idx[known], "position"].map(FPL_LINE)).to_numpy()
+    return out

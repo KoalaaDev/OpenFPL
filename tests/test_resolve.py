@@ -50,3 +50,36 @@ def test_club_pass_reports_ambiguity_instead_of_guessing(conn):
     res = resolve.resolve_players(conn, "2024-25", names, understat_teams=clubs)
     assert "Reece James" in res["ambiguous"]
     assert conn.execute("SELECT understat_id FROM player WHERE player_id=70").fetchone()[0] is None
+
+
+def test_one_player_claiming_two_understat_ids_is_unset_in_every_season():
+    """FPL's Amad Diallo resolved to two different footballers.
+
+    8127 is "Amad Diallo Traore" (Manchester United) and 12200 is "Amadou
+    Diallo" (Newcastle United) — a different man, whose shots and match roles
+    were attached to him in three of five seasons. The cross-season fill only
+    touches NULLs, so nothing reconciled the disagreement.
+
+    There is no safe automatic tiebreak: the wrong id won on BOTH the number of
+    seasons (3 vs 2) and the volume of stored match data (1 row vs 0). So the
+    rule is refusal, matching the resolver's existing collision rule.
+    """
+    import sqlite3
+    from fpl_engine import pipeline
+
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    conn.execute("CREATE TABLE player (season TEXT, player_id INTEGER, "
+                 "code INTEGER, understat_id TEXT)")
+    conn.executemany(
+        "INSERT INTO player VALUES (?,?,?,?)",
+        [("2022-23", 1, 493250, "12200"), ("2023-24", 2, 493250, "12200"),
+         ("2024-25", 3, 493250, "8127"), ("2025-26", 4, 493250, "8127"),
+         # an untouched player with a single consistent id
+         ("2024-25", 9, 111, "500"), ("2025-26", 9, 111, "500")])
+    out = pipeline.reconcile_understat_ids(conn)
+    assert out["ambiguous_codes"] == 1
+    rows = dict(conn.execute(
+        "SELECT code, COUNT(understat_id) FROM player GROUP BY code").fetchall())
+    assert rows[493250] == 0        # unset in every season, not just one
+    assert rows[111] == 2           # the consistent player is untouched
