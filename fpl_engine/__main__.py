@@ -70,6 +70,9 @@ def cmd_transfermarkt(args):
             print("[tm] transfer history…")
             print("  ", tm.ingest_transfers(conn, targets=targets,
                                             progress=print))
+        if not args.skip_managers:
+            print("[tm] manager history…")
+            print("  ", tm.ingest_managers(conn, progress=print))
         if not args.skip_injuries:
             print("[tm] injury history…")
             print("  ", tm.ingest_injuries_for(conn, targets=targets,
@@ -374,6 +377,7 @@ def main(argv=None):
     sp.add_argument("--skip-values", action="store_true")
     sp.add_argument("--skip-transfers", action="store_true")
     sp.add_argument("--skip-injuries", action="store_true")
+    sp.add_argument("--skip-managers", action="store_true")
     sp.add_argument("--resolved-only", action="store_true",
                     help="only players resolved onto an FPL code")
     sp.set_defaults(func=cmd_transfermarkt)

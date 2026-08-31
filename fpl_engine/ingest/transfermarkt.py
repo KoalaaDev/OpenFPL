@@ -935,3 +935,136 @@ def ingest_transfers(conn, *, targets: list[int] | None = None,
         _sleep(API_DELAY)
     conn.commit()
     return {"players": len(targets), "transfers": rows, "failed": failed}
+
+
+# ==========================================================================
+# Manager history
+#
+# CLAUDE.md listed manager identity as unreachable ("not in any feed the
+# pipeline reads"). Transfermarkt's staff-history page carries it, DATED: every
+# spell at a club with an appointment date, a departure date, matches and
+# points per game. Twenty-seven requests cover every club that has played a
+# Premier League season in this database.
+#
+# The dates are what make it usable. A manager's identity is a categorical with
+# no history attached; his APPOINTMENT DATE turns it into a point-in-time fact —
+# who was in charge on the day of this fixture, and how long he had been there.
+# ==========================================================================
+
+MANAGERS = BASE + "/x/mitarbeiterhistorie/verein/{club}/personalie_id/1"
+
+SCHEMA_3 = """
+CREATE TABLE IF NOT EXISTS tm_manager_spell (
+    tm_club_id    INTEGER NOT NULL,
+    tm_manager_id INTEGER NOT NULL,
+    appointed     TEXT NOT NULL,     -- ISO, point-in-time safe
+    left_date     TEXT,              -- ISO; NULL while he is still in post
+    manager       TEXT,
+    dob           TEXT,
+    days          INTEGER,
+    -- LEAK WARNING: `matches` and `ppg` are TODAY's career totals for the
+    -- spell, not the figures as they stood at any past date. Stored because
+    -- they are free; never usable as a point-in-time feature.
+    matches       INTEGER,
+    ppg           REAL,
+    observed_utc  TEXT NOT NULL,
+    PRIMARY KEY (tm_club_id, tm_manager_id, appointed)
+);
+CREATE INDEX IF NOT EXISTS idx_tm_mgr_club ON tm_manager_spell (tm_club_id);
+"""
+
+
+def init3(conn) -> None:
+    conn.executescript(SCHEMA_3)
+
+
+def parse_managers(html: str) -> list[dict]:
+    """One dict per managerial spell on a club's staff-history page.
+
+    Parsed by meaning again. The date of birth sits inside the nested
+    inline-table and the appointment and departure dates in plain cells, so
+    collecting every date in document order and taking the birth date out by
+    its own anchor is what keeps a caretaker's blank departure date from
+    shifting every later column.
+    """
+    start = html.find('class="items"')
+    if start < 0:
+        return []
+    rows = re.split(r'<tr class="(?:odd|even)">', html[start:])[1:]
+    out = []
+    for r in rows:
+        mid = _one(r"/profil/trainer/(\d+)", r)
+        name = _one(r'/profil/trainer/\d+"[^>]*>\s*([^<]+?)\s*<', r)
+        if not mid or not name:
+            continue
+        body = re.sub(r'\s(?:title|alt)="[^"]*"', " ", r)
+        dob = _one(r"<tr>\s*<td>\s*(\d{2}/\d{2}/\d{4})\s*</td>\s*</tr>\s*</table>",
+                   body)
+        dates = [d for d in re.findall(r"(\d{2}/\d{2}/\d{4})", body) if d != dob]
+        if not dates:
+            continue
+        # matches and points-per-game come AFTER the tenure cell; reading the
+        # numeric cells from the start picks up the day count instead
+        days = _one(r">\s*([\d.,]+)\s*days", body)
+        dm = re.search(r">\s*[\d.,]+\s*days", body)
+        # the match count is wrapped in a link to the performance detail page,
+        # so the cell has to be de-tagged before the number is readable
+        nums = re.findall(r"<td[^>]*>(.*?)</td>",
+                          body[dm.end():] if dm else "", re.S)
+        nums = [t for t in (_text(n) for n in nums)
+                if re.fullmatch(r"[\d.,]+", t or "")]
+        matches = ppg = None
+        if len(nums) >= 2:
+            try:
+                matches = int(float(nums[0].replace(",", "").replace(".", "")))
+                ppg = float(nums[1].replace(",", "."))
+            except ValueError:
+                pass
+        out.append({
+            "tm_manager_id": int(mid),
+            "manager": name,
+            "dob": _iso(dob),
+            "appointed": _iso(dates[0]),
+            # a manager still in post has no departure date, and it must stay
+            # NULL rather than borrow the next column
+            "left_date": _iso(dates[1]) if len(dates) > 1 else None,
+            "days": int(days.replace(".", "").replace(",", "")) if days else None,
+            "matches": matches,
+            "ppg": ppg,
+        })
+    return out
+
+
+def ingest_managers(conn, *, clubs: list[int] | None = None,
+                    progress=None) -> dict:
+    """Staff history for every club that has played a season in this database."""
+    init2(conn); init3(conn)
+    conn.execute("PRAGMA busy_timeout=60000")
+    if clubs is None:
+        clubs = [int(r[0]) for r in conn.execute(
+            "SELECT DISTINCT tm_club_id FROM tm_squad "
+            "WHERE tm_club_id IS NOT NULL")]
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    spells, failed = 0, 0
+    for i, cid in enumerate(clubs, 1):
+        try:
+            rows = parse_managers(fetch(MANAGERS.format(club=cid)))
+        except Exception:                            # noqa: BLE001
+            failed += 1
+            _sleep()
+            continue
+        rows = [r for r in rows if r["appointed"]]
+        if rows:
+            conn.executemany(
+                "INSERT OR REPLACE INTO tm_manager_spell (tm_club_id, "
+                "tm_manager_id, appointed, left_date, manager, dob, days, "
+                "matches, ppg, observed_utc) VALUES (?,?,?,?,?,?,?,?,?,?)",
+                [(cid, r["tm_manager_id"], r["appointed"], r["left_date"],
+                  r["manager"], r["dob"], r["days"], r["matches"], r["ppg"], now)
+                 for r in rows])
+            spells += len(rows)
+        conn.commit()
+        if progress:
+            progress(f"    {i}/{len(clubs)} club {cid}: {len(rows)} spells")
+        _sleep()
+    return {"clubs": len(clubs), "spells": spells, "failed": failed}

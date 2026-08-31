@@ -88,12 +88,13 @@ LABELS = {0: "none", 1: "sub", 2: "full"}   # 0 min / 1-59 / 60+
 # with $FPL_MINUTES_EXTRA (``inj``, ``tm``, ``tm_player``, …), which is how a
 # backtest runs the challenger arm without a second copy of the module.
 EXTRA_BLOCKS = {"age": "fpl birth date", "inj": "injury",
-                "tm": "transfermarkt"}
+                "tm": "transfermarkt", "tac": "tactics/manager"}
 EXTRA_FEATURES: list[str] = []
 
 
 def _resolve_extras(names: list[str]) -> list[str]:
     from . import injury_features as _inj, tm_features as _tm
+    from . import tactics_features as _tac
     out: list[str] = []
     for n in names:
         n = n.strip().lower()
@@ -109,8 +110,12 @@ def _resolve_extras(names: list[str]) -> list[str]:
             out += ["inj_currently_out"]
         elif n == "tm":
             out += _tm.ALL
+        elif n == "tac":
+            out += _tac.ALL
         elif n in _tm.FAMILIES:
             out += _tm.FAMILIES[n]
+        elif n in _tac.FAMILIES:
+            out += _tac.FAMILIES[n]
         else:
             raise ValueError(f"unknown minutes-model extra block: {n!r}")
     return list(dict.fromkeys(out))
@@ -141,11 +146,16 @@ def _attach_extras(conn, df: pd.DataFrame) -> pd.DataFrame:
     if not EXTRA_FEATURES or df.empty:
         return df
     from . import injury_features as _inj, tm_features as _tm
+    from . import tactics_features as _tac
     if any(f in EXTRA_FEATURES for f in _inj.FEATURES):
         df = _inj.add_features(df, _inj.spells(conn))
     if any(f in EXTRA_FEATURES for f in _tm.ALL):
         df = _tm.add_features(df, _tm.load(conn),
                               pl_clubs=_tm.pl_club_ids(conn))
+    if any(f in EXTRA_FEATURES for f in _tac.ALL):
+        seasons = sorted(df["season"].dropna().unique().tolist())
+        df = _tac.add_features(df, _tac.load(conn),
+                               opponents=_tac.opponent_map(conn, seasons))
     return df
 
 
