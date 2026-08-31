@@ -309,14 +309,19 @@ Stated plainly so nobody re-runs the experiment expecting a number:
 * **Predicted-lineup and press-conference models.** No free feed here carries
   manager quotes, and FPL's `status`/`chance_next` is a *current* snapshot with
   no history — so the availability overlay cannot be backtested from FPL data.
-  **Injury duration is no longer on this list**: Transfermarkt dates every
-  spell (type, start, end, days, games missed), which makes it the first
-  minutes-related signal that is both exogenous and backtestable. See the
-  section below — the headline number is misleading and the honest one is
-  small, but it is real and replicated.
-* **Manager identity and manager-specific rotation.** Not in any feed the
-  pipeline reads; the club-level proxy above is the closest reachable, and it
-  is worth ~0.25% of log-loss.
+  **Injury duration came off this list and has now been settled**:
+  Transfermarkt dates every spell, which made the availability channel
+  backtestable for the first time — and both gates closed negative. Its flag
+  is a 32%-recall copy of FPL's `status`, and its history moves no decision
+  metric. See the Transfermarkt section. What the exercise did buy is a price
+  for availability itself: +0.134 top-30 pts/pick against a baseline denied it,
+  which is a lower bound on what the live overlay already earns.
+* **Manager identity and manager-specific rotation.** The club-level proxy
+  above is worth ~0.25% of log-loss. Transfermarkt does carry dated manager
+  appointments, so identity and tenure are reachable; event-level tactical
+  data is not. **StatsBomb's open data holds only Premier League 2003/04 and
+  2015/16** — checked against `competitions.json`, not assumed — so neither
+  overlaps a season this repo replays.
 * **Tactical regimes / positional role changes.** Needs Understat resolved
   (`pull --understat` — `player.understat_id` is otherwise NULL and every
   Understat feature is silently NaN) and really needs event data with pitch
@@ -895,7 +900,7 @@ Checked against the sites, not the documentation:
 |---|---|
 | **FBref / Sports Reference** | returns **403 to `robots.txt` itself** for non-browser agents. Actively refusing automated access. Not scraped. |
 | **Understat** | `robots.txt` is `User-agent: * / Disallow: /`. The repo **already** depends on it (`ingest/understat.py`), which predates this work — flagged here rather than quietly extended. No new Understat scraping was added. |
-| **Transfermarkt** | permissive `robots.txt`; its terms prohibit automated extraction, and robots.txt is not a licence. Originally not scraped for that reason. **Now scraped, at the owner's explicit instruction** for personal use — see "Transfermarkt: rumours and injury history" below. The `felipeall/transfermarkt-api` wrapper was evaluated first and rejected: unmaintained since April 2025, and its own issue #121 is "500 Error Status on all GET Endpoints" (confirmed — every endpoint 500s). |
+| **Transfermarkt** | permissive `robots.txt`; its terms prohibit automated extraction, and robots.txt is not a licence. Originally not scraped for that reason. **Now scraped, at the owner's explicit instruction** for personal use — see the Transfermarkt section below. The `felipeall/transfermarkt-api` wrapper was evaluated first and rejected: unmaintained since April 2025, and its own issue #121 is "500 Error Status on all GET Endpoints" (confirmed — every endpoint 500s). |
 | **Premier League official** | crawlable (24 disallow rules, almost all query-string patterns). Viable if a need appears. |
 | **FPL API** | `robots.txt` present, no disallow rules, already used by the pipeline. |
 
@@ -1454,50 +1459,148 @@ destinations: "Manchester City" does not contain "Man City", so Gakpo's move
 was filed as *leaving the league*, which is the one distinction the feature
 exists to make.
 
-**Injury history is the interesting one, and its headline number is a trap.**
-3,222 dated spells over 473 players back to 2012, typed (Hamstring 371, Knee
-195, Ankle 191, Muscle 177, Calf 86, Groin 76), with duration and games missed.
-Added to the minutes model, trained forward in time:
+**Injury history: measured, gated, and both gates closed negative.** 8,760
+dated spells over 1,736 crawled players back to 2012, typed and with duration.
+Round one reported −2.08% log-loss for history *on top of already knowing he is
+out*, and refused to ship it behind two gates. Both have now been run.
+
+*The identity join was wrong when that number was produced.* Spells were
+attached through `tm_player.player_id` joined to a different season's `player`
+table, and FPL reassigns element ids every summer — **99.7% of ids point to a
+different footballer one season later**. Identity now travels on `player.code`.
+Redone correctly the figure is **−1.5%**, replicated in both seasons: the shape
+survives, the size shrinks.
+
+*Gate (a) — decision metrics. Fails.* Injury history on top of the availability
+flag, 74 paired gameweeks:
+
+| | spearman | spearman_played | prec@20 | top30 | captain | rmse |
+|---|---|---|---|---|---|---|
+| history − flag | +0.0026*** | −0.0013 | −0.003 | −0.00 | +0.11 | −0.0022*** |
+| everything − flag | +0.0045*** | −0.0022 | −0.001 | +0.00 | +0.11 | −0.0039*** |
+
+`spearman` and `rmse` improve because the model got better at ranking **who
+plays at all**, which is what injury history informs. Every metric that decides
+a squad sits still, and in the opening gameweeks `spearman_played` is
+significantly *worse* (−0.0042, p=0.004). This is the Understat result again:
+a better estimator that changes no decision.
+
+*Gate (b) — is it a noisier copy of FPL `status`? It is a weaker one.* On the
+live season, 596 of 626 players mapped:
+
+| | FPL says out | FPL says available |
+|---|---|---|
+| **TM says out** | 38 | 3 |
+| **TM says available** | **81** | 474 |
+
+**31.9% recall, 92.7% precision.** The misses are structural: FPL's `status`
+also carries suspensions, players who have left or are unregistered, and
+doubts, none of which an injury table can see. So it adds nothing live — and
+since that flag was the *control* in the −2.08%/−1.5% measurement, a 32%-recall
+control makes even that an upper bound rather than an estimate.
+
+**Not shipped, and the question is closed.** The leakage boundary in
+`xpts/injury_features.py` still holds (an ENDED spell is fully usable, an
+ongoing one contributes only the fact of absence; audited for the
+sustained-during-the-match failure and cleared at 133 spells on fixture days,
+85% of whom played), and the builder is now vectorised — one sortable
+(player, day) key turns a 68-second per-row scan into 0.25s, which is what
+makes it affordable inside a backtest at all.
+
+**The second prize is real and is the round's one keeper.** A dated
+availability record makes the availability→minutes channel backtestable for the
+first time — "no free feed here carries it" was a standing wall. Against a
+baseline denied availability entirely, the flag alone is worth **+0.0085
+`spearman_played`, +0.011 prec@20 and +0.134 top-30 pts/pick**, all p < 0.003.
+That is the first decision-metric price this repo has put on availability, and
+because FPL's live `status` is strictly stronger it is a *lower bound* on what
+the availability overlay is already earning. Do not read it as a gain
+available from Transfermarkt — it is a valuation of something the live model
+already does.
+
+### The rest of Transfermarkt: three dated datasets, no decision moved
+
+`/kader/.../plus/1` (one request per club-season: date of birth, height, foot,
+detailed position, joined date, signed-from club and fee, contract expiry,
+market value), `/ceapi/transferHistory/list/{id}` and
+`/ceapi/marketValueDevelopment/graph/{id}` — 3,691 squad rows, 15,118 dated
+transfers, 30,215 dated valuations. `xpts/tm_features.py` builds four families
+point-in-time; `$FPL_MINUTES_EXTRA` switches them on for one process, so the
+shipped model stays bit-identical to the one every number above was measured on.
+
+**Deliberately NOT ingested: Transfermarkt's appearance and minutes tables.**
+They are a second copy of `player_gw`, and the standing rule from four
+independent confirmations is that an effect measured in realised outcomes is
+already absorbed by estimates fitted to realised outcomes.
+
+**What is and is not point-in-time.** The two ceapi feeds date every row and are
+filtered strictly before kickoff. The squad page cannot be: it serves TODAY's
+contract expiry and market value even when asked for `saison_id` 2023, and
+backdates a player's current joined-date onto the old squad (Raya reads
+"04/07/2024" on Arsenal's 2023-24 page, when he was there on loan). Only date
+of birth, height, foot and the name→id mapping are safe historically. Contract
+expiry is live-only, on the same footing as FPL's `status`.
+
+Log-loss vs baseline, three seeds, two independently held-out seasons:
+
+| arm | all 24-25 | all 25-26 | cold start 24-25 | cold start 25-26 |
+|---|---|---|---|---|
+| age + TM transfers | −0.95% | −1.16% | −6.20% | −7.33% |
+| age + TM market value | −0.42% | −0.51% | −5.18% | −5.81% |
+| age + TM squad depth | −0.51% | −0.64% | −4.51% | −4.89% |
+| **age + every TM family** | **−1.16%** | **−1.68%** | −6.57% | −8.62% |
+
+Real, replicated, and worth **nothing in decisions**: against the baseline,
+age + every TM family moves `spearman` +0.0030*** and `rmse` −0.0025*** while
+`spearman_played` is −0.0007, prec@20 +0.001, top30 −0.01 and captain −0.49
+(p=0.083, i.e. drifting the wrong way). The 4%-better-rate threshold from the
+Understat round has its counterpart here: **a 1-2% better minutes log-loss is
+also below the noise floor.**
+
+### Age is the cold-start feature, and FPL was publishing it all along
+
+`birth_date` is in the bootstrap and in vaastav's `players_raw.csv` from
+2024-25; the pipeline discarded it. It separates the two kinds of player the
+trailing features cannot tell apart — among men with under five career Premier
+League appearances every history feature is identical (no minutes, no starts,
+no appearances) and P(60+) still runs **0.000 at 15-18 to 0.401 at 24-27**,
+falling again after 30.
+
+**FPL's own column does not replicate yet, and the reason is coverage.** It
+began in 2024-25, so coverage runs 56% / 60% / 88% / 99% across seasons: a tree
+left to learn the missing branch learns it on a training population that has
+all but vanished by serve time. Cold-start log-loss vs baseline:
 
 | arm | 2024-25 | 2025-26 |
 |---|---|---|
-| baseline (no injury data) | 0.4962 | 0.4425 |
-| + currently-out only | −5.11% | −7.33% |
-| + injury history only | −1.39% | −1.96% |
-| + both | **−7.08%** | **−9.25%** |
-| **history on top of currently-out** | **−2.08%** | **−2.08%** |
+| coverage indicator alone (falsification) | −0.74% | −1.75% |
+| FPL age, raw | −2.22% | **+0.13%** |
+| FPL age, position-median imputed | −1.36% | −0.50% |
+| Transfermarkt age | **−3.73%** | **−3.98%** |
 
-Do not quote the −7%/−9%. Backtests disable the availability overlay (stored
-FPL status is today's, not that gameweek's), so the baseline has *no*
-availability information at all — most of that gap is re-deriving what the live
-model already gets free from `status`/`chance_next`. Reporting it would repeat
-the `site_ep` mistake: a benchmark that looks extraordinary because the
-baseline was handicapped.
+Only the Transfermarkt-covered variants replicate — and the two sources carry
+**the same dates** (median disagreement 0.0000 years, 0.12% differ by over 30
+days). Transfermarkt is not a better signal, it is coverage for seasons FPL had
+not started publishing, and FPL's column becomes sufficient on its own once
+2024-25 and later are the training seasons. The ingest ships because it is free
+and repairs a real omission; the *feature* does not, because it moves no
+decision either (`spearman_played` −0.0011, p=0.09).
 
-The honest figure is **−2.08%**: what injury history adds once the model
-already knows he is out. It replicated to two decimals across two independent
-seasons, and it is 8x the best of six previous sharpening attempts — all of
-which were re-arrangements of data the model already had, whereas this is
-exogenous.
+### A unit bug that made the congestion feature a gameweek counter
 
-It is **not shipped**, and two things must clear first:
+pandas keeps whatever resolution a timestamp was parsed at, and since 2.0 an
+ISO8601 string parses to **microseconds** — so `astype("int64") / 86_400e9`
+silently returns days/1000. `days_rest` survived it (a tree reads only the
+order, and nothing then reached the 30-day clip); `team_matches_14d` did not,
+because a 14 meaning 14,000 days counts every previous match of the season.
+Median 20 and max 37 against a true median of 1 and max of 4 — the model had
+been documenting a fixture-congestion signal it did not have.
 
-1. **Score it on decision metrics.** Understat's rates were 3.9% better and
-   moved nothing (every p > 0.19). Log-loss is not the bar in this repo.
-2. **Compare TM against FPL's `status`.** If it is a noisier copy of a flag we
-   already read live, the live gain is nil however real the backtest gain is.
-
-The leakage boundary is the whole risk and is enforced in
-`xpts/injury_features.py`: a spell that ENDED before the deadline is fully
-usable; one that started and had not ended contributes only the *fact* that he
-is out, never its duration or end date. Audited for the obvious failure — an
-injury sustained during a match being credited to it — and cleared: only 133
-spells begin on a fixture day, and 85% of those players did play.
-
-**The second prize may be larger than the feature.** This is a dated,
-historical availability record, which is exactly what Phase 2 is waiting a full
-season of forward collection to obtain. If it holds up, the availability→xMins
-integration becomes backtestable now rather than in 2027.
+**Repairing it changes no decision** (74 paired gameweeks): spearman −0.0002,
+`spearman_played` +0.0005 (p=0.21), top30 −0.019 (p=0.40), captain +0.50
+(p=0.069). A correctness fix, not an improvement, and consistent with Round 8.
+Divide by a `Timedelta`, never by a magic constant against an integer view;
+`tests/test_minutes_model.py` pins it.
 
 ## Optimiser
 
@@ -1628,6 +1731,7 @@ python -m fpl_engine init-db
 python -m fpl_engine verify          # data invariants; non-zero exit on error
 python -m fpl_engine pull            # FPL live + vaastav backfill + odds -> SQLite (free;
                                      #   set $ODDS_API_KEY for upcoming-fixture odds)
+python -m fpl_engine transfermarkt   # squads, transfers, market values, injuries (rate limited)
 python -m fpl_engine predict --gw 1        # end-to-end predictions
 python -m fpl_engine run --gw 1            # pull + build + predict
 python -m fpl_engine optimise --entry 883566 --horizon 5   # transfers / squad

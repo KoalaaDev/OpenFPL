@@ -100,7 +100,7 @@ def _resolve_extras(names: list[str]) -> list[str]:
         if not n:
             continue
         if n == "age":
-            out += ["fpl_age"]
+            out += ["fpl_age", "age_known"]
         elif n == "inj":
             out += _inj.FEATURES
         elif n == "inj_history":
@@ -380,15 +380,30 @@ def _frame(conn, seasons: list[str], before: str | None = None,
                                ).clip(-2, 2)
 
     # FPL publishes `birth_date` from 2024-25 and the pull carries it back
-    # across seasons on the stable code, so age is free, exact and complete
-    # wherever FPL has ever listed the player.
+    # across seasons on the stable code, so age is free wherever FPL has ever
+    # listed the player. It is the one thing that separates the two kinds of
+    # player with no Premier League history at all: among men with under five
+    # career appearances every trailing feature is identical, and P(60+) still
+    # runs from 0.00 at 15-18 to 0.40 at 24-27.
+    #
+    # The remainder is IMPUTED rather than left missing, and that is not a
+    # convenience. FPL began publishing the field in 2024-25, so coverage runs
+    # 56% / 60% / 88% / 99% across seasons: a tree left to learn the missing
+    # branch learns it on a training population that has all but vanished by
+    # serve time. Held out on 2025-26 the raw column was WORSE than no age at
+    # all (+0.34% log-loss on the cold-start segment) while the imputed one is
+    # better (-1.57%), and the difference is entirely this shift.
     if "birth_date" in df.columns:
         bd = pd.to_datetime(df["birth_date"], errors="coerce", utc=True)
         bd = bd.groupby(df["player_code"]).transform(
             lambda s: s.ffill().bfill())
-        df["fpl_age"] = (df["kick"] - bd).dt.days / 365.25
+        age = (df["kick"] - bd).dt.days / 365.25
+        med = age.groupby(df["position"]).transform("median")
+        df["fpl_age"] = age.fillna(med).fillna(age.median())
+        df["age_known"] = age.notna().astype(float)
     else:
         df["fpl_age"] = np.nan
+        df["age_known"] = 0.0
 
     df["label"] = np.select([df["minutes"] >= 60, df["minutes"] > 0],
                             [2, 1], 0).astype(float)

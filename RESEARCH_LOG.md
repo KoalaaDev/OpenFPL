@@ -325,3 +325,147 @@ information at the deadline, which must first be archived point-in-time.
   now scored and correct. The deferral otherwise stands: E7 shows the
   projections really are the binding input, since tilting them is harmful and
   the horizon itself is unresolvable at this n.
+
+## E11. Transfermarkt, scored on decisions — both E9 gates close negative
+
+E9 left injury history unshipped behind two explicit gates. This round collected
+the rest of Transfermarkt's dated data, built every family the brief asked for,
+and put all of it through the same forward-in-time protocol. **Nothing enters
+the model.** The round's value is four silent defects and two closed questions.
+
+### E11a. The identity join was wrong (found before any measurement)
+
+`injury_features.spells()` resolved a Transfermarkt player to
+`tm_player.player_id` and joined it to a *different* season's `player` table.
+FPL reassigns element ids every summer. Measured on this database:
+
+| joined to | shared ids | still the same footballer |
+|---|---|---|
+| 2022-23 | 626 | **0.3%** |
+| 2023-24 | 625 | 0.2% |
+| 2024-25 | 626 | 0.3% |
+| 2025-26 | 626 | 0.8% |
+
+Id 1 is Raya now, Cédric in 2022-23, Balogun in 2023-24, Fábio Vieira in
+2024-25. Identity now travels on `player.code` with the Understat collision
+rule, and `verify` gained the invariant (fifth of its kind).
+
+### E11b. Two unit bugs, one of them in the shipped model
+
+pandas keeps whatever resolution a timestamp was parsed at, and since 2.0 an
+ISO8601 string parses to **microseconds** — so `astype("int64") / 86_400e9`
+silently returns days/1000. In `_team_congestion` that left `days_rest`
+harmless (a tree reads only the order) but turned `team_matches_14d` into a
+gameweek counter: a 14 meaning 14,000 days counts every previous match of the
+season. Median 20, max 37, against a true median of 1 and max of 4.
+
+**Repairing it changes no decision** (74 paired gameweeks, fixed vs buggy):
+spearman −0.0002, spearman_played +0.0005 (p=0.21), top30 −0.019 (p=0.40),
+captain +0.50 (p=0.069). A correctness fix, not an improvement — consistent
+with §8's six failed attempts at sharpening minutes.
+
+### E11c. FPL publishes `birth_date`, and age is the cold-start feature
+
+It is in the bootstrap and in vaastav's `players_raw.csv` from 2024-25 onward,
+and the pipeline discarded it. Age separates the two kinds of player the
+trailing features *cannot* tell apart — among men with under five career
+Premier League appearances every history feature is identical:
+
+| age | n | P(60+) |
+|---|---|---|
+| 15-18 | 394 | **0.000** |
+| 18-20 | 1456 | 0.027 |
+| 20-22 | 1205 | 0.159 |
+| 22-24 | 1036 | 0.343 |
+| **24-27** | 1425 | **0.401** |
+| 27-30 | 910 | 0.382 |
+| 30-40 | 845 | 0.351 |
+
+**But FPL's own column does not replicate, and the reason is coverage, not
+noise.** FPL began publishing in 2024-25, so coverage runs 56% / 60% / 88% /
+99% across seasons: a tree left to learn the missing branch learns it on a
+training population that has all but vanished by serve time. Log-loss vs
+baseline on the cold-start segment, three seeds, two held-out seasons:
+
+| arm | 2024-25 | 2025-26 |
+|---|---|---|
+| coverage indicator only (falsification) | −0.74% | −1.75% |
+| FPL age, raw | −2.22% | **+0.13%** |
+| FPL age, position-median imputed | −1.36% | **−0.50%** |
+| Transfermarkt age | **−3.73%** | **−3.98%** |
+| TM-filled + imputed + coverage flag | −3.46% | −3.79% |
+
+Only the Transfermarkt-covered variants replicate, and **the two sources carry
+the same dates**: median disagreement 0.0000 years, 0.12% differ by more than
+30 days. Transfermarkt is not a better signal here, it is coverage for the
+seasons FPL had not started publishing. FPL's column becomes sufficient on its
+own once 2024-25 and later are the training seasons.
+
+### E11d. Every family, on log-loss — and then on decisions
+
+Log-loss vs baseline, `age` = the imputed column, three seeds:
+
+| arm | all 24-25 | all 25-26 | cold start 24-25 | cold start 25-26 |
+|---|---|---|---|---|
+| age + TM transfers | −0.95% | −1.16% | −6.20% | −7.33% |
+| age + TM market value | −0.42% | −0.51% | −5.18% | −5.81% |
+| age + TM squad depth | −0.51% | −0.64% | −4.51% | −4.89% |
+| **age + every TM family** | **−1.16%** | **−1.68%** | −6.57% | −8.62% |
+| age + injury flag | −9.59% | −9.93% | −8.22% | −7.65% |
+| age + injury flag + history | −11.00% | −11.31% | −9.11% | −8.52% |
+| everything | −12.08% | −13.08% | −13.85% | −14.51% |
+
+Injury history on top of the flag is **−1.5%** in both seasons (E9 reported
+−2.08% on the corrupted identity join; the shape survives, the size shrinks).
+
+Now the decision metrics, 74 paired gameweeks, `data/bt_*` arms:
+
+| arm vs | spearman | spearman_played | prec@20 | top30 | captain | rmse |
+|---|---|---|---|---|---|---|
+| age — baseline | +0.0008*** | **−0.0011*** | +0.003 | +0.02 | −0.27 | +0.000 |
+| age+TM — baseline | +0.0030*** | −0.0007 | +0.001 | −0.01 | **−0.49*** | −0.0025*** |
+| history — flag | +0.0026*** | −0.0013 | −0.003 | −0.00 | +0.11 | −0.0022*** |
+| everything — flag | +0.0045*** | −0.0022 | −0.001 | +0.00 | +0.11 | −0.0039*** |
+
+The pattern is E11's whole result and it is the Understat pattern exactly:
+`spearman` and `rmse` improve significantly because the model got better at
+ranking **who plays at all** — which is what age, transfer recency and injury
+history inform — while every metric that decides a squad sits still or drifts
+negative. In the opening gameweeks injury history is significantly *worse*
+(`spearman_played` −0.0042, p=0.004).
+
+### E11e. Gate (b): the Transfermarkt flag is a weaker copy of FPL `status`
+
+On the live season, 596 of 626 players mapped:
+
+| | FPL says out | FPL says available |
+|---|---|---|
+| **TM says out** | 38 | 3 |
+| **TM says available** | **81** | 474 |
+
+**31.9% recall, 92.7% precision.** FPL flags 119; Transfermarkt catches 38.
+The misses are structural, not noise: FPL's `status` also carries suspensions
+(`s`), players who have left or are unregistered (`u`) and doubts (`d`), none
+of which an injury table can see. So Transfermarkt's flag adds nothing live —
+and, more importantly, it was the *control* in E9's −2.08%. A 32%-recall
+control makes that figure an upper bound on the live gain, not an estimate.
+
+### Verdict
+
+**Nothing ships into the model.** Both E9 gates close negative: injury history
+moves no decision (a), and its availability channel is a strictly weaker copy
+of a flag already read live (b). The TM families are 1.2-2.0% better at
+log-loss on top of everything else and change no decision either.
+
+What ships is the data layer and the repairs: three dated datasets, identity on
+`player.code`, the fifth `verify` invariant, `birth_date` ingest, the two unit
+fixes, a 270x faster injury builder, and tests for every parsing trap. The
+optional blocks stay switchable through `$FPL_MINUTES_EXTRA` so the experiment
+is reproducible rather than described.
+
+**One number worth keeping.** Against a baseline denied availability entirely,
+the flag alone is worth +0.0085 `spearman_played`, +0.011 prec@20 and **+0.134
+top-30 pts/pick**, all p < 0.003. That is the first *decision-metric* price
+this repo has been able to put on availability at all (§8: "no replay here can
+measure it"), and since FPL's live `status` is strictly stronger, it is a lower
+bound on what the availability overlay is already earning.
