@@ -765,3 +765,147 @@ it becomes priceable after ~5 gameweeks (~90 ambiguous rows each, ~450
 observations) rather than the season-plus a decision backtest would need. The
 bar is the model's own ~55% in that band, and each point above it is worth
 roughly `(accuracy − 0.55)/0.45 × 89` points a season.
+
+## E15. Minutes uncertainty, new information only — seven hypotheses, one survivor
+
+Pre-registered brief: attack the 0.30–0.70 P(start) band with *new information
+only* — no re-derivations of trailing history, everything strictly as-of the
+deadline, screened against the production baseline before any feature is
+built, judged per season on 2024-25 and 2025-26 separately, and nothing ships
+on log-loss alone. Seven priorities were named; each gets the full record
+below, ranked by expected value at the end. The production model is untouched:
+everything tested lives behind `FPL_MINUTES_EXTRA` and the shipped paths are
+bit-identical.
+
+### P2–P4. Return-from-injury dynamics — the first miscalibrated pocket in eight rounds
+
+**Hypothesis.** The minutes model treats a player returning from injury as his
+trailing features describe him — a man who has not started for weeks — when
+the relevant fact is that he is an established starter whose absence is now
+over. Managers also reintegrate gradually (bench first, then starts), which
+trailing windows encode only with a lag.
+
+**Why it should work.** Every prior sharpening attempt failed because the
+model was already calibrated on the tested segment (E8: the ambiguous middle
+is ambiguous because the manager has not decided). This is different in kind:
+the model is being fed *stale* inputs about a *decided* situation. The screen
+was run before any feature existed, per the brief.
+
+**Data source.** `tm_injury` — 8,760 dated spells over 1,736 players back to
+2012, already ingested (E11). Identity travels on `player.code`.
+
+**As-of availability & leakage audit.** Only ENDED spells are used, and a
+spell counts as ended only when its `until_date` sits at least 24h before the
+deadline — `until_date` is a return-to-fitness date, audited at 4.5% of spells
+dated on/after the return match day, and the 24h guard plus the k≥2
+missed-matches gate removes the rest. An ongoing spell contributes nothing
+(its `until_date` is a Transfermarkt forecast — never read). Replacement
+features (P3) use only matches with kickoff before the deadline.
+
+**The screen (before any feature was built).** Established starters
+(pre-injury start rate ≥ 0.7) in their first match back after missing ≥ 2
+club matches: the shipped model says P(start) ≈ 0.15; reality is ≈ 0.41. The
+gap is **+0.262 / +0.264** in 2024-25 / 2025-26 — identical in both seasons,
+the first genuinely miscalibrated pocket found in eight rounds of trying. The
+realised reintegration ramp for established returners runs **0.38 → 0.55 →
+0.62 → 0.63** across the first four opportunities (n = 350/455/447/435), so
+the model's error is largest exactly at the return and decays as the trailing
+window refills — which is what "stale inputs" predicts.
+
+**Feature definition.** `xpts/return_features.py`, 10 features: opportunity
+index since return (1st..4th fixture), appearances since return, days since
+spell end, matches missed, spell length, a soft-tissue flag, pre-injury start
+rate and consecutive starts (the "what he was before" the trailing window has
+forgotten), and two displacement features — how often his positional
+replacement started during the absence and whether the replacement started
+the club's last match. NaN off-segment; vectorised (1.1s on 114k rows).
+
+**Baseline.** The full production feature set (33 features, role features
+included), identical training protocol, 3 seeds.
+
+**Model-level result, per season** (held-out; baseline → +ret):
+
+| | 2024-25 | 2025-26 |
+|---|---|---|
+| log-loss, all rows | 0.4911 → 0.4830 (**−1.66%**) | 0.4371 → 0.4296 (**−1.71%**) |
+| log-loss, return segment | 0.7831 → 0.7101 (**−9.3%**) | 0.7778 → 0.6884 (**−11.5%**) |
+| log-loss, established returners | 0.9180 → 0.8210 (**−10.6%**) | 0.9776 → 0.8475 (**−13.3%**) |
+| calibration gap, established (realised − predicted P(start)) | +0.126 → **+0.029** | +0.101 → **−0.011** |
+| E[min] MAE, all rows | 13.64 → 13.49 | 12.28 → 12.14 |
+| AUC(start), all rows | 0.9465 → 0.9476 | 0.9557 → 0.9562 |
+
+For scale: the best of the six previous sharpening attempts moved overall
+log-loss ≤ 0.25%. This moves it 1.7% — and the improvement is *concentrated
+where the hypothesis says it should be*, with nothing degrading globally. The
+established-returner calibration gap closes from +0.10..+0.13 to ~0.
+
+**Decision-level result.** [RET_DECISION_PLACEHOLDER]
+
+**Uncertainty & replication.** Model-level gains replicate in both held-out
+seasons with the same sign and similar size on every metric; 3 seeds; the
+segment is ~1,700 rows a season, so segment log-loss is well-powered even
+though squad-level metrics (11 slots) cannot see 1–2 returners a gameweek.
+
+**Recommendation.** [RET_RECO_PLACEHOLDER]
+
+### P1. Historical predicted-lineup sources — no source survives the as-of test
+
+The brief's critical question: *can we reconstruct the prediction that existed
+before each historical FPL deadline?* Surveyed via the Wayback Machine's
+closest-capture API against all 76 deadlines of 2024-25 + 2025-26:
+
+| source | any pre-deadline capture | within 24h of deadline |
+|---|---|---|
+| RotoWire lineups | 37/76 | 1/38 (24-25), 5/38 (25-26) |
+| Fantasy Football Scout team news | 18/76 | 0/38, 0/38 |
+| SportsGambler lineups | [P1_SG_PLACEHOLDER] | [P1_SG_24H_PLACEHOLDER] |
+
+A lineup prediction captured 3+ days before the deadline predates most of the
+press conferences it would need, so even the "within 72h" rows (RotoWire:
+2/38 and 15/38) are not deadline-honest. Snapshot *content* is additionally
+unreachable from this environment (web.archive.org drops the tunnel
+mid-exchange), but the coverage numbers alone are disqualifying. Per the
+brief: **no suitable historical source exists — documented rather than
+faked.** The forward collection shipped in E14 (RotoWire predicted +
+confirmed XIs, 4× daily, append-only) is the only honest route and is already
+accruing; E8b prices it at ~450 scoreable ambiguous-band rows within five
+gameweeks.
+
+### P6. Manager-change selection reset — rejected at the screen
+
+927 dated managerial spells give every "matches since the new manager
+arrived" index point-in-time. The screen — shipped-model calibration on rows
+bucketed by fixtures-since-change — found gaps of **+0.003..+0.010** across
+the first eight fixtures under a new manager, with no structure by
+pre-change role. The model is already calibrated through regime changes
+(squad-share and consecutive-start features adapt within the window), so
+there is nothing to correct and no feature was built. This is E8's lesson
+applied as protocol: screen first, and when the screen says calibrated, stop.
+
+### P5. New-signing minutes ramp from previous-club role — blocked on data
+
+Transfermarkt's per-season performance pages are client-rendered (a
+`tm-player-performance` web component; no server-side table), so prior-club
+minutes cannot be scraped from the pages this repo is licensed to touch.
+The Understat fallback fails on coverage: of 350 from-abroad debutants since
+2022, 343 resolve to an Understat id and 212 have match rows — but only
+**22** have any row predating their PL transfer, because Understat's player
+logs for these men effectively begin at arrival (it covers six leagues; most
+signings come from outside them). 22 players cannot support a per-season
+held-out test. **Documented as data-unavailable**; the cold-start features
+that do exist (age + TM transfer/value/depth families, E13) already carry
+−6..−9% cold-start log-loss and remain the honest ceiling here.
+
+### P7. Competition-specific rotation — a real data gap, now closed at the ingest layer
+
+The shipped congestion features count *Premier League* matches only:
+`team_matches_14d` is built from `team_match`, which has no European or cup
+fixtures, so a club playing Wednesday in the Champions League reads as rested.
+That is a genuine information gap, not a re-test of generic congestion (the
+brief's exclusion). Transfermarkt's club calendar
+(`/spielplandatum/verein/{id}/saison_id/{y}`) serves every competitive
+fixture server-side; `ingest_club_calendars` now writes them to
+`tm_club_match` (club, date, competition, home/away — verified against
+Arsenal 2024-25: 38 PL + 14 UCL + 5 EFL Cup + 1 FA Cup).
+[P7_RESULT_PLACEHOLDER]
+
