@@ -251,6 +251,12 @@
   null,
   null
  ],
+ "155465": [
+  "a",
+  null,
+  null,
+  null
+ ],
  "155503": [
   "a",
   null,
@@ -444,10 +450,10 @@
   null
  ],
  "178301": [
-  "a",
-  null,
-  null,
-  null
+  "u",
+  0.0,
+  "Has joined Al Hilal permanently",
+  "2026-09-01T13:15:16.698799Z"
  ],
  "180135": [
   "a",
@@ -606,10 +612,10 @@
   "2026-08-09T08:30:05.954750Z"
  ],
  "201595": [
-  "a",
-  null,
-  null,
-  null
+  "u",
+  0.0,
+  "Has joined Torino on loan for the rest of the season",
+  "2026-09-01T13:12:39.210133Z"
  ],
  "201658": [
   "a",
@@ -2147,6 +2153,12 @@
   null,
   null
  ],
+ "482616": [
+  "a",
+  null,
+  null,
+  null
+ ],
  "482973": [
   "a",
   null,
@@ -2292,10 +2304,10 @@
   "2026-08-12T14:08:23.542043Z"
  ],
  "490881": [
-  "a",
-  null,
-  null,
-  null
+  "u",
+  0.0,
+  "Has joined West Brom permanently",
+  "2026-09-01T13:16:48.584385Z"
  ],
  "490884": [
   "a",
@@ -2436,16 +2448,16 @@
   null
  ],
  "499300": [
-  "a",
-  null,
-  null,
-  null
+  "u",
+  0.0,
+  "Has joined Malaga on loan for the rest of the season",
+  "2026-09-01T13:23:16.934847Z"
  ],
  "499309": [
-  "a",
-  null,
-  null,
-  null
+  "u",
+  0.0,
+  "Has joined RB Leipzig permanently",
+  "2026-09-01T13:24:48.857362Z"
  ],
  "499604": [
   "a",
@@ -2550,16 +2562,16 @@
   null
  ],
  "503301": [
-  "a",
-  null,
-  null,
-  null
+  "u",
+  0.0,
+  "Has joined AC Milan on loan for the rest of the season",
+  "2026-09-01T13:23:52.340206Z"
  ],
  "505079": [
-  "a",
-  null,
-  null,
-  null
+  "u",
+  0.0,
+  "Has joined York City on loan for the rest of the season",
+  "2026-09-01T13:25:11.231240Z"
  ],
  "507433": [
   "a",
@@ -2772,9 +2784,9 @@
   "2026-08-20T14:00:08.416985Z"
  ],
  "535928": [
-  "i",
+  "u",
   0.0,
-  "Hamstring injury - Unknown return date",
+  "Has joined Celta Vigo permanently",
   "2026-07-23T12:01:23.628373Z"
  ],
  "536661": [
@@ -2808,10 +2820,10 @@
   "2026-08-25T19:00:08.004915Z"
  ],
  "538638": [
-  "a",
-  null,
-  null,
-  null
+  "u",
+  0.0,
+  "Has joined Charlton Athletic on loan for the rest of the season",
+  "2026-09-01T13:16:05.383880Z"
  ],
  "539142": [
   "a",
@@ -3444,10 +3456,10 @@
   null
  ],
  "616221": [
-  "a",
-  null,
-  null,
-  null
+  "u",
+  0.0,
+  "Has joined FC Porto on loan for the rest of the season",
+  "2026-09-01T13:24:26.858636Z"
  ],
  "616222": [
   "a",
@@ -3480,6 +3492,12 @@
   "2026-08-23T19:00:08.536705Z"
  ],
  "624773": [
+  "a",
+  null,
+  null,
+  null
+ ],
+ "624777": [
   "a",
   null,
   null,
