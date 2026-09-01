@@ -341,6 +341,16 @@ def cmd_run(args):
         print(f"Wrote {args.out}")
 
 
+def cmd_lineup_eval(args):
+    from . import lineup_eval
+    argv = ["--gw", str(args.gw)]
+    if args.season:
+        argv += ["--season", args.season]
+    if args.feed:
+        argv += ["--feed", args.feed]
+    lineup_eval.main(argv)
+
+
 def main(argv=None):
     # Optional exogenous feature blocks for the minutes model, switched on for
     # one process only. Absent, every model is exactly the shipped one.
@@ -442,6 +452,14 @@ def main(argv=None):
     sp = sub.add_parser("verify",
                         help="check the data invariants; exits non-zero on error")
     sp.set_defaults(func=cmd_verify)
+
+    sp = sub.add_parser("lineup-eval",
+                        help="score the collected predicted-lineup feed for one gw "
+                             "(RESEARCH_LOG E17; dry-run before the gw completes)")
+    sp.add_argument("--gw", type=int, required=True)
+    sp.add_argument("--season", default=None)
+    sp.add_argument("--feed", default=None)
+    sp.set_defaults(func=cmd_lineup_eval)
 
     sp = sub.add_parser("prices", help="who is about to rise or fall in price")
     sp.add_argument("--gw", type=int, default=None,
