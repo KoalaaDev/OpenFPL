@@ -858,7 +858,7 @@ closest-capture API against all 76 deadlines of 2024-25 + 2025-26:
 |---|---|---|
 | RotoWire lineups | 37/76 | 1/38 (24-25), 5/38 (25-26) |
 | Fantasy Football Scout team news | 18/76 | 0/38, 0/38 |
-| SportsGambler lineups | [P1_SG_PLACEHOLDER] | [P1_SG_24H_PLACEHOLDER] |
+| SportsGambler lineups | 28/76 | 0/38 (24-25), 1/38 (25-26) |
 
 A lineup prediction captured 3+ days before the deadline predates most of the
 press conferences it would need, so even the "within 72h" rows (RotoWire:
