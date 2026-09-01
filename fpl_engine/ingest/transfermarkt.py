@@ -1068,3 +1068,95 @@ def ingest_managers(conn, *, clubs: list[int] | None = None,
             progress(f"    {i}/{len(clubs)} club {cid}: {len(rows)} spells")
         _sleep()
     return {"clubs": len(clubs), "spells": spells, "failed": failed}
+
+
+# ==========================================================================
+# Club calendars, all competitions
+#
+# The shipped congestion features count PREMIER LEAGUE matches only, because
+# `player_gw`/`team_match` are PL tables — a Thursday Europa League tie is
+# invisible, so "days of rest" has been wrong for every European campaigner
+# all along. One page per club-season lists every fixture in every
+# competition with its date, which makes true rest and cup adjacency
+# computable point-in-time (a fixture list is known in advance; a PAST
+# match's date is a fact).
+# ==========================================================================
+
+CLUB_CALENDAR = BASE + "/x/spielplandatum/verein/{club}/saison_id/{season}"
+
+SCHEMA_4 = """
+CREATE TABLE IF NOT EXISTS tm_club_match (
+    tm_club_id   INTEGER NOT NULL,
+    season_id    INTEGER NOT NULL,     -- Transfermarkt saison_id (2024 = 2024-25)
+    match_date   TEXT NOT NULL,        -- ISO
+    competition  TEXT,
+    is_home      INTEGER,
+    observed_utc TEXT NOT NULL,
+    PRIMARY KEY (tm_club_id, match_date, competition)
+);
+CREATE INDEX IF NOT EXISTS idx_tm_club_match ON tm_club_match (tm_club_id, match_date);
+"""
+
+
+def init4(conn) -> None:
+    conn.executescript(SCHEMA_4)
+
+
+def parse_club_calendar(html: str) -> list[dict]:
+    """(date, competition, home/away) for every fixture on a club-season page.
+
+    Competition header rows carry a `/wettbewerb/` anchor; the fixture rows
+    that follow belong to it until the next header. Dates read `Sat 17/08/24`.
+    """
+    out = []
+    comp = None
+    for tr in re.split(r"<tr[ >]", html):
+        # a section header links straight to the competition page — league
+        # pages end /wettbewerb/GB1, cup and European pages /pokalwettbewerb/CL.
+        # A fixture row's matchday anchor continues /saison_id/..., so anchoring
+        # the closing quote keeps it from being mistaken for a header.
+        m = re.search(r'title="([^"]+)" href="[^"]*/(?:pokal)?wettbewerb/'
+                      r'[A-Z0-9]+"', tr)
+        if m:
+            comp = m.group(1)
+        d = re.search(r">\s*\w{3}\s+(\d{2}/\d{2}/\d{2})\s*<", tr)
+        if not d or comp is None:
+            continue
+        dd, mm_, yy = d.group(1).split("/")
+        ha = re.search(r'class="zentriert hauptlink">\s*([HA])\s*<', tr)
+        out.append({"match_date": f"20{yy}-{mm_}-{dd}", "competition": comp,
+                    "is_home": 1 if (ha and ha.group(1) == "H") else 0})
+    return out
+
+
+def ingest_club_calendars(conn, seasons: list[str], *, progress=None) -> dict:
+    """Every club that has appeared in tm_squad, every requested season."""
+    init2(conn); init4(conn)
+    conn.execute("PRAGMA busy_timeout=60000")
+    clubs = [int(r[0]) for r in conn.execute(
+        "SELECT DISTINCT tm_club_id FROM tm_squad WHERE tm_club_id IS NOT NULL")]
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    rows, failed = 0, 0
+    for season in seasons:
+        sid = tm_season(season)
+        for i, cid in enumerate(clubs, 1):
+            try:
+                got = parse_club_calendar(
+                    fetch(CLUB_CALENDAR.format(club=cid, season=sid)))
+            except Exception:                        # noqa: BLE001
+                failed += 1
+                _sleep()
+                continue
+            if got:
+                conn.executemany(
+                    "INSERT OR REPLACE INTO tm_club_match (tm_club_id, "
+                    "season_id, match_date, competition, is_home, observed_utc)"
+                    " VALUES (?,?,?,?,?,?)",
+                    [(cid, sid, g["match_date"], g["competition"],
+                      g["is_home"], now) for g in got])
+                rows += len(got)
+            conn.commit()
+            if progress and i % 9 == 0:
+                progress(f"    {season}: {i}/{len(clubs)} clubs, {rows} fixtures")
+            _sleep()
+    return {"clubs": len(clubs), "fixtures": rows, "failed": failed}
