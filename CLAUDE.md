@@ -1985,3 +1985,35 @@ classification and calibration screens. What survives for future rounds:
   source produced a plausible zero (the `fixture` table is empty for
   historical seasons — use `team_match`); check the n before believing a
   null arm.
+
+### Round 19: the lineup feed gets its evaluator — score it, gameweek by gameweek
+
+E17 in `RESEARCH_LOG.md`. The coverage fact first: collection began
+2026-08-31, after the GW1/GW2 deadlines, so **zero completed gameweeks have
+pre-deadline predicted-XI coverage** and no decision metric could honestly be
+reported this round. What ships is the pre-registered evaluator, so every
+future gameweek is scored identically with no analyst freedom at scoring
+time:
+
+    git pull   # the scheduled Action commits the archive to main
+    python -m fpl_engine lineup-eval --gw N     # after GW N completes
+
+`fpl_engine/lineup_eval.py`: deadline-honest snapshots (last `predicted`
+forecast before first-kickoff−90min; `confirmed` is ground truth, never
+input), the stored gw column re-derived from each club's next kickoff (the
+collector stamps next_gw at run time — 22 of 308 rows were mislabelled),
+name matching at 100% on the live snapshot (casefold + transliteration for
+Ø/ß/ı that NFKD cannot decompose, unique-prefix for "Nico"→Nicolás), and the
+guard that matters: **a club with any unmatched XI name is dropped — an
+unreadable name reads as "benched", a phantom removal in the exact channel
+the feed is valued on** (Alisson, first dry run). Arms: baseline / hard
+override (exposure profiles from pre-target seasons) / soft LR update
+(pre-registered LR=4 first, then refitted on already-scored gameweeks only)
+/ realised-minutes oracle as the per-gw normaliser. Success bar: top11
+improvement in ranks 5-30, not generic lineup accuracy.
+
+GW3 dry run (deadline 2026-09-04): 20 clubs, 100% matched, and in the 26
+rank-5-30 rows exactly ONE disagreement — Gakpo predicted out of the
+Liverpool XI against model P(start) 0.86. ~1-3 removals/gw means removal
+precision needs ~10 gameweeks; the TPR/FPR + calibration battery is powered
+after ~5 (E14). Every stage prints row counts and raises on empty sources.
