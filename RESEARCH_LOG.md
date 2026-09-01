@@ -965,3 +965,147 @@ observations existed and the model was genuinely wrong (returners, double-cup
 weeks) were both found by screening calibration BEFORE building anything.
 Screen first; the screen is cheaper than the feature and twice as honest.
 
+
+## E16. The actionable minutes-error atlas — where uncertainty meets the optimiser
+
+E15 asked what NEW information could sharpen the minutes model and found two
+pockets. This round asks the complementary question the research brief poses:
+of the minutes error that remains, WHICH mistakes could have changed an FPL
+decision — and could anything available at the deadline have prevented them?
+Method: one replay pass per season; per gameweek the baseline engine
+prediction, then a set of masked minutes oracles — realised minutes
+substituted ONLY for the rows of one pocket — scored on the usual decision
+metrics, 74 paired gameweeks. Outcome pockets (defined by what happened)
+give the bound "if a feed resolved exactly these rows"; context pockets
+(identifiable at the deadline) give value a real signal could reach. The
+full-substitution arm reproduces the E13 oracle (+0.198 spearman_played,
+top11 +0.64), which is the harness's calibration check.
+
+### 1. Ship verification (the brief's section 1)
+
+Both E15 blocks were re-verified rather than rebuilt: `ret` (10 features,
+ended spells only, 24h pre-deadline guard, extras-gated, validated on both
+seasons) and `cong` stand as shipped. The verification pass found one real
+defect: the squad crawl had silently dropped Man City and Man Utd's 2024-25
+pages (`except: continue`), and the per-season squad-majority club mapping
+then blanked those two club-seasons' calendars entirely. The mapping now
+travels on stable `team.code` across every season, the two pages were
+re-crawled, and all **100/100** PL club-seasons carry a complete calendar
+(≥38 fixtures). Calendar completeness is now checked, not assumed.
+
+### 3+6. What the error actually is
+
+Per-row classification of the production backtest models (both seasons,
+~60k rows):
+
+| class | n/gw | share of start log-loss | share of E[min] error |
+|---|---|---|---|
+| A false starter (P(start)>0.6, did not start) | ~30 | 27% | 17% |
+| B missed starter (P(start)<0.4, started) | ~29 | 28% | 16% |
+| C duration (start right, 60' class wrong) | ~16 | 3% | 4.5% |
+| everything else | ~740 | 41% | 62% |
+
+Structure attribution (section 6 of the brief): start-side mistakes are 10%
+of rows but ~40% of absolute E[min] error; the duration channel (MAE 16-17
+minutes among correctly-predicted starters) carries the other ~60% in
+minutes terms but almost nothing in log-loss or, per the atlas below, in
+decisions. **The remaining error is P(start), not minutes|start** — the
+same answer Round 8's failed start/sub decomposition implied, now measured
+directly. Half of false starters still play some minutes (47% come off the
+bench), so A is mostly "benched", not "injured".
+
+Context cross-tabs: missed starters are **2.6×** over-represented among
+injury returners (the `ret` pocket) and 1.2× in double-cup weeks; false
+starters 1.3× in double-cup weeks (the `cong` pocket); DGWs and early
+season are NOT error-enriched. The two miscalibrated contexts E15 found are
+exactly the two the error classes point back to.
+
+### 4+5. The atlas, ranked by decision value
+
+Masked-oracle value of resolving each pocket (74 paired gameweeks; top11 =
+points per pick across the best eleven; all replicated in both seasons
+unless noted):
+
+| pocket | kind | n/gw | spearman_played | top11 | top30 |
+|---|---|---|---|---|---|
+| **false starters** | outcome | 30 | +0.048*** | **+0.397***** | +0.328*** |
+| missed starters | outcome | 29 | **+0.067***** | +0.028 | +0.101* |
+| duration errors | outcome | 16 | +0.042*** | +0.005 | +0.086** |
+| ambiguous band (0.3-0.7) | context | 95 | +0.084*** | +0.246* | +0.208*** |
+| **xP rank 5-15** | context | **11** | +0.004*** | **+0.511***** | +0.130*** |
+| xP rank 16-30 | context | 15 | +0.009*** | +0.204 | +0.214*** |
+| xP rank 1-4 | context | 4 | +0.001** | +0.117*** | +0.029*** |
+| xP rank 31-60 | context | 30 | +0.018*** | +0.111 | +0.209** |
+| xP rank 61+ | context | 753 | +0.163*** | +0.017 | +0.202** |
+| returners | context | 45 | +0.015*** | +0.060 | +0.027 |
+| everything (E13 check) | — | 813 | +0.198*** | +0.641*** | +0.625*** |
+
+Four findings, in decision-value order:
+
+1. **The false-starter class is the single most valuable error** — +0.40
+   top11 points per pick from 30 rows a gameweek, twice any other class.
+   A phantom starter with high xP sits in the XI and returns 0-2; removing
+   him helps the top of the board far more than finding a surprise starter,
+   who rarely projects high enough to be picked anyway (missed starters:
+   +0.03 top11 despite the largest rank gain).
+2. **Value density peaks exactly where the brief said to look.** Resolving
+   the minutes of just the ELEVEN players ranked 5-15 by baseline xP is
+   worth +0.51 top11 — more than the ambiguous-band's 95 players. Ranks
+   5-30 (26 players) carry most of the top-of-board value; rank 61+ (753
+   players) carries nearly all the *rank* value and almost none of the
+   XI value. Rank quality and pick quality really are different questions.
+3. **The borderline counterfactual** (section 5): perfect minutes changes
+   **3.6-4.1 of the eleven metric-XI slots every gameweek** (100% of
+   gameweeks have at least one change), worth +4.7/+9.4 realised points a
+   week at the unconstrained-rank layer — the per-gw arithmetic cross-checks
+   the atlas exactly (11 × 0.64 = 7.05). Swapped-in players come evenly
+   from ranks 5-15 (~0.9/gw), 16-30 (~1.3/gw) and 61+ (~1.1/gw, the
+   availability channel). The captain changes in 11%/32% of gameweeks for
+   **+0.11/gw realised** — the armband, once again, is not where minutes
+   error costs points.
+4. **Duration errors are a rank curiosity, not a decision lever** — +0.09
+   top30, +0.005 top11. Combined with section 6, the answer to the brief's
+   "P(start) or minutes|start?" is unambiguous: P(start).
+
+### 7. Could anything at the deadline have known?
+
+Calibration screens on every candidate the brief lists that is not already
+a feature or a closed rejection, both seasons separately (predicted vs
+realised start rate; a pocket earns a feature only if a gap replicates):
+
+| candidate context | 2024-25 gap | 2025-26 gap | verdict |
+|---|---|---|---|
+| started last match, hooked before 60' | −0.004 | −0.004 | calibrated |
+| bench last 2 matches, minutes rising | −0.017 | +0.001 | calibrated |
+| came on as sub last match | −0.001 | +0.002 | calibrated |
+| after international break, likely starters | −0.022 | +0.005 | calibrated |
+| after international break, mid band | +0.008 | +0.029 | not replicated |
+
+**Nothing survives.** Every deadline-visible context the model could
+condition on, it already prices correctly; the two contexts that were
+genuinely miscalibrated (returners, double-cup) are the two E15 already
+built. The A/B error rows are dominated by information that does not exist
+at the deadline — the manager's unannounced decision — which is Round 8's
+conclusion re-derived from the error side rather than the feature side.
+
+### The verdict, and the downstream question (section 9)
+
+The atlas closes the minutes research programme as specified: **the
+remaining actionable minutes error is concentrated in ~26 borderline
+players a gameweek, is start-side rather than duration-side, and is not
+predictable from any deadline-visible context this repo can observe.** The
+one instrument that resolves it is the predicted-lineup feed already being
+collected forward (E14/E15), whose value the atlas now prices more sharply:
+a feed should be judged on its FALSE-STARTER hit rate among players the
+model ranks 5-30 — about 26 rows a gameweek — where each resolved row is
+worth ~10× the average row.
+
+Downstream ("conditional production given minutes") needs no new round:
+E13/E14 already measured it. Perfect knowledge of every attacking outcome
+is worth +6.4 top11 but is unknowable before kickoff; a perfect season-level
+RATE estimate moves nothing (−0.002 spearman_played), and DefCon is the
+only rate with measurable headroom (+0.0014**). There is no estimator
+headroom downstream of exposure; the ceiling there is match luck. The
+minutes model is hereby frozen per the brief: no further feature rounds
+without a genuinely new information source, and the forward-collected
+lineup archive is the only such source in sight.
