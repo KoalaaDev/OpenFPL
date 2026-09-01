@@ -839,14 +839,35 @@ log-loss ≤ 0.25%. This moves it 1.7% — and the improvement is *concentrated
 where the hypothesis says it should be*, with nothing degrading globally. The
 established-returner calibration gap closes from +0.10..+0.13 to ~0.
 
-**Decision-level result.** [RET_DECISION_PLACEHOLDER]
+**Decision-level result.** Over 74 paired gameweeks
+(`bt_base2` vs `FPL_MINUTES_EXTRA=ret`, both seasons, same harness as every
+prior round): `spearman` **+0.0031 (p<0.0001)** — the engine gets better at
+ranking who plays at all — while every squad-level metric sits still:
+`spearman_played` −0.0013 (p=0.21), prec@20 −0.001, top11 −0.025, top30
+−0.029, captain −0.15, all p > 0.17. This is the E11 signature again: the
+information is real, and 1–2 returners a gameweek cannot move metrics scored
+over eleven squad slots. The one metric the segment could plausibly move —
+`spearman_played` — drifts negative rather than positive, so there is no
+decision-level case.
 
 **Uncertainty & replication.** Model-level gains replicate in both held-out
 seasons with the same sign and similar size on every metric; 3 seeds; the
 segment is ~1,700 rows a season, so segment log-loss is well-powered even
 though squad-level metrics (11 slots) cannot see 1–2 returners a gameweek.
 
-**Recommendation.** [RET_RECO_PLACEHOLDER]
+**Recommendation.** **Investigate — kept behind `FPL_MINUTES_EXTRA=ret`,
+not shipped on by default.** The case for: the largest model-level gain in
+eight rounds of minutes work, a real and replicated calibration defect fixed
+(established returners were being priced at 0.15 to start when reality is
+0.41), and consistent exposure-metric gains (E[min] MAE −1.0%/−1.2% overall).
+The case against, which the brief makes binding: no decision metric improves,
+and the rank-among-players metric drifts the wrong way. Where the block most
+plausibly earns its keep is the *live* path — the availability overlay flips a
+returning player to available at exactly the moment the stale trailing
+features under-rate him — but that channel is the one thing a replay cannot
+price (backtests disable the overlay). Revisit when the forward-collected
+lineup feed can score returner rows directly; until then the shipped model
+stays bit-identical.
 
 ### P1. Historical predicted-lineup sources — no source survives the as-of test
 
