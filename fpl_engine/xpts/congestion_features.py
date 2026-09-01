@@ -42,23 +42,31 @@ def calendar(conn) -> pd.DataFrame:
     Transfermarkt club ids map to FPL teams through the squads (majority
     vote), never through club names — same rule as tactics_features.
     """
+    # tm_club_id -> FPL team.code by majority vote over EVERY season's squad,
+    # then per-season team_id through the code. A club's identity does not
+    # change between seasons, so a single missing squad page (City and United's
+    # 2024-25 pages failed silently in the first crawl) must not blank that
+    # club-season's calendar — the season-specific version of this mapping did
+    # exactly that.
     club = pd.read_sql_query(
-        "SELECT s.season, s.tm_club_id, p.team_id, COUNT(*) n "
+        "SELECT s.tm_club_id, t.code, COUNT(*) n "
         "FROM tm_squad s "
         "JOIN tm_player m ON m.tm_player_id = s.tm_player_id "
         "JOIN player p ON p.code = m.player_code AND p.season = s.season "
+        "JOIN team t ON t.team_id = p.team_id AND t.season = p.season "
         "WHERE m.player_code IS NOT NULL "
-        "GROUP BY s.season, s.tm_club_id, p.team_id", conn)
+        "GROUP BY s.tm_club_id, t.code", conn)
+    teams = pd.read_sql_query("SELECT season, team_id, code FROM team", conn)
     cal = pd.read_sql_query(
         "SELECT tm_club_id, season_id, match_date, competition "
         "FROM tm_club_match", conn)
     if club.empty or cal.empty:
         return pd.DataFrame(columns=["season", "team_id", "match_date", "is_pl"])
     club = (club.sort_values("n", ascending=False)
-                .drop_duplicates(["season", "tm_club_id"]))
+                .drop_duplicates(["tm_club_id"]))
     cal["season"] = cal["season_id"].map(lambda y: f"{y}-{str(y + 1)[2:]}")
-    cal = cal.merge(club[["season", "tm_club_id", "team_id"]],
-                    on=["season", "tm_club_id"], how="inner")
+    cal = (cal.merge(club[["tm_club_id", "code"]], on="tm_club_id", how="inner")
+              .merge(teams, on=["season", "code"], how="inner"))
     cal["match_date"] = pd.to_datetime(cal["match_date"])
     cal["is_pl"] = cal["competition"].str.contains(
         "Premier League", case=False, na=False)
