@@ -1121,3 +1121,83 @@ headroom downstream of exposure; the ceiling there is match luck. The
 minutes model is hereby frozen per the brief: no further feature rounds
 without a genuinely new information source, and the forward-collected
 lineup archive is the only such source in sight.
+
+## E17. Predicted-lineup information value — the evaluator, and the coverage fact
+
+E16's verdict named the one instrument left: the forward-collected RotoWire
+predicted-XI archive, judged on its false-starter hit rate among players the
+model ranks 5-30. This round was asked for a historical, deadline-realistic
+evaluation "wherever historical coverage permits" — so the first result is
+the coverage fact, stated per the process rule rather than papered over.
+
+### The coverage fact
+
+The archive (`data/collected/lineups/2026-27.csv`, snapshot at commit time)
+holds **308 rows, all `predicted`, all observed 2026-08-31 onward** —
+collection began with the collector's merge to main, which postdates the GW1
+(Aug 21) and GW2 (Aug 28) deadlines. **Zero completed gameweeks have
+pre-deadline coverage.** The first scoreable deadline is GW3's
+(2026-09-04 17:30 UTC), whose forecasts are being captured now, 4x daily.
+There is no historical backfill and (per E15) no archive anywhere that
+passes the as-of test, so no decision metric can honestly be reported this
+round — an empty evaluation, loudly declared, not a zero-signal result.
+
+### What ships instead: the pre-registered evaluator
+
+`fpl_engine/lineup_eval.py` (`python -m fpl_engine lineup-eval --gw N`),
+built and tested now so each gameweek is scored identically as coverage
+accrues, with no analyst degrees of freedom left at scoring time:
+
+* **Deadline honesty.** A club's snapshot is the LAST `predicted` forecast
+  observed strictly before first-kickoff-minus-90-minutes. `confirmed` rows
+  are never an input; realised starts from `player_gw` are ground truth.
+* **The stored `gw` column is never trusted** — the collector stamps FPL's
+  next_gw at run time, which mislabels forecasts captured while the previous
+  gameweek is still being played. Rows are re-assigned by each club's next
+  kickoff after the observation; the GW3 dry run re-assigned 22 rows.
+* **Name matching is guarded where it bites.** Six of 220 names initially
+  failed on characters NFKD cannot decompose (Ødegaard's Ø, Groß's ß,
+  Kadıoğlu's dotless ı) and diminutives ("Nico" for Nicolás); casefold plus
+  a transliteration map and a unique-prefix rule take matching to **100%**
+  on the live snapshot. The instructive part: before the fix, unmatched
+  Alisson read as "RotoWire benches Alisson" — a phantom removal in the
+  exact channel the feed is valued on. **A club with any unmatched XI name
+  is therefore dropped entirely: a club whose XI cannot be fully read
+  cannot assert an absence.** Pinned by test.
+* **Fail loud everywhere.** Every stage prints row counts and raises on an
+  empty source; `gw_kickoffs` unions `fixture` and `team_match` so the
+  empty-`fixture` trap that produced two plausible zeros in E16 cannot
+  recur here.
+
+### The pre-registered comparison (scored per gameweek, from GW3 on)
+
+Arms: **baseline** (frozen production minutes model, availability off — every
+prior number's convention; feed value vs this baseline is an upper bound on
+its value over the live path), **hard** (feed as truth for fully-matched
+clubs: XI members get the historical starter exposure profile — P(60+),
+E[min] measured on seasons strictly before the target — non-members the
+pooled non-starter profile), **soft** (Bayesian LR update of P(start);
+LR = 4 pre-registered for the first scored gameweek, thereafter refitted
+only on gameweeks already scored), and **oracle** (realised minutes, the
+per-gameweek normaliser). Metrics per gameweek: false-starter and
+missed-starter rates (model vs feed, overall and ranks 5-30 / 5-15),
+calibration of P(start), removal precision on rank-5-30 players the model
+has above 0.6, top11/top30/captain per arm, the share of residual P(start)
+log-loss removed, and each arm's share of the oracle's top11 gain.
+Success bar, per the brief and E16: out-of-sample top11 improvement in
+ranks 5-30 — generic lineup accuracy does not count.
+
+### The GW3 dry run (no outcomes yet — matches this Thursday)
+
+220 rows over 20 clubs, 100% matched. In the population that matters —
+**26 rank-5-30 players, 11 in ranks 5-15** — the feed disagrees with the
+model exactly once: it predicts **Cody Gakpo** (rank 21, model P(start)
+0.86) out of Liverpool's XI, and discovers no low-P(start) starters. One
+row per gameweek is roughly what E16 predicts the actionable set looks
+like from a single forecast source; at ~1-3 removals a gameweek the
+removal-precision estimate needs on the order of ten gameweeks, while the
+broader battery (TPR/FPR over ~220 covered rows, band calibration) is
+well-powered after E14's five. Expectation setting, pre-registered: if
+RotoWire's band accuracy matches the model's own ~55%, every arm ties the
+baseline; each point of accuracy above that is worth
+`(acc − 0.55)/0.45 × 89` points a season, concentrated in the removals.

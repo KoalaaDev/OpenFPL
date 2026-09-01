@@ -65,11 +65,22 @@ def test_snapshot_deadline_and_gw_reassignment(conn):
         ("2024-08-02T11:00:00Z", 2, "BET", "away", "confirmed", "GK", 1,
          "Keep Er", "3"),
     ]
-    snap = le.snapshot(_feed(rows), conn, "2024-25", 2)
+    snap = le.snapshot(_feed(rows), conn, "2024-25", 2,
+                       require_full_xi=False)
     assert set(snap.team_abbr) == {"ALP"}
     assert list(snap.player) == ["Mid Player"]
     assert snap.player_id.iloc[0] == 10          # matched by full name
     assert snap.observed_utc.iloc[0].hour == 10  # the LAST pre-deadline one
+
+
+def test_partial_xi_club_cannot_assert_absences(conn):
+    # a club with an unmatched XI name (or fewer than 11 rows) is dropped:
+    # the unreadable name would otherwise read as "benched" — the GW3 dry
+    # run flagged Alisson as a removed starter for exactly that reason
+    rows = [("2024-08-02T10:00:00Z", 2, "ALP", "home", "predicted", "MID", 1,
+             "Mid Player", "1")]
+    with pytest.raises(ValueError):
+        le.snapshot(_feed(rows), conn, "2024-25", 2)
 
 
 def test_snapshot_empty_coverage_raises(conn):

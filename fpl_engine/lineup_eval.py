@@ -91,10 +91,19 @@ def load_feed(season: str, path: str | None = None) -> pd.DataFrame:
     return df
 
 
+# characters NFKD cannot decompose: casefold handles ss, the map the rest
+_TRANSLIT = str.maketrans({"\u00f8": "o", "\u00d8": "O",   # o-slash
+                           "\u0131": "i",                  # dotless i
+                           "\u0111": "d", "\u0110": "D",  # d-stroke
+                           "\u0142": "l", "\u0141": "L",  # l-stroke
+                           "\u00e6": "ae", "\u0153": "oe"})
+
+
 def _norm(s: str) -> str:
-    s = unicodedata.normalize("NFKD", str(s))
+    s = str(s).casefold().translate(_TRANSLIT)
+    s = unicodedata.normalize("NFKD", s)
     s = "".join(c for c in s if not unicodedata.combining(c))
-    return " ".join(s.lower().replace("-", " ").replace("'", "").split())
+    return " ".join(s.replace("-", " ").replace("'", "").split())
 
 
 def team_map(conn, season: str) -> dict[str, int]:
@@ -146,6 +155,17 @@ def match_players(conn, season: str, rows: pd.DataFrame) -> pd.DataFrame:
                     if last and (last == lst or last == web)]
             if len(hits) == 1:
                 pid = hits[0]
+        if pid is None:
+            # every feed token a prefix of some full-name token ("Nico
+            # Gonzalez" -> "Nicolas Gonzalez", "Alisson" -> "Alisson Ramses
+            # Becker"), accepted only when unique within the club
+            toks = name.split()
+            hits = [p for p, full, web, lst in cands
+                    if toks and all(any(ft.startswith(t)
+                                        for ft in full.split())
+                                    for t in toks)]
+            if len(hits) == 1:
+                pid = hits[0]
         out.append(pid)
     rows = rows.copy()
     rows["player_id"] = out
@@ -190,7 +210,8 @@ def deadline_for(kicks: pd.DataFrame, gw: int) -> pd.Timestamp:
     return g.kickoff.min() - pd.Timedelta(minutes=90)
 
 
-def snapshot(feed: pd.DataFrame, conn, season: str, gw: int) -> pd.DataFrame:
+def snapshot(feed: pd.DataFrame, conn, season: str, gw: int,
+             require_full_xi: bool = True) -> pd.DataFrame:
     """The last pre-deadline predicted XI per club, player-matched.
 
     Rows are assigned to a gameweek by the club's NEXT kickoff after the
@@ -239,11 +260,20 @@ def snapshot(feed: pd.DataFrame, conn, season: str, gw: int) -> pd.DataFrame:
     if n_un:
         for r in f[f.player_id.isna()].itertuples():
             print(f"    unmatched: {r.team_abbr}  {r.player!r}")
-    bad = f.groupby("fpl_team_id").size()
-    short = bad[bad != 11]
-    if len(short):
-        print(f"[lineup-eval] WARNING: {len(short)} clubs without exactly 11 "
-              f"rows: {dict(short)}")
+    # a club with ANY unmatched XI name cannot assert an absence: the miss
+    # itself would read as "benched" — the GW3 dry run flagged Alisson as a
+    # removed starter for exactly this reason. Such clubs leave the snapshot.
+    bad_clubs = set(f.loc[f.player_id.isna(), "fpl_team_id"])
+    cnt = f.groupby("fpl_team_id").size()
+    bad_clubs |= set(cnt[cnt != 11].index)
+    if not require_full_xi:
+        bad_clubs = set(f.loc[f.player_id.isna(), "fpl_team_id"])
+    if bad_clubs:
+        print(f"[lineup-eval] WARNING: dropping {len(bad_clubs)} clubs with "
+              f"unmatched or non-11 XIs — they cannot assert absences")
+        f = f[~f.fpl_team_id.isin(bad_clubs)]
+    if f.empty:
+        raise ValueError("no fully-matched club XIs survive — nothing to score")
     return f
 
 
