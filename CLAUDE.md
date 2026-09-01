@@ -1905,3 +1905,45 @@ python -m fpl_engine train                 # optional: retrain models (GPU-aware
 python -m fpl_engine predict --gw 1 --blend auto   # blend retrained + OpenFPL
 python -m pytest tests/ -q
 ```
+
+### Round 17: minutes uncertainty, new information only — screen first, always
+
+Seven pre-registered hypotheses on the P(start) middle band, every observation
+strictly as-of the deadline, nothing judged on log-loss alone. Full record in
+`RESEARCH_LOG.md` E15; what a future round needs to know:
+
+* **Return-from-injury dynamics is the first genuinely miscalibrated pocket
+  found in nine attempts at this model.** An established starter's first match
+  back after missing 2+ club matches: the model said P(start) 0.15, reality is
+  0.41, gap +0.262/+0.264 in the two seasons — because every trailing feature
+  describes the absence, not the player. `xpts/return_features.py`
+  (`FPL_MINUTES_EXTRA=ret`, 10 features off ended `tm_injury` spells with a
+  24h pre-deadline guard on `until_date`) closes it: overall minutes log-loss
+  **−1.66%/−1.71%** (prior best of eight sharpening attempts: ≤0.25%), segment
+  −9..−13%, E[min] MAE −1.0/−1.2%. Decision level, 74 paired gameweeks:
+  `spearman` +0.0031***, every squad metric null — the E11 signature, 1–2
+  returners a gameweek cannot move eleven slots. **Not shipped on**; the live
+  availability-overlay path is where it would plausibly pay, and that is the
+  one channel a replay cannot price.
+* **The congestion features count PL matches only, and that understates 13% of
+  rows by 2+ matches.** `tm_club_match` (all-competition club calendars, one
+  request per club-season) fixes the observation layer. The one miscalibrated
+  pocket it exposes: likely starters with cup fixtures on BOTH sides of the PL
+  match are overpredicted by −0.05/−0.06 — double-cup rotation.
+  `FPL_MINUTES_EXTRA=cong` repairs half of it, −0.3% overall log-loss,
+  bounded at zero decision value by the ret result above. Extras only.
+* **No historical predicted-lineup source passes the as-of test.** Wayback
+  coverage of RotoWire / FFScout / SportsGambler at the 76 deadlines of the
+  two backtest seasons: at best 5/38 within 24h, mostly 0. The forward
+  collector remains the only honest route to the one lever that matters.
+* **Manager-change selection reset: nothing to fix** — the shipped model is
+  calibrated within +0.01 across the first eight fixtures under a new manager
+  (squad-share and consecutive-start features adapt fast enough). Screened,
+  no feature built. New-signing prior-club minutes are unreachable
+  (Transfermarkt's performance pages are client-rendered; Understat covers
+  22/350 from-abroad debutants before arrival).
+* Two lessons re-earned: the **datetime64 unit trap** (a `datetime64[D]`
+  array stored into a DataFrame column silently reverts to `[ns]`; divide by
+  a `Timedelta`, never `astype(int)` — this bit the first congestion screen),
+  and **screen calibration before building features** — both real pockets
+  this round were found by the screen, and both rejections cost nothing.

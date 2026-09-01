@@ -96,13 +96,15 @@ LABELS = {0: "none", 1: "sub", 2: "full"}   # 0 min / 1-59 / 60+
 # backtest runs the challenger arm without a second copy of the module.
 EXTRA_BLOCKS = {"age": "fpl birth date", "inj": "injury",
                 "tm": "transfermarkt", "tac": "tactics/manager",
-                "ret": "return-from-injury dynamics"}
+                "ret": "return-from-injury dynamics",
+                "cong": "all-competition congestion"}
 EXTRA_FEATURES: list[str] = []
 
 
 def _resolve_extras(names: list[str]) -> list[str]:
     from . import injury_features as _inj, tm_features as _tm
     from . import tactics_features as _tac, return_features as _ret
+    from . import congestion_features as _cong
     out: list[str] = []
     for n in names:
         n = n.strip().lower()
@@ -120,6 +122,8 @@ def _resolve_extras(names: list[str]) -> list[str]:
             out += _tm.ALL
         elif n == "ret":
             out += _ret.FEATURES
+        elif n == "cong":
+            out += _cong.FEATURES
         elif n == "tac":
             out += _tac.ALL
         elif n in _tm.FAMILIES:
@@ -157,6 +161,9 @@ def _attach_extras(conn, df: pd.DataFrame) -> pd.DataFrame:
         return df
     from . import injury_features as _inj, tm_features as _tm
     from . import tactics_features as _tac, return_features as _ret
+    from . import congestion_features as _cong
+    if any(f in EXTRA_FEATURES for f in _cong.FEATURES):
+        df = _cong.add_features(df, _cong.calendar(conn))
     if any(f in EXTRA_FEATURES for f in _ret.FEATURES):
         df = _ret.add_features(df, _ret.spells(conn))
     if any(f in EXTRA_FEATURES for f in _inj.FEATURES):

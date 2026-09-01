@@ -928,5 +928,40 @@ brief's exclusion). Transfermarkt's club calendar
 fixture server-side; `ingest_club_calendars` now writes them to
 `tm_club_match` (club, date, competition, home/away — verified against
 Arsenal 2024-25: 38 PL + 14 UCL + 5 EFL Cup + 1 FA Cup).
-[P7_RESULT_PLACEHOLDER]
+**The screen** (probe on the shipped feature set, buckets by cup adjacency,
+first attempt discarded — day arithmetic silently returned nanoseconds, the
+E13 unit trap again; divide by a Timedelta, never `astype(int)`): every bucket
+is calibrated within noise EXCEPT **likely starters (P(start) > 0.7) with cup
+matches on both sides of the PL fixture**, overpredicted by **−0.052 /
+−0.062** (n=327/496) in the two seasons — double-cup rotation the PL-only
+count cannot see. The mid band in the same weeks leans positive (+0.016/
++0.027): fringe men step in for the rested. Real, replicated structure.
+
+**The eval** (four features — all-competition 14-day count, days since any
+match, cup within 4 days before/after — `FPL_MINUTES_EXTRA=cong`, same
+harness as `ret`): overall log-loss **−0.33% / −0.28%**; the targeted pocket
+−0.70% / −1.68% with its calibration gap repaired by half or better (−0.041 →
+−0.006, −0.056 → −0.031). Replicated — and small. The return-dynamics block
+above carries 5× this overall gain and moved not one decision metric over 74
+paired gameweeks, which bounds this block's decision value at zero without
+another 40-gameweek replay. **Kept behind `FPL_MINUTES_EXTRA=cong` for the
+record; not shipped on.** The calendar ingest itself ships — it is the
+corrected observation layer, and 13% of rows had their congestion understated
+by 2+ matches.
+
+### The E15 ranking, by expected value
+
+| hypothesis | model-level | decision-level | verdict |
+|---|---|---|---|
+| P2–4 return-from-injury dynamics | **−1.7% log-loss overall, −9..−13% on segment, calibration repaired** — largest of 9 attempts | spearman +0.0031***, squad metrics null | **investigate** — extras block, revisit when the lineup feed can score returners live |
+| P7 all-competition congestion | −0.3% overall, pocket calibration half-repaired | bounded at zero by the row above | extras block + shipped ingest; not on by default |
+| P1 historical lineup feeds | — | — | **reject**: no source passes the as-of test; forward collection is the only honest route and is running |
+| P6 manager-change reset | screen: already calibrated (+0.003..+0.010) | — | reject at screen, no feature built |
+| P5 new-signing ramp | — | — | blocked: prior-club minutes unreachable (TM JS-only, Understat 22/350 coverage) |
+
+The round's meta-finding repeats E8's, one level up: the minutes model is not
+short of features, it is short of *observations* — and the two pockets where
+observations existed and the model was genuinely wrong (returners, double-cup
+weeks) were both found by screening calibration BEFORE building anything.
+Screen first; the screen is cheaper than the feature and twice as honest.
 
