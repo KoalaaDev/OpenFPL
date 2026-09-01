@@ -1947,3 +1947,41 @@ strictly as-of the deadline, nothing judged on log-loss alone. Full record in
   a `Timedelta`, never `astype(int)` — this bit the first congestion screen),
   and **screen calibration before building features** — both real pockets
   this round were found by the screen, and both rejections cost nothing.
+
+### Round 18: the actionable minutes-error atlas — the minutes programme is closed
+
+E16 in `RESEARCH_LOG.md`: masked minutes oracles (realised minutes substituted
+for ONE pocket of rows at a time) over 74 paired gameweeks, plus per-row error
+classification and calibration screens. What survives for future rounds:
+
+* **The error is P(start), not minutes|start.** ~30 false starters + ~29
+  missed starters a gameweek carry 55% of start log-loss; duration errors
+  (start right, 60' class wrong) carry 3% and +0.005 top11. Half of false
+  starters still come off the bench — "benched", not "injured".
+* **False starters are the single most valuable error class**: resolving them
+  is +0.40 top11 points per pick, twice any other class — a phantom starter
+  with high xP sits in the XI and returns 0-2, while a surprise starter
+  rarely projects high enough to be picked (missed starters: +0.03 top11).
+* **Value density peaks at baseline xP ranks 5-15**: resolving ELEVEN
+  players' minutes is worth +0.51 top11 — more than the whole 95-row
+  ambiguous band. Ranks 5-30 (~26 players/gw) carry most of the pick value;
+  rank 61+ carries nearly all the rank value and none of the pick value.
+  Perfect minutes changes 3.6-4.1 metric-XI slots EVERY gameweek (+7/gw at
+  the unconstrained rank layer); the captain channel is +0.1/gw — nothing.
+* **Judge a lineup feed on its false-starter hit rate among players ranked
+  5-30** (~26 rows/gw, each worth ~10× the average row), sharpening E14's
+  band-accuracy rule.
+* **Every deadline-visible candidate context screens calibrated** (hooked
+  early last match, bench-promotion trajectory, sub last match,
+  international-break adjacency) — the only two miscalibrated contexts are
+  the two E15 already built (`ret`, `cong`). The rest of the A/B error is
+  the manager's unannounced decision. The minutes model is FROZEN pending a
+  genuinely new source; downstream needs no round (E13/E14: no estimator
+  headroom beyond exposure — the ceiling is match luck).
+* Verification pass fixed a real defect: the TM squad crawl silently dropped
+  City/Utd 2024-25 (`except: continue`) and the per-season club mapping
+  blanked their calendars; the mapping now travels on stable `team.code`
+  and all 100 PL club-seasons verify complete. Twice this round an EMPTY
+  source produced a plausible zero (the `fixture` table is empty for
+  historical seasons — use `team_match`); check the n before believing a
+  null arm.

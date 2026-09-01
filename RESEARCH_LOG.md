@@ -1038,6 +1038,8 @@ unless noted):
 | xP rank 31-60 | context | 30 | +0.018*** | +0.111 | +0.209** |
 | xP rank 61+ | context | 753 | +0.163*** | +0.017 | +0.202** |
 | returners | context | 45 | +0.015*** | +0.060 | +0.027 |
+| double-cup likely starters | context | 13 | +0.008*** | +0.055 | +0.080** |
+| DGW players | context | 11 | +0.002 | +0.163* | +0.021 |
 | everything (E13 check) | — | 813 | +0.198*** | +0.641*** | +0.625*** |
 
 Four findings, in decision-value order:
@@ -1063,7 +1065,17 @@ Four findings, in decision-value order:
    availability channel). The captain changes in 11%/32% of gameweeks for
    **+0.11/gw realised** — the armband, once again, is not where minutes
    error costs points.
-4. **Duration errors are a rank curiosity, not a decision lever** — +0.09
+4. **The two E15 contexts price small but real, and DGWs invert the
+   frequency story.** Double-cup likely starters: +0.08 top30** from 13
+   rows — about what the `cong` eval implied. DGW players: +0.16 top11*
+   from 11 rows, despite DGWs being UNDER-represented in the error classes
+   (false-starter lift 0.31) — fewer mistakes per row, but each one is
+   expensive because a double-gameweek player projects to the top of the
+   board. *(These two arms were re-run after the first pass silently
+   measured empty pockets: the historical seasons have no `fixture` rows,
+   only `team_match` — the second time this round that an empty source
+   produced a plausible zero rather than an error.)*
+5. **Duration errors are a rank curiosity, not a decision lever** — +0.09
    top30, +0.005 top11. Combined with section 6, the answer to the brief's
    "P(start) or minutes|start?" is unambiguous: P(start).
 
