@@ -227,6 +227,12 @@
   null,
   null
  ],
+ "154043": [
+  "a",
+  null,
+  null,
+  null
+ ],
  "154561": [
   "a",
   null,
@@ -388,6 +394,12 @@
   0.75,
   "Shoulder injury - 75% chance of playing",
   "2026-08-25T14:30:07.623508Z"
+ ],
+ "172850": [
+  "a",
+  null,
+  null,
+  null
  ],
  "173774": [
   "a",
@@ -696,10 +708,10 @@
   null
  ],
  "205651": [
-  "a",
-  null,
-  null,
-  null
+  "u",
+  0.0,
+  "Has joined FC Barcelona permanently",
+  "2026-09-02T16:00:28.475184Z"
  ],
  "206915": [
   "u",
@@ -828,10 +840,10 @@
   null
  ],
  "215059": [
-  "a",
-  null,
-  null,
-  null
+  "u",
+  0.0,
+  "Has joined Como on loan for the rest of the season",
+  "2026-09-02T16:20:41.841936Z"
  ],
  "215136": [
   "a",
@@ -888,10 +900,10 @@
   null
  ],
  "218364": [
-  "a",
-  null,
-  null,
-  null
+  "u",
+  0.0,
+  "Has joined FC Cologne on loan for the rest of the season",
+  "2026-09-02T16:03:25.710518Z"
  ],
  "218543": [
   "a",
@@ -1032,10 +1044,10 @@
   null
  ],
  "223434": [
-  "a",
-  null,
-  null,
-  null
+  "u",
+  0.0,
+  "Has joined Burnley permanently",
+  "2026-09-02T15:38:15.529699Z"
  ],
  "223541": [
   "i",
@@ -1104,10 +1116,10 @@
   null
  ],
  "229164": [
-  "a",
-  null,
-  null,
-  null
+  "u",
+  0.0,
+  "Has joined Lincoln City on loan until January",
+  "2026-09-02T16:04:17.497385Z"
  ],
  "229600": [
   "a",
@@ -1218,10 +1230,10 @@
   null
  ],
  "232905": [
-  "a",
-  null,
-  null,
-  null
+  "u",
+  0.0,
+  "Has joined Birmingham on loan for the rest of the season",
+  "2026-09-02T15:36:41.038103Z"
  ],
  "232928": [
   "a",
@@ -1302,6 +1314,12 @@
   "2026-08-08T20:00:07.546568Z"
  ],
  "243571": [
+  "u",
+  0.0,
+  "Has joined Torino permanently",
+  "2026-09-02T16:05:23.326971Z"
+ ],
+ "243951": [
   "a",
   null,
   null,
@@ -1344,6 +1362,12 @@
   "2026-08-26T22:00:07.797766Z"
  ],
  "244954": [
+  "a",
+  null,
+  null,
+  null
+ ],
+ "245719": [
   "a",
   null,
   null,
@@ -1445,6 +1469,12 @@
   null,
   null
  ],
+ "431639": [
+  "a",
+  null,
+  null,
+  null
+ ],
  "432422": [
   "a",
   null,
@@ -1488,10 +1518,10 @@
   null
  ],
  "433590": [
-  "a",
-  1.0,
-  null,
-  "2026-08-08T19:00:05.613036Z"
+  "u",
+  0.0,
+  "Has joined Genoa permanently",
+  "2026-09-02T16:09:06.479140Z"
  ],
  "433969": [
   "a",
@@ -1518,10 +1548,10 @@
   null
  ],
  "436761": [
-  "a",
-  null,
-  null,
-  null
+  "u",
+  0.0,
+  "Has joined Sheffield United on loan for the rest of the season",
+  "2026-09-02T16:21:03.612394Z"
  ],
  "436893": [
   "i",
@@ -1530,6 +1560,12 @@
   "2026-08-09T08:00:05.645826Z"
  ],
  "437495": [
+  "a",
+  null,
+  null,
+  null
+ ],
+ "437497": [
   "a",
   null,
   null,
@@ -1560,10 +1596,10 @@
   "2026-08-19T13:56:14.645970Z"
  ],
  "438098": [
-  "a",
-  null,
-  null,
-  null
+  "u",
+  0.0,
+  "Has joined Hamburger SV permanently",
+  "2026-09-02T16:00:28.446370Z"
  ],
  "438234": [
   "a",
@@ -1631,6 +1667,12 @@
   null,
   null
  ],
+ "442299": [
+  "a",
+  null,
+  null,
+  null
+ ],
  "442967": [
   "a",
   null,
@@ -1686,10 +1728,10 @@
   "2026-08-15T15:30:06.416627Z"
  ],
  "444884": [
-  "a",
-  null,
-  null,
-  null
+  "u",
+  0.0,
+  "Has joined Valencia on loan for the rest of the season",
+  "2026-09-02T16:05:49.104326Z"
  ],
  "445028": [
   "a",
@@ -1752,9 +1794,9 @@
   null
  ],
  "449428": [
-  "i",
+  "u",
   0.0,
-  "Hip injury - Expected back 5 Sep",
+  "Has joined Newport County on loan until January",
   "2026-08-02T09:00:11.038361Z"
  ],
  "449429": [
@@ -1774,6 +1816,12 @@
   0.0,
   "Knee injury - Unknown return date",
   "2026-07-23T12:01:23.352497Z"
+ ],
+ "450063": [
+  "a",
+  null,
+  null,
+  null
  ],
  "450542": [
   "a",
@@ -2034,10 +2082,10 @@
   "2026-08-04T18:30:11.027155Z"
  ],
  "470313": [
-  "a",
-  null,
-  null,
-  null
+  "u",
+  0.0,
+  "Has joined Juventus on loan for the rest of the season",
+  "2026-09-02T16:07:16.549304Z"
  ],
  "470315": [
   "a",
@@ -2142,10 +2190,10 @@
   null
  ],
  "482442": [
-  "a",
-  1.0,
-  null,
-  "2026-08-21T14:30:08.419690Z"
+  "u",
+  0.0,
+  "Has joined Juventus on loan for the rest of the season",
+  "2026-09-02T16:02:43.386849Z"
  ],
  "482609": [
   "a",
@@ -2172,10 +2220,10 @@
   null
  ],
  "484389": [
-  "a",
-  null,
-  null,
-  null
+  "u",
+  0.0,
+  "Has joined Leyton Orient on loan for the rest of the season",
+  "2026-09-02T15:44:14.839336Z"
  ],
  "484420": [
   "a",
@@ -2184,10 +2232,10 @@
   null
  ],
  "485047": [
-  "a",
-  null,
-  null,
-  null
+  "u",
+  0.0,
+  "Has joined West Ham on loan for the rest of the season",
+  "2026-09-02T16:19:54.503286Z"
  ],
  "485055": [
   "a",
@@ -2208,10 +2256,10 @@
   "2026-07-23T12:01:23.722029Z"
  ],
  "486385": [
-  "a",
-  null,
-  null,
-  null
+  "u",
+  0.0,
+  "Has joined Fiorentina permanently",
+  "2026-09-02T16:05:23.357221Z"
  ],
  "486520": [
   "d",
@@ -2274,10 +2322,10 @@
   null
  ],
  "489706": [
-  "a",
-  null,
-  null,
-  null
+  "u",
+  0.0,
+  "Has joined Stoke City permanently",
+  "2026-09-02T15:41:07.346849Z"
  ],
  "489888": [
   "i",
@@ -2292,10 +2340,10 @@
   "2026-08-15T20:00:06.878792Z"
  ],
  "490145": [
-  "a",
-  null,
-  null,
-  null
+  "u",
+  0.0,
+  "Has joined Leyton Orient permanently",
+  "2026-09-02T16:02:43.413625Z"
  ],
  "490161": [
   "u",
@@ -2316,10 +2364,10 @@
   null
  ],
  "491007": [
-  "a",
-  null,
-  null,
-  null
+  "u",
+  0.0,
+  "Has joined RC Strasbourg on loan for the rest of the season",
+  "2026-09-02T16:20:41.865225Z"
  ],
  "491279": [
   "a",
@@ -2334,10 +2382,10 @@
   null
  ],
  "492498": [
-  "a",
-  null,
-  null,
-  null
+  "u",
+  0.0,
+  "Has joined Burton Albion on loan for the rest of the season",
+  "2026-09-02T15:44:14.868001Z"
  ],
  "49262": [
   "a",
@@ -2352,10 +2400,10 @@
   "2026-07-23T12:01:23.565711Z"
  ],
  "492859": [
-  "a",
-  1.0,
-  null,
-  "2026-08-17T20:30:08.092366Z"
+  "u",
+  0.0,
+  "Has joined ACF Fiorentina on loan for the rest of the season",
+  "2026-09-02T16:04:47.189648Z"
  ],
  "493105": [
   "a",
@@ -2405,6 +2453,12 @@
   "Has joined Grimsby Town on loan for the rest of the season",
   "2026-07-29T13:00:27.959925Z"
  ],
+ "496181": [
+  "a",
+  null,
+  null,
+  null
+ ],
  "496208": [
   "a",
   null,
@@ -2442,10 +2496,10 @@
   null
  ],
  "499175": [
-  "a",
-  null,
-  null,
-  null
+  "u",
+  0.0,
+  "Has joined Borussia Dortmund on loan for the rest of the season",
+  "2026-09-02T16:01:07.058827Z"
  ],
  "499300": [
   "u",
@@ -2478,6 +2532,12 @@
   null
  ],
  "499726": [
+  "a",
+  null,
+  null,
+  null
+ ],
+ "500033": [
   "a",
   null,
   null,
@@ -2700,10 +2760,10 @@
   null
  ],
  "519324": [
-  "a",
-  null,
-  null,
-  null
+  "u",
+  0.0,
+  "Has joined Middlesbrough on loan for the rest of the season",
+  "2026-09-02T15:38:15.552951Z"
  ],
  "519440": [
   "a",
@@ -2736,10 +2796,10 @@
   null
  ],
  "524180": [
-  "a",
-  null,
-  null,
-  null
+  "u",
+  0.0,
+  "Has joined Huddersfield Town on loan for the rest of the season",
+  "2026-09-02T16:04:17.524642Z"
  ],
  "531442": [
   "a",
@@ -2760,6 +2820,12 @@
   null
  ],
  "533463": [
+  "a",
+  null,
+  null,
+  null
+ ],
+ "533646": [
   "a",
   null,
   null,
@@ -2922,10 +2988,10 @@
   "2026-08-18T14:13:08.474144Z"
  ],
  "549067": [
-  "a",
-  null,
-  null,
-  null
+  "u",
+  0.0,
+  "Has joined Southampton on loan for the rest of the season",
+  "2026-09-02T16:19:54.536676Z"
  ],
  "549074": [
   "u",
@@ -2951,6 +3017,12 @@
   null,
   null
  ],
+ "549940": [
+  "a",
+  null,
+  null,
+  null
+ ],
  "550090": [
   "a",
   null,
@@ -2970,6 +3042,12 @@
   "2026-07-23T12:01:23.879434Z"
  ],
  "550864": [
+  "a",
+  null,
+  null,
+  null
+ ],
+ "551050": [
   "a",
   null,
   null,
@@ -3245,6 +3323,12 @@
   null,
   null
  ],
+ "587982": [
+  "a",
+  null,
+  null,
+  null
+ ],
  "590014": [
   "u",
   0.0,
@@ -3270,6 +3354,12 @@
   "2026-08-14T18:00:06.418033Z"
  ],
  "592740": [
+  "a",
+  null,
+  null,
+  null
+ ],
+ "592984": [
   "a",
   null,
   null,
@@ -3329,6 +3419,12 @@
   null,
   null
  ],
+ "605972": [
+  "a",
+  null,
+  null,
+  null
+ ],
  "606702": [
   "a",
   1.0,
@@ -3354,10 +3450,10 @@
   null
  ],
  "606921": [
-  "a",
-  null,
-  null,
-  null
+  "u",
+  0.0,
+  "Has joined Millwall on loan for the rest of the season",
+  "2026-09-02T15:41:07.376544Z"
  ],
  "606930": [
   "a",
@@ -3420,6 +3516,12 @@
   null
  ],
  "612855": [
+  "a",
+  null,
+  null,
+  null
+ ],
+ "613221": [
   "a",
   null,
   null,
@@ -3503,6 +3605,12 @@
   null,
   null
  ],
+ "626751": [
+  "a",
+  null,
+  null,
+  null
+ ],
  "627221": [
   "a",
   null,
@@ -3514,6 +3622,12 @@
   0.0,
   "Has joined Oxford United on loan for the rest of the season",
   "2026-08-29T00:35:59.998520Z"
+ ],
+ "631000": [
+  "a",
+  null,
+  null,
+  null
  ],
  "631786": [
   "a",
@@ -3545,6 +3659,12 @@
   null,
   "2026-08-28T13:00:08.950445Z"
  ],
+ "638987": [
+  "a",
+  null,
+  null,
+  null
+ ],
  "640419": [
   "a",
   null,
@@ -3569,6 +3689,12 @@
   "Knee injury - Unknown return date",
   "2026-07-23T12:01:23.596909Z"
  ],
+ "647839": [
+  "a",
+  null,
+  null,
+  null
+ ],
  "647850": [
   "a",
   null,
@@ -3576,10 +3702,10 @@
   null
  ],
  "649208": [
-  "a",
-  null,
-  null,
-  null
+  "u",
+  0.0,
+  "Has joined Swansea City on loan for the rest of the season",
+  "2026-09-02T16:02:01.136760Z"
  ],
  "651426": [
   "a",
@@ -3598,6 +3724,12 @@
   0.0,
   "has returned to Getafe CF",
   "2026-07-23T12:18:56.275922Z"
+ ],
+ "661313": [
+  "a",
+  null,
+  null,
+  null
  ],
  "661800": [
   "a",
