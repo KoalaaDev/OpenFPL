@@ -1,10 +1,10 @@
 {
- "availability_changes": 0,
- "lineups": 0,
+ "availability_changes": 6,
+ "lineups": 66,
  "next_gw": 3,
- "observed_utc": "2026-09-03T09:02:09.172993+00:00",
+ "observed_utc": "2026-09-03T14:39:15.507881+00:00",
  "ownership": "gw03.csv",
  "picks": [],
  "season": "2026-27",
- "snapshot": "20260903T0902_gw03.csv.gz"
+ "snapshot": "20260903T1439_gw03.csv.gz"
 }

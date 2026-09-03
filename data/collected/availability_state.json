@@ -816,9 +816,9 @@
   null
  ],
  "214225": [
-  "d",
-  0.5,
-  "Hamstring injury - 50% chance of playing",
+  "i",
+  0.0,
+  "Hamstring injury - Expected back 21 Nov",
   "2026-08-30T16:00:08.564382Z"
  ],
  "214285": [
@@ -2099,6 +2099,12 @@
   null,
   null
  ],
+ "471551": [
+  "a",
+  null,
+  null,
+  null
+ ],
  "472713": [
   "a",
   null,
@@ -2550,9 +2556,9 @@
   null
  ],
  "500058": [
-  "i",
-  0.0,
-  "Unspecified injury - Unknown return date",
+  "a",
+  1.0,
+  null,
   "2026-07-23T12:01:23.659279Z"
  ],
  "500151": [
@@ -2916,9 +2922,9 @@
   "2026-07-23T12:01:23.384798Z"
  ],
  "543968": [
-  "d",
-  0.75,
-  "Knee injury - 75% chance of playing",
+  "a",
+  1.0,
+  null,
   "2026-08-31T09:30:08.306145Z"
  ],
  "54469": [
@@ -2946,9 +2952,9 @@
   "2026-08-25T14:04:09.529320Z"
  ],
  "547027": [
-  "d",
-  0.75,
-  "Unspecified injury - 75% chance of playing",
+  "i",
+  0.0,
+  "Hamstring injury - Unknown return date",
   "2026-08-30T16:30:08.428960Z"
  ],
  "547037": [
@@ -3336,10 +3342,10 @@
   "2026-08-12T14:08:46.501813Z"
  ],
  "590039": [
-  "a",
-  null,
-  null,
-  null
+  "u",
+  0.0,
+  "has joined West Ham on loan for the rest of the seaon.",
+  "2026-09-03T10:34:10.733520Z"
  ],
  "591386": [
   "a",
