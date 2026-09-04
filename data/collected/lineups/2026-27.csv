@@ -527,3 +527,69 @@ observed_utc,gw,team_abbr,side,status,position,slot,player,rotowire_id
 2026-09-04T08:56:12.731424+00:00,3,LEE,away,predicted,AMC,9,Noah Okafor,30434
 2026-09-04T08:56:12.731424+00:00,3,LEE,away,predicted,AMC,10,Harry Wilson,23803
 2026-09-04T08:56:12.731424+00:00,3,LEE,away,predicted,FW,11,Dominic Calvert-Lewin,23240
+2026-09-04T14:25:59.997963+00:00,3,LIV,away,predicted,GK,1,Alisson,21124
+2026-09-04T14:25:59.997963+00:00,3,LIV,away,predicted,DL,2,Milos Kerkez,35296
+2026-09-04T14:25:59.997963+00:00,3,LIV,away,predicted,DC,3,Jeremy Jacquet,39552
+2026-09-04T14:25:59.997963+00:00,3,LIV,away,predicted,DC,4,Virgil van Dijk,19194
+2026-09-04T14:25:59.997963+00:00,3,LIV,away,predicted,DR,5,Dominik Szoboszlai,29729
+2026-09-04T14:25:59.997963+00:00,3,LIV,away,predicted,DMC,6,Ryan Gravenberch,30875
+2026-09-04T14:25:59.997963+00:00,3,LIV,away,predicted,DMC,7,Alexis Mac Allister,29041
+2026-09-04T14:25:59.997963+00:00,3,LIV,away,predicted,AML,8,Cody Gakpo,26727
+2026-09-04T14:25:59.997963+00:00,3,LIV,away,predicted,AMC,9,Florian Wirtz,32412
+2026-09-04T14:25:59.997963+00:00,3,LIV,away,predicted,AMR,10,Victor Munoz,44878
+2026-09-04T14:25:59.997963+00:00,3,LIV,away,predicted,FW,11,Alexander Isak,23369
+2026-09-04T14:25:59.997963+00:00,3,BOU,away,predicted,GK,1,Djordje Petrovic,36625
+2026-09-04T14:25:59.997963+00:00,3,BOU,away,predicted,DL,2,Adrien Truffert,32767
+2026-09-04T14:25:59.997963+00:00,3,BOU,away,predicted,DC,3,James Hill,36419
+2026-09-04T14:25:59.997963+00:00,3,BOU,away,predicted,DC,4,Antonio Silva,37965
+2026-09-04T14:25:59.997963+00:00,3,BOU,away,predicted,DR,5,Adam Smith,18448
+2026-09-04T14:25:59.997963+00:00,3,BOU,away,predicted,DMC,6,Lewis Cook,21483
+2026-09-04T14:25:59.997963+00:00,3,BOU,away,predicted,DMC,7,Alex Scott,35937
+2026-09-04T14:25:59.997963+00:00,3,BOU,away,predicted,AML,8,Marcus Tavernier,31269
+2026-09-04T14:25:59.997963+00:00,3,BOU,away,predicted,AMC,9,Justin Kluivert,26103
+2026-09-04T14:25:59.997963+00:00,3,BOU,away,predicted,AMR,10,Rayan,47726
+2026-09-04T14:25:59.997963+00:00,3,BOU,away,predicted,FW,11,Evanilson,30584
+2026-09-04T14:25:59.997963+00:00,3,TOT,away,predicted,GK,1,Antonin Kinsky,44361
+2026-09-04T14:25:59.997963+00:00,3,TOT,away,predicted,DL,2,Destiny Udogie,33338
+2026-09-04T14:25:59.997963+00:00,3,TOT,away,predicted,DC,3,Jan Paul van Hecke,33114
+2026-09-04T14:25:59.997963+00:00,3,TOT,away,predicted,DC,4,Micky van de Ven,35610
+2026-09-04T14:25:59.997963+00:00,3,TOT,away,predicted,DR,5,Pedro Porro,26581
+2026-09-04T14:25:59.997963+00:00,3,TOT,away,predicted,DMC,6,Rodrigo Bentancur,24952
+2026-09-04T14:25:59.997963+00:00,3,TOT,away,predicted,DMC,7,Sandro Tonali,28953
+2026-09-04T14:25:59.997963+00:00,3,TOT,away,predicted,AML,8,Mathys Tel,35494
+2026-09-04T14:25:59.997963+00:00,3,TOT,away,predicted,AMC,9,Mateus Fernandes,37969
+2026-09-04T14:25:59.997963+00:00,3,TOT,away,predicted,FW,10,Savio,37734
+2026-09-04T14:25:59.997963+00:00,3,TOT,away,predicted,FW,11,Omar Marmoush,32408
+2026-09-04T14:25:59.997963+00:00,3,MCI,home,predicted,GK,1,Gianluigi Donnarumma,19576
+2026-09-04T14:25:59.997963+00:00,3,MCI,home,predicted,DL,2,Josko Gvardiol,29769
+2026-09-04T14:25:59.997963+00:00,3,MCI,home,predicted,DC,3,Marc Guehi,29892
+2026-09-04T14:25:59.997963+00:00,3,MCI,home,predicted,DC,4,Ruben Dias,21071
+2026-09-04T14:25:59.997963+00:00,3,MCI,home,predicted,DR,5,Matheus Nunes,35654
+2026-09-04T14:25:59.997963+00:00,3,MCI,home,predicted,DMC,6,Elliot Anderson,34207
+2026-09-04T14:25:59.997963+00:00,3,MCI,home,predicted,DMC,7,Nico O'Reilly,39597
+2026-09-04T14:25:59.997963+00:00,3,MCI,home,predicted,AML,8,Antoine Semenyo,33148
+2026-09-04T14:25:59.997963+00:00,3,MCI,home,predicted,AMC,9,Rayan Cherki,30601
+2026-09-04T14:25:59.997963+00:00,3,MCI,home,predicted,AMR,10,Phil Foden,24854
+2026-09-04T14:25:59.997963+00:00,3,MCI,home,predicted,FW,11,Erling Haaland,29664
+2026-09-04T14:25:59.997963+00:00,3,COV,away,predicted,GK,1,Carl Rushworth,36158
+2026-09-04T14:25:59.997963+00:00,3,COV,away,predicted,DL,2,Jay Dasilva,31306
+2026-09-04T14:25:59.997963+00:00,3,COV,away,predicted,DC,3,Bobby Thomas,32466
+2026-09-04T14:25:59.997963+00:00,3,COV,away,predicted,DC,4,Aurele Amenda,40667
+2026-09-04T14:25:59.997963+00:00,3,COV,away,predicted,DR,5,Milan van Ewijk,40218
+2026-09-04T14:25:59.997963+00:00,3,COV,away,predicted,MC,6,Frank Onyeka,33835
+2026-09-04T14:25:59.997963+00:00,3,COV,away,predicted,MC,7,Caleb Yirenkyi,48010
+2026-09-04T14:25:59.997963+00:00,3,COV,away,predicted,MC,8,Matt Grimes,18624
+2026-09-04T14:25:59.997963+00:00,3,COV,away,predicted,FWL,9,Brandon Thomas-Asante,38472
+2026-09-04T14:25:59.997963+00:00,3,COV,away,predicted,FWR,10,Loum Tchaouna,35739
+2026-09-04T14:25:59.997963+00:00,3,COV,away,predicted,FW,11,Taiwo Awoniyi,26412
+2026-09-04T14:25:59.997963+00:00,3,CRY,away,predicted,GK,1,Dean Henderson,26159
+2026-09-04T14:25:59.997963+00:00,3,CRY,away,predicted,DC,2,Axel Disasi,26569
+2026-09-04T14:25:59.997963+00:00,3,CRY,away,predicted,DC,3,Chris Richards,27137
+2026-09-04T14:25:59.997963+00:00,3,CRY,away,predicted,DC,4,Jaydee Canvot,43876
+2026-09-04T14:25:59.997963+00:00,3,CRY,away,predicted,ML,5,Tyrick Mitchell,30835
+2026-09-04T14:25:59.997963+00:00,3,CRY,away,predicted,MC,6,Daichi Kamada,24577
+2026-09-04T14:25:59.997963+00:00,3,CRY,away,predicted,MC,7,Adam Wharton,36424
+2026-09-04T14:25:59.997963+00:00,3,CRY,away,predicted,MR,8,Anan Khalaili,40658
+2026-09-04T14:25:59.997963+00:00,3,CRY,away,predicted,AMC,9,Eddie Nketiah,25374
+2026-09-04T14:25:59.997963+00:00,3,CRY,away,predicted,AMC,10,Yeremy Pino,34088
+2026-09-04T14:25:59.997963+00:00,3,CRY,away,predicted,FW,11,Jorgen Strand Larsen,38069
