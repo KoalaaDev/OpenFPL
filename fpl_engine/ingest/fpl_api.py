@@ -27,6 +27,18 @@ def _snapshot(conn, endpoint: str, payload: str, season: str) -> None:
     }])
 
 
+def _done(f: dict) -> bool:
+    """A fixture whose result stands: FPL's ``finished`` OR ``finished_provisional``.
+
+    ``finished`` waits for the bonus to be confirmed and has been observed
+    lagging full time by days; ``finished_provisional`` flips at the final
+    whistle. Minutes and goals are final at that point and bonus is revised on
+    the next pull (``INSERT OR REPLACE``), so provisional is the honest
+    boundary between a result and a match in progress.
+    """
+    return bool(f.get("finished") or f.get("finished_provisional"))
+
+
 def fetch_bootstrap(use_cache: bool = False) -> dict:
     return json.loads(get_text(f"{BASE}/bootstrap-static/", use_cache=use_cache))
 
@@ -88,13 +100,13 @@ def ingest_fixtures(conn, season: str | None = None, *, use_cache: bool = False)
         "season": season, "fixture_id": f["id"], "gw": f.get("event"),
         "kickoff_utc": f.get("kickoff_time"), "team_h": f.get("team_h"),
         "team_a": f.get("team_a"), "team_h_score": f.get("team_h_score"),
-        "team_a_score": f.get("team_a_score"), "finished": int(bool(f.get("finished"))),
+        "team_a_score": f.get("team_a_score"), "finished": int(_done(f)),
     } for f in fixtures])
 
     # Per-team match results for finished fixtures (two rows per fixture).
     tm = []
     for f in fixtures:
-        if not f.get("finished") or f.get("team_h_score") is None:
+        if not _done(f) or f.get("team_h_score") is None:
             continue
         for home in (True, False):
             tm.append({
@@ -149,6 +161,14 @@ def ingest_current_season_history(conn, season: str | None = None, *,
         rows = []
         for h in summ.get("history", []):
             fx = fixtures.get(h.get("fixture"))
+            # FPL adds a history row the moment a match goes live, with zero
+            # minutes. A pull during (or just before) kickoff therefore wrote
+            # a fake 0-minute appearance for every player of both clubs — and
+            # the minutes model read it as "did not play" in his trailing
+            # window until the next pull overwrote it. Only finished fixtures
+            # are point-in-time facts.
+            if fx is not None and not _done(fx):
+                continue
             rows.append(_history_row(season, pid, code_by_id.get(pid),
                                      name_by_id.get(pid), h, fx))
         for row in rows:

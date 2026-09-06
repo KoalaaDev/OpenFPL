@@ -482,6 +482,7 @@ def train(conn, *, seasons: list[str] | None = None,
     the cached model is then refitted on every season given, because the most
     recent one is the most relevant training data there is.
     """
+    import xgboost as xgb
     seasons = seasons or config.BACKFILL_SEASONS
     frame = _frame(conn, seasons)
     acc = None
@@ -508,7 +509,9 @@ def train(conn, *, seasons: list[str] | None = None,
     start.save_model(start_path)
     meta = {"features": active_features(), "train_seasons": seasons,
             "valid_season": valid_season, "holdout_accuracy": acc,
-            "mean_minutes": {"sub": m_sub, "full": m_full}}
+            "mean_minutes": {"sub": m_sub, "full": m_full},
+            "xgboost": xgb.__version__,
+            "probe": _probe(tr, clf, reg, start)}
     with open(meta_path, "w", encoding="utf-8") as fh:
         json.dump(meta, fh, indent=2)
     return meta
@@ -536,8 +539,54 @@ def load(tag: str | None = None):
     reg.load_model(reg_path)
     start = xgb.XGBClassifier()
     start.load_model(start_path)
+    if not _probe_ok(meta.get("probe"), meta["features"], clf, reg, start):
+        return None, None      # deserialised model does not reproduce itself
     meta = {**meta, "_reg": reg, "_start": start}
     return clf, meta
+
+
+PROBE_TOL = {"reg": 0.5, "start": 0.01, "clf": 0.01}
+
+
+def _probe(tr: pd.DataFrame, clf, reg, start) -> dict:
+    """One training row and what the three models said about it at fit time.
+
+    A model file is only as good as the library that reads it back. A cache
+    written by xgboost 3.2 stores ``base_score`` as a list; xgboost 3.0 reads
+    that as "no intercept" and silently returns every regression prediction
+    shifted by the target mean — E[minutes | plays] of 23 for Haaland instead
+    of 88, with P(start) untouched, so nothing downstream raised. Storing the
+    fitted models' own answer on a known row and re-asking at load time
+    catches that class of failure whatever its cause.
+    """
+    feats = active_features()
+    row = tr[tr["minutes"] >= 60].dropna(subset=feats).head(1)
+    if row.empty:
+        row = tr.head(1)
+    X = row[feats].astype(float)
+    x = [None if pd.isna(v) else float(v) for v in X.iloc[0].tolist()]
+    return {"x": x,
+            "reg": float(reg.predict(X)[0]),
+            "start": float(start.predict_proba(X)[0, 1]),
+            "clf": [float(v) for v in clf.predict_proba(X)[0]]}
+
+
+def _probe_ok(probe: dict | None, feats: list[str], clf, reg, start) -> bool:
+    if not probe:
+        return False           # a cache without a probe predates the guard
+    X = pd.DataFrame([[np.nan if v is None else v for v in probe["x"]]],
+                     columns=feats).astype(float)
+    try:
+        if abs(float(reg.predict(X)[0]) - probe["reg"]) > PROBE_TOL["reg"]:
+            return False
+        if abs(float(start.predict_proba(X)[0, 1]) - probe["start"]) >                 PROBE_TOL["start"]:
+            return False
+        got = clf.predict_proba(X)[0]
+        if max(abs(float(a) - b) for a, b in zip(got, probe["clf"])) >                 PROBE_TOL["clf"]:
+            return False
+    except Exception:                                    # noqa: BLE001
+        return False
+    return True
 
 
 def ensure(conn, *, seasons: list[str] | None = None,

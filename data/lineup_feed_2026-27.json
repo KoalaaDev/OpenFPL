@@ -1,0 +1,5486 @@
+{
+ "season": "2026-27",
+ "gws": {
+  "3": {
+   "season": "2026-27",
+   "gw": 3,
+   "as_of": "2026-09-04T19:00:00Z",
+   "deadline_cutoff": "2026-09-04T17:30:00Z",
+   "teams_forecast_pre_deadline": [
+    "AVL",
+    "BHA",
+    "BOU",
+    "BRE",
+    "CHE",
+    "COV",
+    "CRY",
+    "EVE",
+    "FUL",
+    "HUL",
+    "IPS",
+    "LEE",
+    "LIV",
+    "MCI",
+    "MUN",
+    "NEW",
+    "NOT",
+    "SUN",
+    "TOT"
+   ],
+   "teams_scored": [
+    "AVL",
+    "BHA",
+    "BOU",
+    "BRE",
+    "COV",
+    "CRY",
+    "FUL",
+    "HUL",
+    "IPS",
+    "LEE",
+    "LIV",
+    "MCI",
+    "NEW",
+    "NOT",
+    "SUN",
+    "TOT"
+   ],
+   "truth_sources": {
+    "player_gw": 533
+   },
+   "availability_rows_at_deadline": 652,
+   "unresolved_names": [],
+   "club_mismatches": [],
+   "band": [
+    0.3,
+    0.7
+   ],
+   "band_metrics": {
+    "n": 46,
+    "base_rate_started": 0.63,
+    "feed_accuracy": 0.761,
+    "feed_accuracy_ci95": [
+     0.621,
+     0.861
+    ],
+    "model_accuracy": 0.609,
+    "model_brier": 0.2295,
+    "feed_brier": 0.2391,
+    "disagreements": 15,
+    "feed_right_when_disagree": 0.733,
+    "implied_points_per_season": 41.7,
+    "implied_points_ci95": [
+     14.0,
+     61.5
+    ]
+   },
+   "all_metrics": {
+    "n": 533,
+    "base_rate_started": 0.33,
+    "feed_accuracy": 0.925,
+    "feed_accuracy_ci95": [
+     0.899,
+     0.944
+    ],
+    "model_accuracy": 0.917,
+    "model_brier": 0.0656,
+    "feed_brier": 0.075,
+    "disagreements": 26,
+    "feed_right_when_disagree": 0.577,
+    "implied_points_per_season": 74.2,
+    "implied_points_ci95": [
+     69.1,
+     78.0
+    ]
+   },
+   "xi_precision": {
+    "feed_xi_started": 0.886,
+    "model_xi_started": 0.881,
+    "n_teams": 16
+   },
+   "records": [
+    {
+     "player_id": 29,
+     "team": "AVL",
+     "web_name": "M.Bizot",
+     "p_start": 0.0698,
+     "p_start_raw": 0.0698,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 30,
+     "team": "AVL",
+     "web_name": "Digne",
+     "p_start": 0.0,
+     "p_start_raw": 0.0289,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 32,
+     "team": "AVL",
+     "web_name": "Cash",
+     "p_start": 0.3873,
+     "p_start_raw": 0.3873,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 33,
+     "team": "AVL",
+     "web_name": "Mings",
+     "p_start": 0.1604,
+     "p_start_raw": 0.1604,
+     "feed_xi": false,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 34,
+     "team": "AVL",
+     "web_name": "Pau",
+     "p_start": 0.7555,
+     "p_start_raw": 0.7555,
+     "feed_xi": true,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 35,
+     "team": "AVL",
+     "web_name": "Bogarde",
+     "p_start": 0.073,
+     "p_start_raw": 0.073,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 36,
+     "team": "AVL",
+     "web_name": "Maatsen",
+     "p_start": 0.7479,
+     "p_start_raw": 0.7479,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 37,
+     "team": "AVL",
+     "web_name": "Lindel\u00f6f",
+     "p_start": 0.6013,
+     "p_start_raw": 0.6013,
+     "feed_xi": false,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 38,
+     "team": "AVL",
+     "web_name": "A.Garc\u00eda",
+     "p_start": 0.0119,
+     "p_start_raw": 0.0119,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 39,
+     "team": "AVL",
+     "web_name": "Nedeljkovic",
+     "p_start": 0.0,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 41,
+     "team": "AVL",
+     "web_name": "Buend\u00eda",
+     "p_start": 0.8146,
+     "p_start_raw": 0.8146,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 44,
+     "team": "AVL",
+     "web_name": "Bailey",
+     "p_start": 0.0,
+     "p_start_raw": 0.0738,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 45,
+     "team": "AVL",
+     "web_name": "McGinn",
+     "p_start": 0.6753,
+     "p_start_raw": 0.6753,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 46,
+     "team": "AVL",
+     "web_name": "Barkley",
+     "p_start": 0.6116,
+     "p_start_raw": 0.6116,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 47,
+     "team": "AVL",
+     "web_name": "Kamara",
+     "p_start": 0.7401,
+     "p_start_raw": 0.7401,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 48,
+     "team": "AVL",
+     "web_name": "Onana",
+     "p_start": 0.0,
+     "p_start_raw": 0.0321,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 49,
+     "team": "AVL",
+     "web_name": "Iling Jr",
+     "p_start": 0.0,
+     "p_start_raw": 0.0,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 50,
+     "team": "AVL",
+     "web_name": "Burrowes",
+     "p_start": 0.0001,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 51,
+     "team": "AVL",
+     "web_name": "George Hemmings",
+     "p_start": 0.4562,
+     "p_start_raw": 0.4562,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 52,
+     "team": "AVL",
+     "web_name": "Alysson",
+     "p_start": 0.0009,
+     "p_start_raw": 0.0009,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 53,
+     "team": "AVL",
+     "web_name": "Manzambi",
+     "p_start": 0.0,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 54,
+     "team": "AVL",
+     "web_name": "Gomes",
+     "p_start": 0.0,
+     "p_start_raw": 0.1088,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 55,
+     "team": "AVL",
+     "web_name": "Watkins",
+     "p_start": 0.0,
+     "p_start_raw": 0.0387,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 56,
+     "team": "AVL",
+     "web_name": "Abraham",
+     "p_start": 0.2056,
+     "p_start_raw": 0.2056,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 160,
+     "team": "AVL",
+     "web_name": "Garnacho",
+     "p_start": 0.0939,
+     "p_start_raw": 0.0939,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 166,
+     "team": "AVL",
+     "web_name": "N.Jackson",
+     "p_start": 0.622,
+     "p_start_raw": 0.622,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 582,
+     "team": "AVL",
+     "web_name": "Madjo",
+     "p_start": 0.0,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 596,
+     "team": "AVL",
+     "web_name": "Ruggeri",
+     "p_start": 0.0007,
+     "p_start_raw": 0.0007,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 597,
+     "team": "AVL",
+     "web_name": "Suzuki",
+     "p_start": 0.7133,
+     "p_start_raw": 0.7133,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 606,
+     "team": "AVL",
+     "web_name": "Rowe",
+     "p_start": 0.0001,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 607,
+     "team": "AVL",
+     "web_name": "Lynch",
+     "p_start": 0.0,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 611,
+     "team": "AVL",
+     "web_name": "Wan-Bissaka",
+     "p_start": 0.11,
+     "p_start_raw": 0.11,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 618,
+     "team": "AVL",
+     "web_name": "Goretzka",
+     "p_start": 0.0003,
+     "p_start_raw": 0.0003,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 630,
+     "team": "AVL",
+     "web_name": "Harwood-Bellis",
+     "p_start": 0.0722,
+     "p_start_raw": 0.0722,
+     "feed_xi": true,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 631,
+     "team": "AVL",
+     "web_name": "Mbaye",
+     "p_start": 0.0011,
+     "p_start_raw": 0.0011,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 109,
+     "team": "BHA",
+     "web_name": "Verbruggen",
+     "p_start": 0.9905,
+     "p_start_raw": 0.9905,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 111,
+     "team": "BHA",
+     "web_name": "Steele",
+     "p_start": 0.0065,
+     "p_start_raw": 0.0065,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 113,
+     "team": "BHA",
+     "web_name": "F.Kad\u0131o\u011flu",
+     "p_start": 0.8936,
+     "p_start_raw": 0.8936,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 114,
+     "team": "BHA",
+     "web_name": "Boscagli",
+     "p_start": 0.867,
+     "p_start_raw": 0.867,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 115,
+     "team": "BHA",
+     "web_name": "De Cuyper",
+     "p_start": 0.8211,
+     "p_start_raw": 0.8211,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 116,
+     "team": "BHA",
+     "web_name": "Dunk",
+     "p_start": 0.8355,
+     "p_start_raw": 0.8355,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 117,
+     "team": "BHA",
+     "web_name": "Coppola",
+     "p_start": 0.0003,
+     "p_start_raw": 0.0003,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 118,
+     "team": "BHA",
+     "web_name": "Igor",
+     "p_start": 0.0,
+     "p_start_raw": 0.0014,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 119,
+     "team": "BHA",
+     "web_name": "Costinha",
+     "p_start": 0.0261,
+     "p_start_raw": 0.0261,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 120,
+     "team": "BHA",
+     "web_name": "Svoboda",
+     "p_start": 0.0001,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 121,
+     "team": "BHA",
+     "web_name": "Mitoma",
+     "p_start": 0.0,
+     "p_start_raw": 0.0231,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 122,
+     "team": "BHA",
+     "web_name": "Minteh",
+     "p_start": 0.0,
+     "p_start_raw": 0.0478,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 123,
+     "team": "BHA",
+     "web_name": "Hinshelwood",
+     "p_start": 0.1471,
+     "p_start_raw": 0.2943,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 124,
+     "team": "BHA",
+     "web_name": "Gro\u00df",
+     "p_start": 0.9211,
+     "p_start_raw": 0.9211,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 125,
+     "team": "BHA",
+     "web_name": "Georginio",
+     "p_start": 0.2317,
+     "p_start_raw": 0.3089,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 126,
+     "team": "BHA",
+     "web_name": "O'Riley",
+     "p_start": 0.0125,
+     "p_start_raw": 0.0125,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 127,
+     "team": "BHA",
+     "web_name": "Gomez",
+     "p_start": 0.8868,
+     "p_start_raw": 0.8868,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 128,
+     "team": "BHA",
+     "web_name": "Buonanotte",
+     "p_start": 0.0,
+     "p_start_raw": 0.0152,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 129,
+     "team": "BHA",
+     "web_name": "Ayari",
+     "p_start": 0.0547,
+     "p_start_raw": 0.073,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 130,
+     "team": "BHA",
+     "web_name": "Wieffer",
+     "p_start": 0.0,
+     "p_start_raw": 0.8873,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 132,
+     "team": "BHA",
+     "web_name": "Howell",
+     "p_start": 0.0,
+     "p_start_raw": 0.0006,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 133,
+     "team": "BHA",
+     "web_name": "Watson",
+     "p_start": 0.0,
+     "p_start_raw": 0.0,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 134,
+     "team": "BHA",
+     "web_name": "Oriola",
+     "p_start": 0.0,
+     "p_start_raw": 0.0,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 135,
+     "team": "BHA",
+     "web_name": "Yohanna",
+     "p_start": 0.001,
+     "p_start_raw": 0.001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 137,
+     "team": "BHA",
+     "web_name": "Tzimas",
+     "p_start": 0.0,
+     "p_start_raw": 0.0004,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 138,
+     "team": "BHA",
+     "web_name": "Kostoulas",
+     "p_start": 0.4777,
+     "p_start_raw": 0.4777,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 139,
+     "team": "BHA",
+     "web_name": "Ferguson",
+     "p_start": 0.0,
+     "p_start_raw": 0.0021,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 328,
+     "team": "BHA",
+     "web_name": "Struijk",
+     "p_start": 0.0977,
+     "p_start_raw": 0.0977,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 504,
+     "team": "BHA",
+     "web_name": "Vuskovic",
+     "p_start": 0.8988,
+     "p_start_raw": 0.8988,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 594,
+     "team": "BHA",
+     "web_name": "David",
+     "p_start": 0.0007,
+     "p_start_raw": 0.0007,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 600,
+     "team": "BHA",
+     "web_name": "Osman",
+     "p_start": 0.0008,
+     "p_start_raw": 0.0008,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 605,
+     "team": "BHA",
+     "web_name": "Yalcouy\u00e9",
+     "p_start": 0.686,
+     "p_start_raw": 0.686,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 614,
+     "team": "BHA",
+     "web_name": "Hadjam",
+     "p_start": 0.0001,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 624,
+     "team": "BHA",
+     "web_name": "Cozier-Duberry",
+     "p_start": 0.0,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 639,
+     "team": "BHA",
+     "web_name": "Andr\u00e9s",
+     "p_start": 0.0012,
+     "p_start_raw": 0.0012,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 652,
+     "team": "BHA",
+     "web_name": "Azeez",
+     "p_start": 0.0,
+     "p_start_raw": 0.0012,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 57,
+     "team": "BOU",
+     "web_name": "Petrovi\u0107",
+     "p_start": 0.9849,
+     "p_start_raw": 0.9849,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 58,
+     "team": "BOU",
+     "web_name": "Forster",
+     "p_start": 0.0059,
+     "p_start_raw": 0.0059,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 59,
+     "team": "BOU",
+     "web_name": "Dennis",
+     "p_start": 0.0,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 60,
+     "team": "BOU",
+     "web_name": "Hill",
+     "p_start": 0.9393,
+     "p_start_raw": 0.9393,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 61,
+     "team": "BOU",
+     "web_name": "Truffert",
+     "p_start": 0.9847,
+     "p_start_raw": 0.9847,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 62,
+     "team": "BOU",
+     "web_name": "Diakit\u00e9",
+     "p_start": 0.0099,
+     "p_start_raw": 0.0099,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 63,
+     "team": "BOU",
+     "web_name": "Milosavljevi\u0107",
+     "p_start": 0.0,
+     "p_start_raw": 0.0015,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 64,
+     "team": "BOU",
+     "web_name": "Smith",
+     "p_start": 0.8091,
+     "p_start_raw": 0.8091,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 65,
+     "team": "BOU",
+     "web_name": "J.Araujo",
+     "p_start": 0.0,
+     "p_start_raw": 0.0005,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 66,
+     "team": "BOU",
+     "web_name": "Soler",
+     "p_start": 0.0001,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 67,
+     "team": "BOU",
+     "web_name": "Rayan",
+     "p_start": 0.9367,
+     "p_start_raw": 0.9367,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 68,
+     "team": "BOU",
+     "web_name": "Tavernier",
+     "p_start": 0.8913,
+     "p_start_raw": 0.8913,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 69,
+     "team": "BOU",
+     "web_name": "Scott",
+     "p_start": 0.8935,
+     "p_start_raw": 0.8935,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 70,
+     "team": "BOU",
+     "web_name": "Kluivert",
+     "p_start": 0.8171,
+     "p_start_raw": 0.8171,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 71,
+     "team": "BOU",
+     "web_name": "Cook",
+     "p_start": 0.705,
+     "p_start_raw": 0.705,
+     "feed_xi": true,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 72,
+     "team": "BOU",
+     "web_name": "Gannon-Doak",
+     "p_start": 0.0008,
+     "p_start_raw": 0.0008,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 73,
+     "team": "BOU",
+     "web_name": "Adams",
+     "p_start": 0.4811,
+     "p_start_raw": 0.4811,
+     "feed_xi": false,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 74,
+     "team": "BOU",
+     "web_name": "Brooks",
+     "p_start": 0.0579,
+     "p_start_raw": 0.0579,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 75,
+     "team": "BOU",
+     "web_name": "Christie",
+     "p_start": 0.2422,
+     "p_start_raw": 0.2422,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 76,
+     "team": "BOU",
+     "web_name": "T\u00f3th.A",
+     "p_start": 0.012,
+     "p_start_raw": 0.012,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 77,
+     "team": "BOU",
+     "web_name": "Adli",
+     "p_start": 0.0,
+     "p_start_raw": 0.0187,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 78,
+     "team": "BOU",
+     "web_name": "Kroupi.Jr",
+     "p_start": 0.0,
+     "p_start_raw": 0.1363,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 79,
+     "team": "BOU",
+     "web_name": "Evanilson",
+     "p_start": 0.8717,
+     "p_start_raw": 0.8717,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 80,
+     "team": "BOU",
+     "web_name": "Enes \u00dcnal",
+     "p_start": 0.0,
+     "p_start_raw": 0.0048,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 81,
+     "team": "BOU",
+     "web_name": "Rodr\u00edguez",
+     "p_start": 0.0007,
+     "p_start_raw": 0.0007,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 566,
+     "team": "BOU",
+     "web_name": "Silva",
+     "p_start": 0.9548,
+     "p_start_raw": 0.9548,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 573,
+     "team": "BOU",
+     "web_name": "Sanchez",
+     "p_start": 0.0001,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 608,
+     "team": "BOU",
+     "web_name": "Jebbison",
+     "p_start": 0.0009,
+     "p_start_raw": 0.0009,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 615,
+     "team": "BOU",
+     "web_name": "Di Gregorio",
+     "p_start": 0.0002,
+     "p_start_raw": 0.0002,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 82,
+     "team": "BRE",
+     "web_name": "Kelleher",
+     "p_start": 0.9388,
+     "p_start_raw": 0.9388,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 83,
+     "team": "BRE",
+     "web_name": "Valdimarsson",
+     "p_start": 0.0012,
+     "p_start_raw": 0.0012,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 84,
+     "team": "BRE",
+     "web_name": "Collins",
+     "p_start": 0.9113,
+     "p_start_raw": 0.9113,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 85,
+     "team": "BRE",
+     "web_name": "Van den Berg",
+     "p_start": 0.0,
+     "p_start_raw": 0.09,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 86,
+     "team": "BRE",
+     "web_name": "Lewis-Potter",
+     "p_start": 0.9012,
+     "p_start_raw": 0.9012,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 87,
+     "team": "BRE",
+     "web_name": "Ajer",
+     "p_start": 0.834,
+     "p_start_raw": 0.834,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 88,
+     "team": "BRE",
+     "web_name": "Kayode",
+     "p_start": 0.9267,
+     "p_start_raw": 0.9267,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 89,
+     "team": "BRE",
+     "web_name": "Henry",
+     "p_start": 0.0463,
+     "p_start_raw": 0.0463,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 90,
+     "team": "BRE",
+     "web_name": "Hickey",
+     "p_start": 0.2989,
+     "p_start_raw": 0.2989,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 92,
+     "team": "BRE",
+     "web_name": "Ji-soo",
+     "p_start": 0.0001,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 93,
+     "team": "BRE",
+     "web_name": "Schuster",
+     "p_start": 0.0001,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 94,
+     "team": "BRE",
+     "web_name": "Schade",
+     "p_start": 0.8796,
+     "p_start_raw": 0.8796,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 95,
+     "team": "BRE",
+     "web_name": "O.Dango",
+     "p_start": 0.5276,
+     "p_start_raw": 0.5276,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 96,
+     "team": "BRE",
+     "web_name": "Damsgaard",
+     "p_start": 0.5606,
+     "p_start_raw": 0.5606,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 97,
+     "team": "BRE",
+     "web_name": "Jensen",
+     "p_start": 0.0,
+     "p_start_raw": 0.2903,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 98,
+     "team": "BRE",
+     "web_name": "Janelt",
+     "p_start": 0.863,
+     "p_start_raw": 0.863,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 99,
+     "team": "BRE",
+     "web_name": "Milambo",
+     "p_start": 0.0,
+     "p_start_raw": 0.0003,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 100,
+     "team": "BRE",
+     "web_name": "Carvalho",
+     "p_start": 0.0005,
+     "p_start_raw": 0.0005,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 102,
+     "team": "BRE",
+     "web_name": "Yarmoliuk",
+     "p_start": 0.2796,
+     "p_start_raw": 0.2796,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 103,
+     "team": "BRE",
+     "web_name": "Dasilva",
+     "p_start": 0.0,
+     "p_start_raw": 0.008,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 105,
+     "team": "BRE",
+     "web_name": "Anthony",
+     "p_start": 0.5686,
+     "p_start_raw": 0.5686,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 106,
+     "team": "BRE",
+     "web_name": "Thiago",
+     "p_start": 0.9356,
+     "p_start_raw": 0.9356,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 107,
+     "team": "BRE",
+     "web_name": "Furo",
+     "p_start": 0.0001,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 108,
+     "team": "BRE",
+     "web_name": "Wilson",
+     "p_start": 0.1627,
+     "p_start_raw": 0.1627,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 565,
+     "team": "BRE",
+     "web_name": "M.Sangar\u00e9",
+     "p_start": 0.9596,
+     "p_start_raw": 0.9596,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 620,
+     "team": "BRE",
+     "web_name": "Diouf",
+     "p_start": 0.1876,
+     "p_start_raw": 0.1876,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 91,
+     "team": "COV",
+     "web_name": "Pinnock",
+     "p_start": 0.0722,
+     "p_start_raw": 0.0722,
+     "feed_xi": false,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 104,
+     "team": "COV",
+     "web_name": "Onyeka",
+     "p_start": 0.4497,
+     "p_start_raw": 0.4497,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 110,
+     "team": "COV",
+     "web_name": "Rushworth",
+     "p_start": 0.8851,
+     "p_start_raw": 0.8851,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 171,
+     "team": "COV",
+     "web_name": "Dovin",
+     "p_start": 0.0,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 172,
+     "team": "COV",
+     "web_name": "Wilson",
+     "p_start": 0.0002,
+     "p_start_raw": 0.0002,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 173,
+     "team": "COV",
+     "web_name": "Thomas",
+     "p_start": 0.8398,
+     "p_start_raw": 0.8398,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 174,
+     "team": "COV",
+     "web_name": "Kitching",
+     "p_start": 0.0,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 175,
+     "team": "COV",
+     "web_name": "van Ewijk",
+     "p_start": 0.9689,
+     "p_start_raw": 0.9689,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 176,
+     "team": "COV",
+     "web_name": "Dasilva",
+     "p_start": 0.9648,
+     "p_start_raw": 0.9648,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 177,
+     "team": "COV",
+     "web_name": "Kesler-Hayden",
+     "p_start": 0.0,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 178,
+     "team": "COV",
+     "web_name": "Bidwell",
+     "p_start": 0.0001,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 179,
+     "team": "COV",
+     "web_name": "Latibeaudiere",
+     "p_start": 0.0001,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 180,
+     "team": "COV",
+     "web_name": "Woolfenden",
+     "p_start": 0.0,
+     "p_start_raw": 0.0261,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 181,
+     "team": "COV",
+     "web_name": "Brau",
+     "p_start": 0.0,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 182,
+     "team": "COV",
+     "web_name": "Amenda",
+     "p_start": 0.962,
+     "p_start_raw": 0.962,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 183,
+     "team": "COV",
+     "web_name": "Rudoni",
+     "p_start": 0.5827,
+     "p_start_raw": 0.5827,
+     "feed_xi": false,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 184,
+     "team": "COV",
+     "web_name": "Grimes",
+     "p_start": 0.9422,
+     "p_start_raw": 0.9422,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 185,
+     "team": "COV",
+     "web_name": "Sakamoto",
+     "p_start": 0.0075,
+     "p_start_raw": 0.0075,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 186,
+     "team": "COV",
+     "web_name": "Mason-Clark",
+     "p_start": 0.4029,
+     "p_start_raw": 0.4029,
+     "feed_xi": false,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 187,
+     "team": "COV",
+     "web_name": "Eccles",
+     "p_start": 0.0001,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 188,
+     "team": "COV",
+     "web_name": "Torp",
+     "p_start": 0.0149,
+     "p_start_raw": 0.0149,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 189,
+     "team": "COV",
+     "web_name": "Shepherd",
+     "p_start": 0.0001,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 190,
+     "team": "COV",
+     "web_name": "Tchaouna",
+     "p_start": 0.75,
+     "p_start_raw": 0.75,
+     "feed_xi": true,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 191,
+     "team": "COV",
+     "web_name": "Borges Rodrigues",
+     "p_start": 0.0,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 192,
+     "team": "COV",
+     "web_name": "Andrews",
+     "p_start": 0.0,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 193,
+     "team": "COV",
+     "web_name": "Wright",
+     "p_start": 0.0,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 194,
+     "team": "COV",
+     "web_name": "Thomas-Asante",
+     "p_start": 0.4362,
+     "p_start_raw": 0.4362,
+     "feed_xi": true,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 195,
+     "team": "COV",
+     "web_name": "Simms",
+     "p_start": 0.0741,
+     "p_start_raw": 0.0741,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 196,
+     "team": "COV",
+     "web_name": "Markelo",
+     "p_start": 0.0,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 197,
+     "team": "COV",
+     "web_name": "Bassette",
+     "p_start": 0.0,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 492,
+     "team": "COV",
+     "web_name": "Awoniyi",
+     "p_start": 0.7141,
+     "p_start_raw": 0.7141,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 575,
+     "team": "COV",
+     "web_name": "Yirenkyi",
+     "p_start": 0.7587,
+     "p_start_raw": 0.7587,
+     "feed_xi": true,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 584,
+     "team": "COV",
+     "web_name": "Hamer",
+     "p_start": 0.3385,
+     "p_start_raw": 0.3385,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 599,
+     "team": "COV",
+     "web_name": "Cherif",
+     "p_start": 0.0001,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 623,
+     "team": "COV",
+     "web_name": "Bentley",
+     "p_start": 0.0167,
+     "p_start_raw": 0.0167,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 42,
+     "team": "CRY",
+     "web_name": "Guessand",
+     "p_start": 0.1634,
+     "p_start_raw": 0.1634,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 153,
+     "team": "CRY",
+     "web_name": "Disasi",
+     "p_start": 0.2127,
+     "p_start_raw": 0.2127,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 198,
+     "team": "CRY",
+     "web_name": "Henderson",
+     "p_start": 0.8752,
+     "p_start_raw": 0.8752,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 199,
+     "team": "CRY",
+     "web_name": "Benitez",
+     "p_start": 0.0015,
+     "p_start_raw": 0.0015,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 202,
+     "team": "CRY",
+     "web_name": "Richards",
+     "p_start": 0.8184,
+     "p_start_raw": 0.8184,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 203,
+     "team": "CRY",
+     "web_name": "Canvot",
+     "p_start": 0.8547,
+     "p_start_raw": 0.8547,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 204,
+     "team": "CRY",
+     "web_name": "Mitchell",
+     "p_start": 0.8505,
+     "p_start_raw": 0.8505,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 205,
+     "team": "CRY",
+     "web_name": "Sosa",
+     "p_start": 0.0,
+     "p_start_raw": 0.0002,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 206,
+     "team": "CRY",
+     "web_name": "Chadi Riad",
+     "p_start": 0.0,
+     "p_start_raw": 0.0828,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 207,
+     "team": "CRY",
+     "web_name": "Mingueza",
+     "p_start": 0.003,
+     "p_start_raw": 0.003,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 208,
+     "team": "CRY",
+     "web_name": "Sarr",
+     "p_start": 0.0,
+     "p_start_raw": 0.0314,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 210,
+     "team": "CRY",
+     "web_name": "Wharton",
+     "p_start": 0.8606,
+     "p_start_raw": 0.8606,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 211,
+     "team": "CRY",
+     "web_name": "Yeremy",
+     "p_start": 0.509,
+     "p_start_raw": 0.509,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 212,
+     "team": "CRY",
+     "web_name": "Hughes",
+     "p_start": 0.146,
+     "p_start_raw": 0.146,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 213,
+     "team": "CRY",
+     "web_name": "Lerma",
+     "p_start": 0.0976,
+     "p_start_raw": 0.0976,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 214,
+     "team": "CRY",
+     "web_name": "Kamada",
+     "p_start": 0.8401,
+     "p_start_raw": 0.8401,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 215,
+     "team": "CRY",
+     "web_name": "Devenny",
+     "p_start": 0.0,
+     "p_start_raw": 0.138,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 216,
+     "team": "CRY",
+     "web_name": "Esse",
+     "p_start": 0.0,
+     "p_start_raw": 0.0004,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 217,
+     "team": "CRY",
+     "web_name": "M.Fran\u00e7a",
+     "p_start": 0.0002,
+     "p_start_raw": 0.0002,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 218,
+     "team": "CRY",
+     "web_name": "Doucour\u00e9",
+     "p_start": 0.0014,
+     "p_start_raw": 0.0014,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 219,
+     "team": "CRY",
+     "web_name": "J.Rak-Sakyi",
+     "p_start": 0.0001,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 220,
+     "team": "CRY",
+     "web_name": "Cardines",
+     "p_start": 0.0,
+     "p_start_raw": 0.016,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 221,
+     "team": "CRY",
+     "web_name": "Drakes-Thomas",
+     "p_start": 0.0001,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 222,
+     "team": "CRY",
+     "web_name": "Strand Larsen",
+     "p_start": 0.629,
+     "p_start_raw": 0.629,
+     "feed_xi": true,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 223,
+     "team": "CRY",
+     "web_name": "Mateta",
+     "p_start": 0.0,
+     "p_start_raw": 0.0451,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 224,
+     "team": "CRY",
+     "web_name": "Nketiah",
+     "p_start": 0.5212,
+     "p_start_raw": 0.5212,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 225,
+     "team": "CRY",
+     "web_name": "Uche",
+     "p_start": 0.0,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 241,
+     "team": "CRY",
+     "web_name": "McNeil",
+     "p_start": 0.4177,
+     "p_start_raw": 0.4177,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 555,
+     "team": "CRY",
+     "web_name": "Matthews",
+     "p_start": 0.0001,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 577,
+     "team": "CRY",
+     "web_name": "Tomiyasu",
+     "p_start": 0.5458,
+     "p_start_raw": 0.5458,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 588,
+     "team": "CRY",
+     "web_name": "Khalaili",
+     "p_start": 0.6755,
+     "p_start_raw": 0.6755,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 595,
+     "team": "CRY",
+     "web_name": "Gozo",
+     "p_start": 0.0139,
+     "p_start_raw": 0.0139,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 633,
+     "team": "CRY",
+     "web_name": "Ahanor",
+     "p_start": 0.0011,
+     "p_start_raw": 0.0011,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 643,
+     "team": "CRY",
+     "web_name": "Chilwell",
+     "p_start": 0.2649,
+     "p_start_raw": 0.2649,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 644,
+     "team": "CRY",
+     "web_name": "Timber",
+     "p_start": 0.0007,
+     "p_start_raw": 0.0007,
+     "feed_xi": false,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 647,
+     "team": "CRY",
+     "web_name": "Osorio",
+     "p_start": 0.0009,
+     "p_start_raw": 0.0009,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 250,
+     "team": "FUL",
+     "web_name": "Leno",
+     "p_start": 0.9728,
+     "p_start_raw": 0.9728,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 251,
+     "team": "FUL",
+     "web_name": "Lecomte",
+     "p_start": 0.0001,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 252,
+     "team": "FUL",
+     "web_name": "McNally",
+     "p_start": 0.0,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 253,
+     "team": "FUL",
+     "web_name": "Andersen",
+     "p_start": 0.8805,
+     "p_start_raw": 0.8805,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 254,
+     "team": "FUL",
+     "web_name": "Robinson",
+     "p_start": 0.8536,
+     "p_start_raw": 0.8536,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 255,
+     "team": "FUL",
+     "web_name": "J.Cuenca",
+     "p_start": 0.21,
+     "p_start_raw": 0.21,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 256,
+     "team": "FUL",
+     "web_name": "Tete",
+     "p_start": 0.0081,
+     "p_start_raw": 0.0081,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 257,
+     "team": "FUL",
+     "web_name": "Bassey",
+     "p_start": 0.9485,
+     "p_start_raw": 0.9485,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 258,
+     "team": "FUL",
+     "web_name": "Castagne",
+     "p_start": 0.6519,
+     "p_start_raw": 0.6519,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 261,
+     "team": "FUL",
+     "web_name": "Iwobi",
+     "p_start": 0.9173,
+     "p_start_raw": 0.9173,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 262,
+     "team": "FUL",
+     "web_name": "Smith Rowe",
+     "p_start": 0.2864,
+     "p_start_raw": 0.2864,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 263,
+     "team": "FUL",
+     "web_name": "Kevin",
+     "p_start": 0.1033,
+     "p_start_raw": 0.1033,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 264,
+     "team": "FUL",
+     "web_name": "Bobb",
+     "p_start": 0.7127,
+     "p_start_raw": 0.7127,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 265,
+     "team": "FUL",
+     "web_name": "Berge",
+     "p_start": 0.8943,
+     "p_start_raw": 0.8943,
+     "feed_xi": true,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 266,
+     "team": "FUL",
+     "web_name": "Cairney",
+     "p_start": 0.0,
+     "p_start_raw": 0.0658,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 268,
+     "team": "FUL",
+     "web_name": "King",
+     "p_start": 0.9015,
+     "p_start_raw": 0.9015,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 269,
+     "team": "FUL",
+     "web_name": "Sessegnon",
+     "p_start": 0.1927,
+     "p_start_raw": 0.1927,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 270,
+     "team": "FUL",
+     "web_name": "Reed",
+     "p_start": 0.0212,
+     "p_start_raw": 0.0212,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 271,
+     "team": "FUL",
+     "web_name": "Muniz",
+     "p_start": 0.1392,
+     "p_start_raw": 0.1392,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 272,
+     "team": "FUL",
+     "web_name": "Kusi-Asare",
+     "p_start": 0.0002,
+     "p_start_raw": 0.0002,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 569,
+     "team": "FUL",
+     "web_name": "Gonzalo",
+     "p_start": 0.9656,
+     "p_start_raw": 0.9656,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 570,
+     "team": "FUL",
+     "web_name": "Palacios",
+     "p_start": 0.8323,
+     "p_start_raw": 0.8323,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 580,
+     "team": "FUL",
+     "web_name": "Charles",
+     "p_start": 0.0025,
+     "p_start_raw": 0.0025,
+     "feed_xi": false,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 610,
+     "team": "FUL",
+     "web_name": "De Fougerolles",
+     "p_start": 0.0001,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 626,
+     "team": "FUL",
+     "web_name": "Zepa",
+     "p_start": 0.0002,
+     "p_start_raw": 0.0002,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 635,
+     "team": "FUL",
+     "web_name": "Larsson",
+     "p_start": 0.001,
+     "p_start_raw": 0.001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 636,
+     "team": "FUL",
+     "web_name": "\u00c1ngel",
+     "p_start": 0.001,
+     "p_start_raw": 0.001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 650,
+     "team": "FUL",
+     "web_name": "Affengruber",
+     "p_start": 0.0016,
+     "p_start_raw": 0.0016,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 240,
+     "team": "HUL",
+     "web_name": "Iroegbunam",
+     "p_start": 0.157,
+     "p_start_raw": 0.157,
+     "feed_xi": true,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 273,
+     "team": "HUL",
+     "web_name": "Phillips",
+     "p_start": 0.0001,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 274,
+     "team": "HUL",
+     "web_name": "Butland",
+     "p_start": 0.0,
+     "p_start_raw": 0.0002,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 275,
+     "team": "HUL",
+     "web_name": "Cartwright",
+     "p_start": 0.0,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 276,
+     "team": "HUL",
+     "web_name": "Lo-Tutala",
+     "p_start": 0.0,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 277,
+     "team": "HUL",
+     "web_name": "Egan",
+     "p_start": 0.8999,
+     "p_start_raw": 0.8999,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 278,
+     "team": "HUL",
+     "web_name": "Hughes",
+     "p_start": 0.0,
+     "p_start_raw": 0.0002,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 279,
+     "team": "HUL",
+     "web_name": "Ajayi",
+     "p_start": 0.9318,
+     "p_start_raw": 0.9318,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 280,
+     "team": "HUL",
+     "web_name": "Coyle",
+     "p_start": 0.2295,
+     "p_start_raw": 0.3061,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 281,
+     "team": "HUL",
+     "web_name": "Drameh",
+     "p_start": 0.0,
+     "p_start_raw": 0.0037,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 282,
+     "team": "HUL",
+     "web_name": "Giles",
+     "p_start": 0.8083,
+     "p_start_raw": 0.8083,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 283,
+     "team": "HUL",
+     "web_name": "Jacob",
+     "p_start": 0.0,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 284,
+     "team": "HUL",
+     "web_name": "McCarthy",
+     "p_start": 0.0001,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 285,
+     "team": "HUL",
+     "web_name": "McNair",
+     "p_start": 0.0044,
+     "p_start_raw": 0.0044,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 286,
+     "team": "HUL",
+     "web_name": "Belloumi",
+     "p_start": 0.9206,
+     "p_start_raw": 0.9206,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 287,
+     "team": "HUL",
+     "web_name": "Millar",
+     "p_start": 0.0,
+     "p_start_raw": 0.0107,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 288,
+     "team": "HUL",
+     "web_name": "Dowell",
+     "p_start": 0.0001,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 289,
+     "team": "HUL",
+     "web_name": "Crooks",
+     "p_start": 0.2042,
+     "p_start_raw": 0.2723,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 290,
+     "team": "HUL",
+     "web_name": "Slater",
+     "p_start": 0.9671,
+     "p_start_raw": 0.9671,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 291,
+     "team": "HUL",
+     "web_name": "Matazo",
+     "p_start": 0.0,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 292,
+     "team": "HUL",
+     "web_name": "\u00d6m\u00fcr",
+     "p_start": 0.0001,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 293,
+     "team": "HUL",
+     "web_name": "Kamara",
+     "p_start": 0.0,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 294,
+     "team": "HUL",
+     "web_name": "Zambrano",
+     "p_start": 0.0,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 295,
+     "team": "HUL",
+     "web_name": "McBurnie",
+     "p_start": 0.9432,
+     "p_start_raw": 0.9432,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 296,
+     "team": "HUL",
+     "web_name": "Akintola",
+     "p_start": 0.0001,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 297,
+     "team": "HUL",
+     "web_name": "Gyabi",
+     "p_start": 0.0,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 298,
+     "team": "HUL",
+     "web_name": "Destan",
+     "p_start": 0.0,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 299,
+     "team": "HUL",
+     "web_name": "Burstow",
+     "p_start": 0.0,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 340,
+     "team": "HUL",
+     "web_name": "Gelhardt",
+     "p_start": 0.0001,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 556,
+     "team": "HUL",
+     "web_name": "Targett",
+     "p_start": 0.0092,
+     "p_start_raw": 0.0092,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 563,
+     "team": "HUL",
+     "web_name": "Morita",
+     "p_start": 0.4292,
+     "p_start_raw": 0.4292,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 572,
+     "team": "HUL",
+     "web_name": "Tzolakis",
+     "p_start": 0.9802,
+     "p_start_raw": 0.9802,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 574,
+     "team": "HUL",
+     "web_name": "Hjert\u00f8-Dahl",
+     "p_start": 0.0001,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 576,
+     "team": "HUL",
+     "web_name": "Stroud",
+     "p_start": 0.7479,
+     "p_start_raw": 0.7479,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 585,
+     "team": "HUL",
+     "web_name": "Herrington",
+     "p_start": 0.0066,
+     "p_start_raw": 0.0066,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 586,
+     "team": "HUL",
+     "web_name": "Mendy",
+     "p_start": 0.6828,
+     "p_start_raw": 0.6828,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 589,
+     "team": "HUL",
+     "web_name": "Gourna-Douath",
+     "p_start": 0.008,
+     "p_start_raw": 0.008,
+     "feed_xi": false,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 617,
+     "team": "HUL",
+     "web_name": "Cho",
+     "p_start": 0.0039,
+     "p_start_raw": 0.0039,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 632,
+     "team": "HUL",
+     "web_name": "Ansah",
+     "p_start": 0.0018,
+     "p_start_raw": 0.0018,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 637,
+     "team": "HUL",
+     "web_name": "Vaz",
+     "p_start": 0.0018,
+     "p_start_raw": 0.0018,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 638,
+     "team": "HUL",
+     "web_name": "Norton-Cuffy",
+     "p_start": 0.0019,
+     "p_start_raw": 0.0019,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 642,
+     "team": "HUL",
+     "web_name": "Thomas",
+     "p_start": 0.0015,
+     "p_start_raw": 0.0015,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 645,
+     "team": "HUL",
+     "web_name": "Mouzakitis",
+     "p_start": 0.0014,
+     "p_start_raw": 0.0014,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 259,
+     "team": "IPS",
+     "web_name": "Diop",
+     "p_start": 0.8842,
+     "p_start_raw": 0.8842,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 267,
+     "team": "IPS",
+     "web_name": "Luki\u0107",
+     "p_start": 0.7572,
+     "p_start_raw": 0.7572,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 300,
+     "team": "IPS",
+     "web_name": "Walton",
+     "p_start": 0.046,
+     "p_start_raw": 0.046,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 301,
+     "team": "IPS",
+     "web_name": "Palmer",
+     "p_start": 0.0516,
+     "p_start_raw": 0.0516,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 302,
+     "team": "IPS",
+     "web_name": "Button",
+     "p_start": 0.0001,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 303,
+     "team": "IPS",
+     "web_name": "Kipr\u00e9",
+     "p_start": 0.0001,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 304,
+     "team": "IPS",
+     "web_name": "O'Shea",
+     "p_start": 0.9862,
+     "p_start_raw": 0.9862,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 305,
+     "team": "IPS",
+     "web_name": "Davis",
+     "p_start": 0.9348,
+     "p_start_raw": 0.9348,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 306,
+     "team": "IPS",
+     "web_name": "Greaves",
+     "p_start": 0.9251,
+     "p_start_raw": 0.9251,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 307,
+     "team": "IPS",
+     "web_name": "Johnson",
+     "p_start": 0.0,
+     "p_start_raw": 0.0329,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 308,
+     "team": "IPS",
+     "web_name": "Furlong",
+     "p_start": 0.0021,
+     "p_start_raw": 0.0021,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 309,
+     "team": "IPS",
+     "web_name": "N\u00fa\u00f1ez",
+     "p_start": 0.7309,
+     "p_start_raw": 0.7309,
+     "feed_xi": true,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 310,
+     "team": "IPS",
+     "web_name": "Matusiwa",
+     "p_start": 0.0,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 311,
+     "team": "IPS",
+     "web_name": "Burns",
+     "p_start": 0.0,
+     "p_start_raw": 0.0015,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 312,
+     "team": "IPS",
+     "web_name": "Taylor",
+     "p_start": 0.0,
+     "p_start_raw": 0.0246,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 313,
+     "team": "IPS",
+     "web_name": "Clarke",
+     "p_start": 0.1995,
+     "p_start_raw": 0.1995,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 314,
+     "team": "IPS",
+     "web_name": "Ogbene",
+     "p_start": 0.0,
+     "p_start_raw": 0.0008,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 315,
+     "team": "IPS",
+     "web_name": "Fatawu",
+     "p_start": 0.8165,
+     "p_start_raw": 0.8165,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 316,
+     "team": "IPS",
+     "web_name": "Emersonn",
+     "p_start": 0.5575,
+     "p_start_raw": 0.5575,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 317,
+     "team": "IPS",
+     "web_name": "Hirst",
+     "p_start": 0.0,
+     "p_start_raw": 0.0395,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 318,
+     "team": "IPS",
+     "web_name": "Philogene",
+     "p_start": 0.0,
+     "p_start_raw": 0.0019,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 319,
+     "team": "IPS",
+     "web_name": "Szmodics",
+     "p_start": 0.0,
+     "p_start_raw": 0.0243,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 320,
+     "team": "IPS",
+     "web_name": "Akpom",
+     "p_start": 0.0106,
+     "p_start_raw": 0.0106,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 321,
+     "team": "IPS",
+     "web_name": "Walle Egeli",
+     "p_start": 0.0004,
+     "p_start_raw": 0.0004,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 322,
+     "team": "IPS",
+     "web_name": "Al-Hamadi",
+     "p_start": 0.0,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 323,
+     "team": "IPS",
+     "web_name": "McAteer",
+     "p_start": 0.1593,
+     "p_start_raw": 0.1593,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 324,
+     "team": "IPS",
+     "web_name": "Mehmeti",
+     "p_start": 0.0001,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 554,
+     "team": "IPS",
+     "web_name": "Van Oevelen",
+     "p_start": 0.0,
+     "p_start_raw": 0.0002,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 562,
+     "team": "IPS",
+     "web_name": "Maeda",
+     "p_start": 0.8257,
+     "p_start_raw": 0.8257,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 564,
+     "team": "IPS",
+     "web_name": "Scherpen",
+     "p_start": 0.8155,
+     "p_start_raw": 0.8155,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 571,
+     "team": "IPS",
+     "web_name": "Florentino",
+     "p_start": 0.0885,
+     "p_start_raw": 0.0885,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 591,
+     "team": "IPS",
+     "web_name": "Enciso",
+     "p_start": 0.8556,
+     "p_start_raw": 0.8556,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 592,
+     "team": "IPS",
+     "web_name": "Ouattara",
+     "p_start": 0.006,
+     "p_start_raw": 0.006,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 602,
+     "team": "IPS",
+     "web_name": "Humphreys",
+     "p_start": 0.0,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 619,
+     "team": "IPS",
+     "web_name": "Palacios",
+     "p_start": 0.0458,
+     "p_start_raw": 0.0458,
+     "feed_xi": false,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 640,
+     "team": "IPS",
+     "web_name": "Flemming",
+     "p_start": 0.3326,
+     "p_start_raw": 0.3326,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 260,
+     "team": "LEE",
+     "web_name": "Wilson",
+     "p_start": 0.6156,
+     "p_start_raw": 0.6156,
+     "feed_xi": true,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 326,
+     "team": "LEE",
+     "web_name": "Perri",
+     "p_start": 0.0,
+     "p_start_raw": 0.0074,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 327,
+     "team": "LEE",
+     "web_name": "Bijol",
+     "p_start": 0.571,
+     "p_start_raw": 0.571,
+     "feed_xi": true,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 329,
+     "team": "LEE",
+     "web_name": "Rodon",
+     "p_start": 0.0,
+     "p_start_raw": 0.1936,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 330,
+     "team": "LEE",
+     "web_name": "Bogle",
+     "p_start": 0.7634,
+     "p_start_raw": 0.7634,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 331,
+     "team": "LEE",
+     "web_name": "Gudmundsson",
+     "p_start": 0.0152,
+     "p_start_raw": 0.0152,
+     "feed_xi": false,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 332,
+     "team": "LEE",
+     "web_name": "Justin",
+     "p_start": 0.9446,
+     "p_start_raw": 0.9446,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 333,
+     "team": "LEE",
+     "web_name": "Bornauw",
+     "p_start": 0.0,
+     "p_start_raw": 0.0251,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 334,
+     "team": "LEE",
+     "web_name": "Muharemovi\u0107",
+     "p_start": 0.9676,
+     "p_start_raw": 0.9676,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 335,
+     "team": "LEE",
+     "web_name": "Stach",
+     "p_start": 0.9263,
+     "p_start_raw": 0.9263,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 336,
+     "team": "LEE",
+     "web_name": "Okafor",
+     "p_start": 0.5637,
+     "p_start_raw": 0.5637,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 337,
+     "team": "LEE",
+     "web_name": "Aaronson",
+     "p_start": 0.4561,
+     "p_start_raw": 0.4561,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 338,
+     "team": "LEE",
+     "web_name": "Ampadu",
+     "p_start": 0.928,
+     "p_start_raw": 0.928,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 339,
+     "team": "LEE",
+     "web_name": "Longstaff",
+     "p_start": 0.0691,
+     "p_start_raw": 0.0691,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 341,
+     "team": "LEE",
+     "web_name": "Gnonto",
+     "p_start": 0.0,
+     "p_start_raw": 0.0396,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 342,
+     "team": "LEE",
+     "web_name": "Harrison",
+     "p_start": 0.0,
+     "p_start_raw": 0.0006,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 343,
+     "team": "LEE",
+     "web_name": "James",
+     "p_start": 0.205,
+     "p_start_raw": 0.205,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 344,
+     "team": "LEE",
+     "web_name": "Gruev",
+     "p_start": 0.0006,
+     "p_start_raw": 0.0022,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 345,
+     "team": "LEE",
+     "web_name": "Tanaka",
+     "p_start": 0.6305,
+     "p_start_raw": 0.6305,
+     "feed_xi": false,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 346,
+     "team": "LEE",
+     "web_name": "Calvert-Lewin",
+     "p_start": 0.9081,
+     "p_start_raw": 0.9081,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 347,
+     "team": "LEE",
+     "web_name": "Nmecha",
+     "p_start": 0.3105,
+     "p_start_raw": 0.3105,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 348,
+     "team": "LEE",
+     "web_name": "Piroe",
+     "p_start": 0.0,
+     "p_start_raw": 0.0022,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 349,
+     "team": "LEE",
+     "web_name": "Mateo Joseph",
+     "p_start": 0.0,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 385,
+     "team": "LEE",
+     "web_name": "Trafford",
+     "p_start": 0.9492,
+     "p_start_raw": 0.9492,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 598,
+     "team": "LEE",
+     "web_name": "Elvedi",
+     "p_start": 0.0129,
+     "p_start_raw": 0.0129,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 603,
+     "team": "LEE",
+     "web_name": "Lienou",
+     "p_start": 0.0001,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 604,
+     "team": "LEE",
+     "web_name": "Cresswell",
+     "p_start": 0.0001,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 625,
+     "team": "LEE",
+     "web_name": "Cairns",
+     "p_start": 0.0001,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 629,
+     "team": "LEE",
+     "web_name": "Zetterer",
+     "p_start": 0.0011,
+     "p_start_raw": 0.0011,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 641,
+     "team": "LEE",
+     "web_name": "Bard",
+     "p_start": 0.0014,
+     "p_start_raw": 0.0014,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 648,
+     "team": "LEE",
+     "web_name": "Bahoya",
+     "p_start": 0.0009,
+     "p_start_raw": 0.0009,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 350,
+     "team": "LIV",
+     "web_name": "A.Becker",
+     "p_start": 0.9334,
+     "p_start_raw": 0.9334,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 351,
+     "team": "LIV",
+     "web_name": "Mamardashvili",
+     "p_start": 0.0272,
+     "p_start_raw": 0.0272,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 352,
+     "team": "LIV",
+     "web_name": "Woodman",
+     "p_start": 0.0031,
+     "p_start_raw": 0.0031,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 353,
+     "team": "LIV",
+     "web_name": "Pecsi",
+     "p_start": 0.0,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 354,
+     "team": "LIV",
+     "web_name": "Jaros",
+     "p_start": 0.0,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 355,
+     "team": "LIV",
+     "web_name": "Davies",
+     "p_start": 0.0001,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 356,
+     "team": "LIV",
+     "web_name": "Virgil",
+     "p_start": 0.9692,
+     "p_start_raw": 0.9692,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 357,
+     "team": "LIV",
+     "web_name": "Frimpong",
+     "p_start": 0.6454,
+     "p_start_raw": 0.6454,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 358,
+     "team": "LIV",
+     "web_name": "Kerkez",
+     "p_start": 0.6721,
+     "p_start_raw": 0.6721,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 359,
+     "team": "LIV",
+     "web_name": "Gomez",
+     "p_start": 0.0,
+     "p_start_raw": 0.0317,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 360,
+     "team": "LIV",
+     "web_name": "Bradley",
+     "p_start": 0.0,
+     "p_start_raw": 0.0015,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 361,
+     "team": "LIV",
+     "web_name": "Lucky",
+     "p_start": 0.0001,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 362,
+     "team": "LIV",
+     "web_name": "Jacquet",
+     "p_start": 0.8145,
+     "p_start_raw": 0.8145,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 363,
+     "team": "LIV",
+     "web_name": "Leoni",
+     "p_start": 0.0,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 364,
+     "team": "LIV",
+     "web_name": "Tsimikas",
+     "p_start": 0.104,
+     "p_start_raw": 0.104,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 365,
+     "team": "LIV",
+     "web_name": "Ramsay",
+     "p_start": 0.0,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 366,
+     "team": "LIV",
+     "web_name": "Wirtz",
+     "p_start": 0.8842,
+     "p_start_raw": 0.8842,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 367,
+     "team": "LIV",
+     "web_name": "Gakpo",
+     "p_start": 0.8576,
+     "p_start_raw": 0.8576,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 368,
+     "team": "LIV",
+     "web_name": "Szoboszlai",
+     "p_start": 0.963,
+     "p_start_raw": 0.963,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 369,
+     "team": "LIV",
+     "web_name": "Ngumoha",
+     "p_start": 0.3923,
+     "p_start_raw": 0.3923,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 370,
+     "team": "LIV",
+     "web_name": "Chiesa",
+     "p_start": 0.0,
+     "p_start_raw": 0.0033,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 371,
+     "team": "LIV",
+     "web_name": "Gravenberch",
+     "p_start": 0.5766,
+     "p_start_raw": 0.5766,
+     "feed_xi": true,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 372,
+     "team": "LIV",
+     "web_name": "Mac Allister",
+     "p_start": 0.7764,
+     "p_start_raw": 0.7764,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 373,
+     "team": "LIV",
+     "web_name": "C.Jones",
+     "p_start": 0.0,
+     "p_start_raw": 0.0913,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 374,
+     "team": "LIV",
+     "web_name": "Endo",
+     "p_start": 0.002,
+     "p_start_raw": 0.002,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 375,
+     "team": "LIV",
+     "web_name": "Nyoni",
+     "p_start": 0.0013,
+     "p_start_raw": 0.0013,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 376,
+     "team": "LIV",
+     "web_name": "Bajcetic",
+     "p_start": 0.0,
+     "p_start_raw": 0.0003,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 377,
+     "team": "LIV",
+     "web_name": "Munoz",
+     "p_start": 0.8036,
+     "p_start_raw": 0.8036,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 378,
+     "team": "LIV",
+     "web_name": "McConnell",
+     "p_start": 0.0,
+     "p_start_raw": 0.0,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 379,
+     "team": "LIV",
+     "web_name": "Isak",
+     "p_start": 0.8509,
+     "p_start_raw": 0.8509,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 380,
+     "team": "LIV",
+     "web_name": "Ekitik\u00e9",
+     "p_start": 0.0,
+     "p_start_raw": 0.0069,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 381,
+     "team": "LIV",
+     "web_name": "Koumas",
+     "p_start": 0.0007,
+     "p_start_raw": 0.0007,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 382,
+     "team": "LIV",
+     "web_name": "Danns",
+     "p_start": 0.0001,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 383,
+     "team": "LIV",
+     "web_name": "Elliott",
+     "p_start": 0.0,
+     "p_start_raw": 0.0045,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 579,
+     "team": "LIV",
+     "web_name": "Araujo",
+     "p_start": 0.0135,
+     "p_start_raw": 0.0135,
+     "feed_xi": false,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 627,
+     "team": "LIV",
+     "web_name": "Barcola",
+     "p_start": 0.0011,
+     "p_start_raw": 0.0011,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 155,
+     "team": "MCI",
+     "web_name": "Enzo",
+     "p_start": 0.1485,
+     "p_start_raw": 0.1485,
+     "feed_xi": false,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 237,
+     "team": "MCI",
+     "web_name": "Ndiaye",
+     "p_start": 0.951,
+     "p_start_raw": 0.951,
+     "feed_xi": false,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 384,
+     "team": "MCI",
+     "web_name": "Donnarumma",
+     "p_start": 0.9094,
+     "p_start_raw": 0.9094,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 386,
+     "team": "MCI",
+     "web_name": "Bettinelli",
+     "p_start": 0.0001,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 387,
+     "team": "MCI",
+     "web_name": "O'Reilly",
+     "p_start": 0.9157,
+     "p_start_raw": 0.9157,
+     "feed_xi": true,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 388,
+     "team": "MCI",
+     "web_name": "Gu\u00e9hi",
+     "p_start": 0.8973,
+     "p_start_raw": 0.8973,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 389,
+     "team": "MCI",
+     "web_name": "Matheus N.",
+     "p_start": 0.1045,
+     "p_start_raw": 0.1045,
+     "feed_xi": true,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 390,
+     "team": "MCI",
+     "web_name": "R\u00faben",
+     "p_start": 0.8625,
+     "p_start_raw": 0.8625,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 391,
+     "team": "MCI",
+     "web_name": "Gvardiol",
+     "p_start": 0.8721,
+     "p_start_raw": 0.8721,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 392,
+     "team": "MCI",
+     "web_name": "A\u00eft-Nouri",
+     "p_start": 0.0777,
+     "p_start_raw": 0.0777,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 393,
+     "team": "MCI",
+     "web_name": "Khusanov",
+     "p_start": 0.8611,
+     "p_start_raw": 0.8611,
+     "feed_xi": false,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 394,
+     "team": "MCI",
+     "web_name": "Alleyne",
+     "p_start": 0.0,
+     "p_start_raw": 0.0005,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 395,
+     "team": "MCI",
+     "web_name": "Lewis",
+     "p_start": 0.2729,
+     "p_start_raw": 0.2729,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 396,
+     "team": "MCI",
+     "web_name": "Vitor Reis",
+     "p_start": 0.0003,
+     "p_start_raw": 0.0003,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 397,
+     "team": "MCI",
+     "web_name": "Semenyo",
+     "p_start": 0.8984,
+     "p_start_raw": 0.8984,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 398,
+     "team": "MCI",
+     "web_name": "Foden",
+     "p_start": 0.8408,
+     "p_start_raw": 0.8408,
+     "feed_xi": true,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 399,
+     "team": "MCI",
+     "web_name": "Cherki",
+     "p_start": 0.8538,
+     "p_start_raw": 0.8538,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 400,
+     "team": "MCI",
+     "web_name": "Doku",
+     "p_start": 0.0,
+     "p_start_raw": 0.046,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 402,
+     "team": "MCI",
+     "web_name": "Rodrigo",
+     "p_start": 0.0,
+     "p_start_raw": 0.0245,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 404,
+     "team": "MCI",
+     "web_name": "Reijnders",
+     "p_start": 0.0,
+     "p_start_raw": 0.0509,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 406,
+     "team": "MCI",
+     "web_name": "Kova\u010di\u0107",
+     "p_start": 0.1212,
+     "p_start_raw": 0.1212,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 407,
+     "team": "MCI",
+     "web_name": "Echeverri",
+     "p_start": 0.0,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 408,
+     "team": "MCI",
+     "web_name": "Phillips",
+     "p_start": 0.0,
+     "p_start_raw": 0.0006,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 409,
+     "team": "MCI",
+     "web_name": "Mukasa",
+     "p_start": 0.0,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 410,
+     "team": "MCI",
+     "web_name": "Monga",
+     "p_start": 0.0,
+     "p_start_raw": 0.0053,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 411,
+     "team": "MCI",
+     "web_name": "Haaland",
+     "p_start": 0.9136,
+     "p_start_raw": 0.9136,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 481,
+     "team": "MCI",
+     "web_name": "Anderson",
+     "p_start": 0.8047,
+     "p_start_raw": 0.8047,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 587,
+     "team": "MCI",
+     "web_name": "Rulli",
+     "p_start": 0.0001,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 616,
+     "team": "MCI",
+     "web_name": "Bouaddi",
+     "p_start": 0.0023,
+     "p_start_raw": 0.0023,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 621,
+     "team": "MCI",
+     "web_name": "McAidoo",
+     "p_start": 0.0005,
+     "p_start_raw": 0.0005,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 622,
+     "team": "MCI",
+     "web_name": "Braithwaite",
+     "p_start": 0.0008,
+     "p_start_raw": 0.0008,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 628,
+     "team": "MCI",
+     "web_name": "Allan",
+     "p_start": 0.0008,
+     "p_start_raw": 0.0008,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 653,
+     "team": "MCI",
+     "web_name": "Samba",
+     "p_start": 0.0008,
+     "p_start_raw": 0.0008,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 405,
+     "team": "NEW",
+     "web_name": "N.Gonzalez",
+     "p_start": 0.7142,
+     "p_start_raw": 0.7142,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 442,
+     "team": "NEW",
+     "web_name": "Pope",
+     "p_start": 0.0623,
+     "p_start_raw": 0.0623,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 443,
+     "team": "NEW",
+     "web_name": "Gillespie",
+     "p_start": 0.0001,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 444,
+     "team": "NEW",
+     "web_name": "Jaouen",
+     "p_start": 0.0001,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 445,
+     "team": "NEW",
+     "web_name": "Thiaw",
+     "p_start": 0.9462,
+     "p_start_raw": 0.9462,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 446,
+     "team": "NEW",
+     "web_name": "Sch\u00e4r",
+     "p_start": 0.1673,
+     "p_start_raw": 0.1673,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 447,
+     "team": "NEW",
+     "web_name": "Botman",
+     "p_start": 0.9116,
+     "p_start_raw": 0.9116,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 448,
+     "team": "NEW",
+     "web_name": "Burn",
+     "p_start": 0.0,
+     "p_start_raw": 0.0527,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 449,
+     "team": "NEW",
+     "web_name": "Hall",
+     "p_start": 0.9479,
+     "p_start_raw": 0.9479,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 450,
+     "team": "NEW",
+     "web_name": "Livramento",
+     "p_start": 0.0,
+     "p_start_raw": 0.005,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 451,
+     "team": "NEW",
+     "web_name": "A.Murphy",
+     "p_start": 0.0,
+     "p_start_raw": 0.0003,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 453,
+     "team": "NEW",
+     "web_name": "Barnes",
+     "p_start": 0.8024,
+     "p_start_raw": 0.8024,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 454,
+     "team": "NEW",
+     "web_name": "Elanga",
+     "p_start": 0.845,
+     "p_start_raw": 0.845,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 456,
+     "team": "NEW",
+     "web_name": "J.Ramsey",
+     "p_start": 0.2455,
+     "p_start_raw": 0.2455,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 457,
+     "team": "NEW",
+     "web_name": "J.Murphy",
+     "p_start": 0.1291,
+     "p_start_raw": 0.1291,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 458,
+     "team": "NEW",
+     "web_name": "Joelinton",
+     "p_start": 0.0,
+     "p_start_raw": 0.0604,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 459,
+     "team": "NEW",
+     "web_name": "L.Miley",
+     "p_start": 0.8665,
+     "p_start_raw": 0.8665,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 460,
+     "team": "NEW",
+     "web_name": "Willock",
+     "p_start": 0.5887,
+     "p_start_raw": 0.5887,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 461,
+     "team": "NEW",
+     "web_name": "Tour\u00e9",
+     "p_start": 0.0002,
+     "p_start_raw": 0.0002,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 462,
+     "team": "NEW",
+     "web_name": "Steur",
+     "p_start": 0.1739,
+     "p_start_raw": 0.1739,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 463,
+     "team": "NEW",
+     "web_name": "Woltemade",
+     "p_start": 0.0,
+     "p_start_raw": 0.31,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 464,
+     "team": "NEW",
+     "web_name": "Wissa",
+     "p_start": 0.7889,
+     "p_start_raw": 0.7889,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 465,
+     "team": "NEW",
+     "web_name": "Osula",
+     "p_start": 0.0,
+     "p_start_raw": 0.0631,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 466,
+     "team": "NEW",
+     "web_name": "Neave",
+     "p_start": 0.0,
+     "p_start_raw": 0.0003,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 559,
+     "team": "NEW",
+     "web_name": "Bamba",
+     "p_start": 0.0007,
+     "p_start_raw": 0.0007,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 567,
+     "team": "NEW",
+     "web_name": "Horn\u00ed\u010dek",
+     "p_start": 0.9581,
+     "p_start_raw": 0.9581,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 593,
+     "team": "NEW",
+     "web_name": "Dedi\u0107",
+     "p_start": 0.9551,
+     "p_start_raw": 0.9551,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 609,
+     "team": "NEW",
+     "web_name": "Shahar",
+     "p_start": 0.0001,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 634,
+     "team": "NEW",
+     "web_name": "Fernandez-Pardo",
+     "p_start": 0.0015,
+     "p_start_raw": 0.0015,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 167,
+     "team": "NOT",
+     "web_name": "Delap",
+     "p_start": 0.4718,
+     "p_start_raw": 0.4718,
+     "feed_xi": false,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 201,
+     "team": "NOT",
+     "web_name": "Mu\u00f1oz",
+     "p_start": 0.0794,
+     "p_start_raw": 0.0794,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 467,
+     "team": "NOT",
+     "web_name": "Sels",
+     "p_start": 0.963,
+     "p_start_raw": 0.963,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 468,
+     "team": "NOT",
+     "web_name": "John",
+     "p_start": 0.0018,
+     "p_start_raw": 0.0018,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 469,
+     "team": "NOT",
+     "web_name": "N.Williams",
+     "p_start": 0.8897,
+     "p_start_raw": 0.8897,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 470,
+     "team": "NOT",
+     "web_name": "Morato",
+     "p_start": 0.0,
+     "p_start_raw": 0.0594,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 471,
+     "team": "NOT",
+     "web_name": "Milenkovi\u0107",
+     "p_start": 0.9629,
+     "p_start_raw": 0.9629,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 472,
+     "team": "NOT",
+     "web_name": "Murillo",
+     "p_start": 0.9247,
+     "p_start_raw": 0.9247,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 473,
+     "team": "NOT",
+     "web_name": "Aina",
+     "p_start": 0.854,
+     "p_start_raw": 0.854,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 474,
+     "team": "NOT",
+     "web_name": "Jair Cunha",
+     "p_start": 0.8285,
+     "p_start_raw": 0.8285,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 475,
+     "team": "NOT",
+     "web_name": "Savona",
+     "p_start": 0.0,
+     "p_start_raw": 0.0043,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 476,
+     "team": "NOT",
+     "web_name": "O.Richards",
+     "p_start": 0.0001,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 477,
+     "team": "NOT",
+     "web_name": "Abbott",
+     "p_start": 0.0,
+     "p_start_raw": 0.002,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 478,
+     "team": "NOT",
+     "web_name": "Netz",
+     "p_start": 0.1269,
+     "p_start_raw": 0.1269,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 479,
+     "team": "NOT",
+     "web_name": "Bindon",
+     "p_start": 0.0,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 480,
+     "team": "NOT",
+     "web_name": "Gibbs-White",
+     "p_start": 0.8794,
+     "p_start_raw": 0.8794,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 482,
+     "team": "NOT",
+     "web_name": "Hudson-Odoi",
+     "p_start": 0.0365,
+     "p_start_raw": 0.0365,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 483,
+     "team": "NOT",
+     "web_name": "Ndoye",
+     "p_start": 0.58,
+     "p_start_raw": 0.58,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 484,
+     "team": "NOT",
+     "web_name": "Hutchinson",
+     "p_start": 0.0,
+     "p_start_raw": 0.1158,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 485,
+     "team": "NOT",
+     "web_name": "Bakwa",
+     "p_start": 0.0,
+     "p_start_raw": 0.0171,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 486,
+     "team": "NOT",
+     "web_name": "McAtee",
+     "p_start": 0.7284,
+     "p_start_raw": 0.7284,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 487,
+     "team": "NOT",
+     "web_name": "Dominguez",
+     "p_start": 0.077,
+     "p_start_raw": 0.077,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 488,
+     "team": "NOT",
+     "web_name": "I.Sangar\u00e9",
+     "p_start": 0.1957,
+     "p_start_raw": 0.1957,
+     "feed_xi": true,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 489,
+     "team": "NOT",
+     "web_name": "Yates",
+     "p_start": 0.0534,
+     "p_start_raw": 0.0534,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 490,
+     "team": "NOT",
+     "web_name": "Wood",
+     "p_start": 0.0844,
+     "p_start_raw": 0.0844,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 491,
+     "team": "NOT",
+     "web_name": "Igor Jesus",
+     "p_start": 0.9242,
+     "p_start_raw": 0.9242,
+     "feed_xi": true,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 493,
+     "team": "NOT",
+     "web_name": "Kalimuendo",
+     "p_start": 0.0002,
+     "p_start_raw": 0.0002,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 558,
+     "team": "NOT",
+     "web_name": "Schlager",
+     "p_start": 0.7989,
+     "p_start_raw": 0.7989,
+     "feed_xi": false,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 581,
+     "team": "NOT",
+     "web_name": "Diomande",
+     "p_start": 0.0001,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 590,
+     "team": "NOT",
+     "web_name": "Benda",
+     "p_start": 0.0001,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 501,
+     "team": "SUN",
+     "web_name": "Danso",
+     "p_start": 0.0589,
+     "p_start_raw": 0.0589,
+     "feed_xi": false,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 529,
+     "team": "SUN",
+     "web_name": "Roefs",
+     "p_start": 0.9625,
+     "p_start_raw": 0.9625,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 530,
+     "team": "SUN",
+     "web_name": "Patterson",
+     "p_start": 0.0,
+     "p_start_raw": 0.0002,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 531,
+     "team": "SUN",
+     "web_name": "Ellborg",
+     "p_start": 0.0119,
+     "p_start_raw": 0.0119,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 532,
+     "team": "SUN",
+     "web_name": "Ballard",
+     "p_start": 0.9113,
+     "p_start_raw": 0.9113,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 533,
+     "team": "SUN",
+     "web_name": "Mukiele",
+     "p_start": 0.9248,
+     "p_start_raw": 0.9248,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 534,
+     "team": "SUN",
+     "web_name": "Hume",
+     "p_start": 0.9098,
+     "p_start_raw": 0.9098,
+     "feed_xi": true,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 535,
+     "team": "SUN",
+     "web_name": "Alderete",
+     "p_start": 0.0895,
+     "p_start_raw": 0.0895,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 536,
+     "team": "SUN",
+     "web_name": "Reinildo",
+     "p_start": 0.9204,
+     "p_start_raw": 0.9204,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 537,
+     "team": "SUN",
+     "web_name": "Seelt",
+     "p_start": 0.0,
+     "p_start_raw": 0.0009,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 538,
+     "team": "SUN",
+     "web_name": "Hjelde",
+     "p_start": 0.0,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 539,
+     "team": "SUN",
+     "web_name": "O'Nien",
+     "p_start": 0.1249,
+     "p_start_raw": 0.1249,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 540,
+     "team": "SUN",
+     "web_name": "Masuaku",
+     "p_start": 0.0,
+     "p_start_raw": 0.0006,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 541,
+     "team": "SUN",
+     "web_name": "Meunier",
+     "p_start": 0.931,
+     "p_start_raw": 0.931,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 542,
+     "team": "SUN",
+     "web_name": "E.Le F\u00e9e",
+     "p_start": 0.9242,
+     "p_start_raw": 0.9242,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 543,
+     "team": "SUN",
+     "web_name": "Diarra",
+     "p_start": 0.0,
+     "p_start_raw": 0.1672,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 544,
+     "team": "SUN",
+     "web_name": "Xhaka",
+     "p_start": 0.9428,
+     "p_start_raw": 0.9428,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 545,
+     "team": "SUN",
+     "web_name": "Sadiki",
+     "p_start": 0.9497,
+     "p_start_raw": 0.9497,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 546,
+     "team": "SUN",
+     "web_name": "Adingra",
+     "p_start": 0.0,
+     "p_start_raw": 0.0013,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 547,
+     "team": "SUN",
+     "web_name": "Mundle",
+     "p_start": 0.0082,
+     "p_start_raw": 0.0082,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 548,
+     "team": "SUN",
+     "web_name": "Rigg",
+     "p_start": 0.0749,
+     "p_start_raw": 0.0749,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 549,
+     "team": "SUN",
+     "web_name": "Talbi",
+     "p_start": 0.1056,
+     "p_start_raw": 0.1056,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 550,
+     "team": "SUN",
+     "web_name": "Jocelin.T",
+     "p_start": 0.0013,
+     "p_start_raw": 0.0013,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 551,
+     "team": "SUN",
+     "web_name": "N.Angulo",
+     "p_start": 0.6933,
+     "p_start_raw": 0.6933,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 552,
+     "team": "SUN",
+     "web_name": "Brobbey",
+     "p_start": 0.7212,
+     "p_start_raw": 0.7212,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 553,
+     "team": "SUN",
+     "web_name": "Isidor",
+     "p_start": 0.1601,
+     "p_start_raw": 0.1601,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 612,
+     "team": "SUN",
+     "web_name": "Methalie",
+     "p_start": 0.0002,
+     "p_start_raw": 0.0002,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 613,
+     "team": "SUN",
+     "web_name": "Ahoka",
+     "p_start": 0.0002,
+     "p_start_raw": 0.0002,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 646,
+     "team": "SUN",
+     "web_name": "Fofana",
+     "p_start": 0.001,
+     "p_start_raw": 0.001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 651,
+     "team": "SUN",
+     "web_name": "J.Angulo",
+     "p_start": 0.0014,
+     "p_start_raw": 0.0014,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 112,
+     "team": "TOT",
+     "web_name": "Van Hecke",
+     "p_start": 0.8986,
+     "p_start_raw": 0.8986,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 147,
+     "team": "TOT",
+     "web_name": "Tosin",
+     "p_start": 0.0203,
+     "p_start_raw": 0.0203,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 401,
+     "team": "TOT",
+     "web_name": "Marmoush",
+     "p_start": 0.832,
+     "p_start_raw": 0.832,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 403,
+     "team": "TOT",
+     "web_name": "S\u00e1vio",
+     "p_start": 0.4104,
+     "p_start_raw": 0.4104,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 455,
+     "team": "TOT",
+     "web_name": "Tonali",
+     "p_start": 0.8445,
+     "p_start_raw": 0.8445,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 494,
+     "team": "TOT",
+     "web_name": "Vicario",
+     "p_start": 0.0,
+     "p_start_raw": 0.0074,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 495,
+     "team": "TOT",
+     "web_name": "Austin",
+     "p_start": 0.0011,
+     "p_start_raw": 0.0011,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 496,
+     "team": "TOT",
+     "web_name": "Kinsky",
+     "p_start": 0.9508,
+     "p_start_raw": 0.9508,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 497,
+     "team": "TOT",
+     "web_name": "Dubravka",
+     "p_start": 0.0592,
+     "p_start_raw": 0.0592,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 498,
+     "team": "TOT",
+     "web_name": "Senesi",
+     "p_start": 0.0813,
+     "p_start_raw": 0.0813,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 499,
+     "team": "TOT",
+     "web_name": "Pedro Porro",
+     "p_start": 0.9377,
+     "p_start_raw": 0.9377,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 500,
+     "team": "TOT",
+     "web_name": "Romero",
+     "p_start": 0.0,
+     "p_start_raw": 0.0089,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 502,
+     "team": "TOT",
+     "web_name": "Robertson",
+     "p_start": 0.5832,
+     "p_start_raw": 0.5832,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 503,
+     "team": "TOT",
+     "web_name": "Van de Ven",
+     "p_start": 0.9293,
+     "p_start_raw": 0.9293,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 505,
+     "team": "TOT",
+     "web_name": "Spence",
+     "p_start": 0.0,
+     "p_start_raw": 0.0444,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 506,
+     "team": "TOT",
+     "web_name": "Udogie",
+     "p_start": 0.3529,
+     "p_start_raw": 0.3529,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 507,
+     "team": "TOT",
+     "web_name": "Phillips",
+     "p_start": 0.0,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 508,
+     "team": "TOT",
+     "web_name": "Davies",
+     "p_start": 0.0034,
+     "p_start_raw": 0.0034,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 509,
+     "team": "TOT",
+     "web_name": "Byfield",
+     "p_start": 0.0001,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 510,
+     "team": "TOT",
+     "web_name": "Rowswell",
+     "p_start": 0.0001,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 511,
+     "team": "TOT",
+     "web_name": "Souza",
+     "p_start": 0.0,
+     "p_start_raw": 0.0025,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 512,
+     "team": "TOT",
+     "web_name": "Kudus",
+     "p_start": 0.0667,
+     "p_start_raw": 0.0667,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 513,
+     "team": "TOT",
+     "web_name": "Xavi",
+     "p_start": 0.0,
+     "p_start_raw": 0.007,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 514,
+     "team": "TOT",
+     "web_name": "Tel",
+     "p_start": 0.7239,
+     "p_start_raw": 0.7239,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 515,
+     "team": "TOT",
+     "web_name": "Maddison",
+     "p_start": 0.0421,
+     "p_start_raw": 0.0561,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 516,
+     "team": "TOT",
+     "web_name": "Bentancur",
+     "p_start": 0.7677,
+     "p_start_raw": 0.7677,
+     "feed_xi": true,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 517,
+     "team": "TOT",
+     "web_name": "Odobert",
+     "p_start": 0.0,
+     "p_start_raw": 0.0011,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 518,
+     "team": "TOT",
+     "web_name": "P.M.Sarr",
+     "p_start": 0.0,
+     "p_start_raw": 0.0608,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 519,
+     "team": "TOT",
+     "web_name": "Gallagher",
+     "p_start": 0.1251,
+     "p_start_raw": 0.1251,
+     "feed_xi": false,
+     "started": true,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 520,
+     "team": "TOT",
+     "web_name": "Bergvall",
+     "p_start": 0.0768,
+     "p_start_raw": 0.0768,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 521,
+     "team": "TOT",
+     "web_name": "Kulusevski",
+     "p_start": 0.0,
+     "p_start_raw": 0.0013,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 522,
+     "team": "TOT",
+     "web_name": "Gray",
+     "p_start": 0.6949,
+     "p_start_raw": 0.6949,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 523,
+     "team": "TOT",
+     "web_name": "Moore",
+     "p_start": 0.0,
+     "p_start_raw": 0.1793,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 524,
+     "team": "TOT",
+     "web_name": "Olusesi",
+     "p_start": 0.0001,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 525,
+     "team": "TOT",
+     "web_name": "Fernandes",
+     "p_start": 0.9319,
+     "p_start_raw": 0.9319,
+     "feed_xi": true,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 526,
+     "team": "TOT",
+     "web_name": "Solanke",
+     "p_start": 0.1129,
+     "p_start_raw": 0.1129,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 527,
+     "team": "TOT",
+     "web_name": "Richarlison",
+     "p_start": 0.0,
+     "p_start_raw": 0.137,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 528,
+     "team": "TOT",
+     "web_name": "Scarlett",
+     "p_start": 0.0,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 578,
+     "team": "TOT",
+     "web_name": "Mudryk",
+     "p_start": 0.0016,
+     "p_start_raw": 0.0016,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    },
+    {
+     "player_id": 601,
+     "team": "TOT",
+     "web_name": "Williams-Barnett",
+     "p_start": 0.0001,
+     "p_start_raw": 0.0001,
+     "feed_xi": false,
+     "started": false,
+     "truth": "player_gw"
+    }
+   ]
+  }
+ },
+ "pooled": {
+  "gameweeks": [
+   3
+  ],
+  "band_metrics": {
+   "n": 46,
+   "base_rate_started": 0.63,
+   "feed_accuracy": 0.761,
+   "feed_accuracy_ci95": [
+    0.621,
+    0.861
+   ],
+   "model_accuracy": 0.609,
+   "model_brier": 0.2295,
+   "feed_brier": 0.2391,
+   "disagreements": 15,
+   "feed_right_when_disagree": 0.733,
+   "implied_points_per_season": 41.7,
+   "implied_points_ci95": [
+    14.0,
+    61.5
+   ]
+  },
+  "all_metrics": {
+   "n": 533,
+   "base_rate_started": 0.33,
+   "feed_accuracy": 0.925,
+   "feed_accuracy_ci95": [
+    0.899,
+    0.944
+   ],
+   "model_accuracy": 0.917,
+   "model_brier": 0.0656,
+   "feed_brier": 0.075,
+   "disagreements": 26,
+   "feed_right_when_disagree": 0.577,
+   "implied_points_per_season": 74.2,
+   "implied_points_ci95": [
+    69.1,
+    78.0
+   ]
+  },
+  "xi_precision": {
+   "feed_xi_started": 0.886,
+   "model_xi_started": 0.881,
+   "n_teams": 16
+  },
+  "rows_needed_for_estimate": 450,
+  "priceable": false
+ },
+ "updated_utc": "2026-09-06T08:37:29Z"
+}

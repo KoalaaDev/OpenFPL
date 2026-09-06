@@ -765,3 +765,64 @@ it becomes priceable after ~5 gameweeks (~90 ambiguous rows each, ~450
 observations) rather than the season-plus a decision backtest would need. The
 bar is the model's own ~55% in that band, and each point above it is worth
 roughly `(accuracy − 0.55)/0.45 × 89` points a season.
+
+## E15. The forward tests at 2026-27 GW3 — what is runnable, and the first lineup-feed reading
+
+* **Question.** Three collectors were started so that champion/challenger
+  tests could run once their data existed (E5, E8, the manager panel). With
+  results through GW3 (8 of 10 GW3 matches at the time of writing), which of
+  them can be run, and what does the first reading say?
+* **Inventory, checked against the files rather than assumed.**
+  - Predicted lineups (RotoWire): collection began 2026-08-31, so **GW3 is the
+    first gameweek with a pre-deadline forecast** — 19 of 20 clubs had one
+    before the 17:30Z cutoff. One gameweek of the ~5-10 E8b asks for.
+  - Elite-manager panel: GW3 picks are the **first out-of-sample gameweek**
+    (the panel was enumerated after GW2, so GW1-2 are conditioned). 10-15
+    needed. Not testable.
+  - Availability change log: 1,606 observations back to 2026-07-26 via the
+    raw snapshots; the availability->xMins challenger needs a season. Not
+    testable. It DID serve as the point-in-time overlay for this test.
+  - Market snapshots (deadline decay): 32 snapshots over GW3-4. Not testable.
+* **Three defects had to be fixed before any number could be trusted**, all
+  silent, all found by reading the GW2 post-mortem (see CLAUDE.md, "Three
+  silent live-season defects"): the cached minutes regressor was loading with
+  no intercept (xgboost 3.2-written file read by 3.0.2 — E[min | plays] of 23
+  for Haaland; the whole live board deflated ~4x), a pull during Monday's
+  kickoff had written phantom 0-minute GW2 rows for 29 Arsenal/Villa players,
+  and the lineup archive filed every post-deadline GW3 XI under GW4 because it
+  used FPL's `is_next`. Guards: a self-check probe in the model cache, a
+  finished-fixture filter + `verify` invariant, and kickoff-derived labelling.
+  FPL's `finished` flag was also observed lagging full time by two days;
+  `finished_provisional` is now the boundary between a result and a match in
+  progress.
+* **Design of the reading** (`python -m fpl_engine lineup-feed --gw 3`,
+  `fpl_engine/lineup_feed.py`). Forecast = last *predicted* XI observed
+  strictly before first kickoff - 90 min. Model = the shipped minutes model
+  re-run as of first kickoff with the availability overlay taken from the
+  change log **as it stood at the deadline** (652 rows), not today's status.
+  Truth = `player_gw.starts` for the 16 clubs whose fixture had finished
+  (falls back to the confirmed XI until results are pulled; the 12-club
+  confirmed-XI reading earlier the same day gave 0.750 vs 0.583 on n=36). All
+  RotoWire names resolved; none dropped.
+* **Result, GW3 only (n = 46 rows in the 0.30-0.70 band, 533 overall).**
+
+  | | n | feed acc | model acc (p>=0.5) | Brier feed / model |
+  |---|---|---|---|---|
+  | ambiguous band | 46 | **0.761** [0.62, 0.86] | 0.609 | 0.239 / 0.230 |
+  | all rows | 533 | 0.925 | 0.917 | 0.075 / 0.066 |
+  | XI precision (16 clubs) | | feed 0.886 | model top-11 0.881 | |
+
+  Where the two disagree in the band (15 rows) the feed is right 73% of the
+  time. On the E8b line that is **+41.7 points a season [+14, +62]** — and the
+  model's own band accuracy of 0.61 is consistent with E8's ~0.55.
+* **Verdict: promising, not priceable.** One gameweek; 46 band rows against
+  the ~450 the pre-registration asks for (the band is ~45-60 rows a gameweek
+  once availability zeroes the ruled-out, not the ~90 E8b estimated, so budget
+  ~8-10 gameweeks). The Brier scores say the model's *probabilities* are
+  still slightly better calibrated than the feed's hard 0/1 in the band, so
+  the eventual integration is a blend, not a replacement. Nothing is wired
+  into the engine. The reading accumulates in `data/lineup_feed_2026-27.json`
+  with row-level records, so the pooled estimate is exact each week.
+* **Also run.** GW2 post-mortem on the repaired cache and completed results:
+  predicted 895 vs actual 891 (100%), Spearman 0.698, model captain Bruno
+  Fernandes = the week's top scorer (23).

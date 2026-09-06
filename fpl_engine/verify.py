@@ -60,6 +60,10 @@ def _has_table(conn, name: str) -> bool:
         (name,)).fetchone())
 
 
+def _has_column(conn, table: str, column: str) -> bool:
+    return any(r[1] == column for r in conn.execute(f"PRAGMA table_info({table})"))
+
+
 def _one(conn, sql, params=()):
     row = conn.execute(sql, params).fetchone()
     return row[0] if row else 0
@@ -100,6 +104,21 @@ def run(conn) -> Report:
         err("identity.code_present",
             "player rows without the stable cross-season code", n)
 
+    # ---- point-in-time: no rows for matches that have not finished ---------
+    # FPL's element-summary lists a fixture the moment it goes live, with
+    # zero minutes; a pull during kickoff wrote every player of both clubs a
+    # fake 0-minute appearance, which the minutes model then read as "did not
+    # play". The ingest now skips unfinished fixtures; this catches a regression
+    # and any row left over from before the fix.
+    n = _one(conn, "SELECT COUNT(*) FROM player_gw pg JOIN fixture f "
+                   "ON f.season=pg.season AND f.fixture_id=pg.fixture_id "
+                   "WHERE pg.source='fpl' AND f.finished=0")
+    if n:
+        err("time.no_rows_for_unfinished_fixtures",
+            "player_gw rows attached to fixtures FPL has not marked finished "
+            "(a pull during kickoff writes 0-minute phantom appearances); "
+            "re-run `pull` once the matches are over", n)
+
     # ---- referential integrity --------------------------------------------
     n = _one(conn, "SELECT COUNT(*) FROM player_gw pg LEFT JOIN player p "
                    "ON p.season=pg.season AND p.player_id=pg.player_id "
@@ -123,7 +142,13 @@ def run(conn) -> Report:
     # a different footballer one season later. Joining a Transfermarkt player
     # through `player_id` hands his injury and transfer record to whoever
     # inherited his number, silently. Identity travels on `player.code`.
-    if _has_table(conn, "tm_player"):
+    if _has_table(conn, "tm_player") and not _has_column(conn, "tm_player",
+                                                         "player_code"):
+        warn("identity.tm_player_schema",
+             "tm_player predates the code-keyed identity (no player_code "
+             "column) — the Transfermarkt checks were skipped; re-run "
+             "`python -m fpl_engine transfermarkt` to rebuild it")
+    elif _has_table(conn, "tm_player"):
         n = _one(conn, "SELECT COUNT(*) FROM tm_player m WHERE m.player_code "
                        "IS NOT NULL AND NOT EXISTS (SELECT 1 FROM player p "
                        "WHERE p.code = m.player_code)")

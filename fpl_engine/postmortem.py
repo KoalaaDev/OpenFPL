@@ -143,6 +143,12 @@ def run(conn, season: str | None = None, gw: int | None = None,
 
 
 def print_report(rep: dict) -> None:
+    # player names carry diacritics; a cp1252 console must not abort the report
+    try:
+        import sys
+        sys.stdout.reconfigure(errors="replace")
+    except (AttributeError, ValueError):
+        pass
     print(f"\nPost-mortem {rep['season']} GW{rep['gw']}: "
           f"spearman {rep['spearman']} · top-20 hits {rep['top20_hits']}/20 · "
           f"captain {rep['captain_pick']} -> {rep['captain_actual']:.0f} pts "

@@ -286,3 +286,24 @@ def test_fixture_congestion_is_counted_in_days_not_in_the_frames_time_unit():
     assert list(out["days_rest"].round(2)[1:]) == [3.21, 3.79, 39.0]
     # three matches inside a fortnight, then a lone one after the gap
     assert list(out["team_matches_14d"]) == [0.0, 1.0, 2.0, 0.0]
+
+
+def test_a_cache_that_does_not_reproduce_its_own_probe_is_rejected():
+    """A model file is only as good as the library reading it. xgboost 3.2
+    writes ``base_score`` as a list; 3.0 reads that as no intercept and every
+    E[minutes | plays] came back shifted by the target mean (23 for a nailed
+    starter) while P(start) was untouched — nothing downstream raised. The
+    meta stores what the fitted models said about one row, and load re-asks."""
+    feats = mm.FEATURES
+    probe = {"x": [1.0] * len(feats), "reg": 88.0, "start": 0.9,
+             "clf": [0.05, 0.05, 0.9]}
+    good = (_StubClf((0.05, 0.05, 0.9)), _StubReg(88.0), _StubStart(0.9))
+    assert mm._probe_ok(probe, feats, *good)
+    # the failure that happened: intercept lost, regression shifted
+    assert not mm._probe_ok(probe, feats, good[0], _StubReg(23.0), good[2])
+    # a drifted classifier is caught too
+    assert not mm._probe_ok(probe, feats, _StubClf((0.3, 0.3, 0.4)),
+                            good[1], good[2])
+    assert not mm._probe_ok(probe, feats, good[0], good[1], _StubStart(0.5))
+    # a cache written before the guard existed carries no probe: retrain
+    assert not mm._probe_ok(None, feats, *good)

@@ -1702,6 +1702,67 @@ been documenting a fixture-congestion signal it did not have.
 Divide by a `Timedelta`, never by a magic constant against an integer view;
 `tests/test_minutes_model.py` pins it.
 
+## Three silent live-season defects found at 2026-27 GW3
+
+None of them raised anything; all three were found by reading the GW2
+post-mortem instead of trusting it. Each now has a guard.
+
+**1. The cached minutes regressor was loading with no intercept.** The
+`models/xpts/*.json` files committed on 2026-08-31 were written by xgboost
+**3.2.0**, which stores `base_score` as a list; this machine runs **3.0.2**,
+which reads that as "no intercept" and returns every regression prediction
+shifted down by the target mean. E[minutes | plays] came back as **23 for
+Haaland and Van Dijk instead of 88**, P(start) was untouched (the classifiers'
+base score is not learned), and since exposure multiplies every rate the whole
+live board was deflated by ~4x while still *ranking* plausibly — Haaland
+projected 3.2 for GW2, the top over-predictions were all goalkeepers with
+`e_min` 25. The GW1 post-mortem (run on the 08-27 cache) was sane; GW2 was not.
+`minutes_model.train` now stores a **probe** in the meta — one training row and
+what the three fitted models said about it — and `load` re-asks; a cache that
+does not reproduce itself within tolerance is treated as stale and retrained
+(`tests/test_minutes_model.py`). `plug.txt` pins `xgboost==3.0.2`; whatever
+environment trained the 08-31 cache did not honour it. **Never commit a model
+file trained under a different xgboost minor version than the one pinned.**
+
+**2. A pull during kickoff writes phantom 0-minute appearances.** FPL's
+`element-summary` lists a fixture in `history` the moment it goes live, with
+zero minutes. The last GW2 pull ran during Monday's Aston Villa–Arsenal, so
+all 29 Arsenal and Villa players carried a 0-minute GW2 row — which the
+minutes model read as "did not play" in their trailing window for GW3.
+`ingest_current_season_history` now skips fixtures FPL has not marked
+`finished`, and `verify` fails on any `player_gw` row attached to an
+unfinished fixture (`time.no_rows_for_unfinished_fixtures`). Rows already
+written are overwritten by the next pull; there is no other repair.
+
+**3. The lineup archive was filing gameweek N's weekend XIs under N+1.** The
+collector labelled every row with FPL's `is_next`, which flips at Friday's
+deadline, while RotoWire keeps showing the gameweek in progress until its last
+match — so all 253 post-deadline GW3 rows (every confirmed XI, i.e. the ground
+truth) were labelled GW4, and 44 rows for the Monday GW2 match were labelled
+GW3. The parser now reads each match's own date (`lineup__time`, "September 6
+9:00 AM ET", converted from New York time) and the gameweek is the last
+bootstrap deadline at or before that kickoff (`actions.lineup_gw`). The
+archive gained a `kickoff_utc` column, the existing rows were relabelled from
+the fixture calendar, and the change-detection fingerprint includes the
+kickoff — without that, a settled side naming the same eleven for next week
+would have had **no** pre-deadline forecast on file for that gameweek.
+
+### Where the forward-collected tests stand (2026-27 GW3)
+
+`python -m fpl_engine lineup-feed --gw N` scores the archived RotoWire
+forecast against the model in the ambiguous band, point-in-time on both sides
+(forecast strictly before deadline; model re-run as of first kickoff with the
+availability overlay **as the change log stood at the deadline**; truth =
+`player_gw.starts`, or the confirmed XI until results are pulled). First
+reading, GW3, 16 clubs, 46 band rows: feed **0.761** [0.62, 0.86] vs the model's
+0.609, +41.7 pts/season on the E8b line — **one gameweek, not priceable**; the
+band is ~45-60 rows a gameweek, so budget 8-10 gameweeks. Results accumulate in
+`data/lineup_feed_<season>.json`. The manager panel (GW3 = first out-of-sample
+gameweek, 10-15 needed), the availability->xMins challenger (a season) and the
+deadline-decay study (a few gameweeks of snapshots) are not yet testable. Full
+detail in RESEARCH_LOG E15. Run `postmortem` after every pull; it is how all
+three defects above were found.
+
 ## The tactics expert: six families, one survivor, and it is not tactics
 
 Asked as a pre-registered question — *does manager/tactical context carry
@@ -1917,6 +1978,8 @@ python -m fpl_engine predict --gw 1        # end-to-end predictions
 python -m fpl_engine run --gw 1            # pull + build + predict
 python -m fpl_engine optimise --entry 883566 --horizon 5   # transfers / squad
 python -m fpl_engine prices                # who is about to rise / fall in price
+python -m fpl_engine postmortem --gw 2     # what the model believed vs what happened
+python -m fpl_engine lineup-feed --gw 3    # RotoWire forecast vs model in the ambiguous band
 python -m fpl_engine simulate --gw 2       # floors / ceilings / P(haul) + joint risk
 python -m fpl_engine train                 # optional: retrain models (GPU-aware)
 python -m fpl_engine predict --gw 1 --blend auto   # blend retrained + OpenFPL

@@ -37,6 +37,7 @@ oracle out of a feed.
 from __future__ import annotations
 
 import re
+from datetime import datetime, timedelta
 
 from ..core import http
 
@@ -50,7 +51,7 @@ STATUS = {"is-expected": "predicted", "is-confirmed": "confirmed"}
 
 
 def fetch(url: str = URL) -> str:
-    return http.get_text(url)
+    return http.get(url, delay=1.0).text
 
 
 def _clean(s: str) -> str:
@@ -70,6 +71,13 @@ def parse(html: str) -> list[dict]:
     for box in boxes:
         teams = re.findall(
             r'<div class="lineup__abbr">\s*([A-Za-z0-9]{2,4})\s*</div>', box)
+        # "September 6 &nbsp; 9:00 AM ET" — the match's own date. It is what
+        # labels the gameweek: FPL's is_next flips at the deadline, but this
+        # page keeps showing the gameweek in progress until its last match
+        # has kicked off, so a confirmed Saturday XI seen after Friday's
+        # deadline belongs to the CURRENT gameweek, not the next one.
+        when = _clean(_one(r'<div class="lineup__time">(.*?)</div>', box, "")
+                      .replace("&nbsp;", " ")) or None
         lists = re.split(r'<ul class="lineup__list', box)[1:]
         for i, lst in enumerate(lists):
             side = ("home" if "is-home" in lst[:40]
@@ -106,7 +114,8 @@ def parse(html: str) -> list[dict]:
                     "team_abbr": team, "side": side, "status": status,
                     "position": pos, "player": name.strip(),
                     "slot": order,
-                "in_xi": order <= 11,
+                    "in_xi": order <= 11,
+                    "kickoff_text": when,
                     "rotowire_id": _one(r"/soccer/player/[a-z0-9\-]+-(\d+)", pl),
                 })
     return out
@@ -115,3 +124,70 @@ def parse(html: str) -> list[dict]:
 def _one(pat: str, s: str, d=None):
     m = re.search(pat, s, re.S)
     return m.group(1).strip() if m else d
+
+
+# ----------------------------------------------------------- kickoff time --
+_MONTHS = {m: i + 1 for i, m in enumerate(
+    ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct",
+     "nov", "dec"])}
+_TIME_RE = re.compile(
+    r"([A-Za-z]{3,9})\.?\s+(\d{1,2})(?:,?\s*(\d{4}))?\s+(\d{1,2}):(\d{2})"
+    r"\s*([AP]\.?M\.?)", re.I)
+
+
+def kickoff_utc(text: str | None, observed_utc: str) -> str | None:
+    """RotoWire's "September 6 9:00 AM ET" as an ISO UTC instant, or None.
+
+    The page carries no year, so it is taken from the run's own clock with a
+    December/January rollover. ET is America/New_York; when the zone database
+    is unavailable (a bare Windows Python) the US daylight-saving rule is
+    applied by hand, which is exact for any date this page can show.
+    """
+    m = _TIME_RE.search(text or "")
+    if not m:
+        return None
+    month = _MONTHS.get(m.group(1).lower()[:3])
+    if not month:
+        return None
+    try:
+        obs = datetime.strptime(observed_utc[:10], "%Y-%m-%d")
+    except ValueError:
+        return None
+    year = int(m.group(3)) if m.group(3) else _infer_year(month, obs)
+    hour = int(m.group(4)) % 12 + (12 if m.group(6).upper().startswith("P")
+                                   else 0)
+    try:
+        local = datetime(year, month, int(m.group(2)), hour, int(m.group(5)))
+    except ValueError:
+        return None
+    utc = local - timedelta(hours=_eastern_offset(local))
+    return utc.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _infer_year(month: int, observed: datetime) -> int:
+    if month < observed.month - 6:
+        return observed.year + 1
+    if month > observed.month + 6:
+        return observed.year - 1
+    return observed.year
+
+
+def _eastern_offset(local: datetime) -> float:
+    """Hours to add to UTC for New York local time: -4 in summer, -5 in winter."""
+    try:
+        from zoneinfo import ZoneInfo
+        off = local.replace(tzinfo=ZoneInfo("America/New_York")).utcoffset()
+        if off is not None:
+            return off.total_seconds() / 3600.0
+    except Exception:                                    # noqa: BLE001
+        pass
+
+    # US rule since 2007: DST from 02:00 on the second Sunday of March to
+    # 02:00 on the first Sunday of November
+    def nth_sunday(year, month, n):
+        d = datetime(year, month, 1)
+        first_sunday = d + timedelta(days=(6 - d.weekday()) % 7)
+        return first_sunday + timedelta(weeks=n - 1)
+    start = nth_sunday(local.year, 3, 2).replace(hour=2)
+    end = nth_sunday(local.year, 11, 1).replace(hour=2)
+    return -4.0 if start <= local < end else -5.0

@@ -59,7 +59,7 @@ SNAPSHOT_FIELDS = ("id", "code", "status", "chance_next", "news_added",
 PICK_FIELDS = ("gw", "entry_id", "element", "slot", "multiplier",
                "is_captain", "is_vice", "active_chip", "observed_utc")
 LINEUP_FIELDS = ("observed_utc", "gw", "team_abbr", "side", "status",
-                 "position", "slot", "player", "rotowire_id")
+                 "position", "slot", "player", "rotowire_id", "kickoff_utc")
 MAX_PICK_GWS_PER_RUN = 3      # backfill politely, a few deadlines at a time
 
 
@@ -214,8 +214,32 @@ def _collect_picks(out_dir: str, boot: dict, season: str,
 
 
 
+def lineup_gw(kickoff_utc: str | None, deadlines) -> int | None:
+    """The gameweek a kickoff belongs to: the last deadline at or before it.
+
+    ``is_next`` is the wrong label for a lineup. It flips at the deadline,
+    while the page keeps showing the gameweek in progress until its final
+    match — so every Saturday and Sunday XI of gameweek N was being filed
+    under N+1. ``deadlines`` is ``[(deadline_utc, gw), ...]`` from the
+    bootstrap's events; ISO-8601 Zulu strings compare as text.
+    """
+    if not kickoff_utc or not deadlines:
+        return None
+    gw = None
+    for dl, g in sorted(deadlines):
+        if dl and dl <= kickoff_utc:
+            gw = int(g)
+    return gw
+
+
+def _fingerprint(kickoff_utc, players) -> str:
+    # the match is part of the identity: the same eleven named for the NEXT
+    # fixture is a new forecast, not an unchanged one
+    return f"{kickoff_utc or ''}|" + "|".join(players)
+
+
 def _collect_lineups(out_dir: str, season: str, next_gw: int | None,
-                     observed: str) -> int:
+                     observed: str, deadlines=None) -> int:
     """Append this run's predicted XIs, append-only and timestamped.
 
     THIS IS THE POINT OF THE COLLECTOR. The oracle decomposition closed every
@@ -260,14 +284,19 @@ def _collect_lineups(out_dir: str, season: str, next_gw: int | None,
         if not exists:
             w.writerow(LINEUP_FIELDS)
         for key, group in _by_side(rows):
-            fingerprint = "|".join(f"{r['position']}:{r['player']}"
-                                   for r in group)
+            ko = predicted_lineups.kickoff_utc(group[0].get("kickoff_text"),
+                                               observed)
+            fingerprint = _fingerprint(
+                ko, [f"{r['position']}:{r['player']}" for r in group])
             if seen.get(key) == fingerprint:
                 continue
+            gw = lineup_gw(ko, deadlines)
+            if gw is None:
+                gw = next_gw
             for r in group:
-                w.writerow([observed, next_gw, r["team_abbr"], r["side"],
+                w.writerow([observed, gw, r["team_abbr"], r["side"],
                             r["status"], r["position"], r["slot"],
-                            r["player"], r["rotowire_id"]])
+                            r["player"], r["rotowire_id"], ko])
                 wrote += 1
     return wrote
 
@@ -293,11 +322,14 @@ def _lineup_state(path: str) -> dict:
             rows = list(csv.DictReader(fh))
     except OSError:
         return {}
+    kick: dict = {}
     for r in rows:
         key = (r["team_abbr"], r["side"], r["status"])
         out.setdefault(key, {}).setdefault(r["observed_utc"], []).append(
             f"{r['position']}:{r['player']}")
-    return {k: "|".join(v[max(v)]) for k, v in out.items() if v}
+        kick[(key, r["observed_utc"])] = r.get("kickoff_utc") or None
+    return {k: _fingerprint(kick[(k, max(v))], v[max(v)])
+            for k, v in out.items() if v}
 
 
 def collect(out_dir: str = OUT_DIR, *, payload: str | None = None) -> dict:
@@ -322,7 +354,9 @@ def collect(out_dir: str = OUT_DIR, *, payload: str | None = None) -> dict:
     snap = _write_snapshot(out_dir, boot, observed, next_gw)
     own = _write_ownership(out_dir, boot, next_gw)
     picks = _collect_picks(out_dir, boot, season, observed)
-    lineups = _collect_lineups(out_dir, season, next_gw, observed)
+    deadlines = [(ev.get("deadline_time"), int(ev["id"]))
+                 for ev in boot.get("events", []) if ev.get("deadline_time")]
+    lineups = _collect_lineups(out_dir, season, next_gw, observed, deadlines)
 
     summary = {"observed_utc": observed, "season": season,
                "next_gw": next_gw, "availability_changes": changed,

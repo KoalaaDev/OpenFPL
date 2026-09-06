@@ -131,3 +131,74 @@ def test_a_failing_third_party_page_cannot_break_the_scheduled_run(monkeypatch):
     with tempfile.TemporaryDirectory() as d:
         monkeypatch.setattr(actions.http, "get", _boom)
         assert actions._collect_lineups(d, "2026-27", 3, "now") == 0
+
+
+# ------------------------------------------------------- gameweek labelling
+def test_kickoff_text_is_parsed_to_utc_with_us_daylight_saving():
+    # "September 6 9:00 AM ET" seen on 5 September: EDT, so 13:00Z
+    assert pl.kickoff_utc("September 6 9:00 AM ET",
+                          "2026-09-05T13:28:57Z") == "2026-09-06T13:00:00Z"
+    # winter: EST, so +5h; and the year rolls over January
+    assert pl.kickoff_utc("January 3 3:00 PM ET",
+                          "2026-12-30T00:00:00Z") == "2027-01-03T20:00:00Z"
+    assert pl.kickoff_utc("December 26 12:30 PM ET",
+                          "2027-01-02T00:00:00Z") == "2026-12-26T17:30:00Z"
+    assert pl.kickoff_utc(None, "2026-09-05T00:00:00Z") is None
+    assert pl.kickoff_utc("TBD", "2026-09-05T00:00:00Z") is None
+
+
+def test_the_parser_carries_each_match_date():
+    page = ('<div class="lineup is-soccer">'
+            '<div class="lineup__meta"><div class="lineup__time"><b>September 6'
+            '</b>&nbsp; 9:00 AM ET</div></div>'
+            '<div class="lineup__abbr">AVL</div>'
+            '<div class="lineup__abbr">ARS</div>'
+            + _side("AVL", "home", "is-expected", XI)
+            + _side("ARS", "visit", "is-expected", XI) + "</div>")
+    rows = pl.parse(page)
+    assert {r["kickoff_text"] for r in rows} == {"September 6 9:00 AM ET"}
+
+
+def test_a_lineup_is_filed_under_the_gameweek_whose_deadline_precedes_it():
+    """The bug this guards: FPL's is_next flips at Friday's deadline, so a
+    confirmed Saturday XI of gameweek 3 was archived as gameweek 4."""
+    deadlines = [("2026-08-28T17:30:00Z", 2), ("2026-09-04T17:30:00Z", 3),
+                 ("2026-09-12T12:30:00Z", 4)]
+    saturday_of_gw3 = "2026-09-05T14:00:00Z"
+    assert actions.lineup_gw(saturday_of_gw3, deadlines) == 3
+    assert actions.lineup_gw("2026-09-12T14:00:00Z", deadlines) == 4
+    assert actions.lineup_gw("2026-08-01T14:00:00Z", deadlines) is None
+    assert actions.lineup_gw(None, deadlines) is None
+    assert actions.lineup_gw(saturday_of_gw3, []) is None
+
+
+def test_the_same_eleven_named_for_the_next_match_is_a_new_forecast(monkeypatch):
+    """An unchanged XI is not re-appended within a match, but the identical
+    eleven predicted for the FOLLOWING fixture must be — otherwise a settled
+    side would have no pre-deadline forecast on file for that gameweek."""
+    def page(date):
+        return ('<div class="lineup is-soccer">'
+                f'<div class="lineup__time"><b>{date}</b>&nbsp; 10:00 AM ET</div>'
+                '<div class="lineup__abbr">AVL</div>'
+                '<div class="lineup__abbr">ARS</div>'
+                + _side("AVL", "home", "is-expected", XI)
+                + _side("ARS", "visit", "is-expected", XI) + "</div>")
+    deadlines = [("2026-09-04T17:30:00Z", 3), ("2026-09-12T12:30:00Z", 4)]
+    with tempfile.TemporaryDirectory() as d:
+        monkeypatch.setattr(actions.http, "get",
+                            lambda *a, **k: _Resp(page("September 5")))
+        assert actions._collect_lineups(d, "2026-27", 3, "2026-09-03T09:00:00Z",
+                                        deadlines) == 22
+        assert actions._collect_lineups(d, "2026-27", 3, "2026-09-04T09:00:00Z",
+                                        deadlines) == 0
+        # the page moves on to next week's match with the same eleven; FPL's
+        # is_next still says 4 in both cases, the kickoff decides the label
+        monkeypatch.setattr(actions.http, "get",
+                            lambda *a, **k: _Resp(page("September 12")))
+        assert actions._collect_lineups(d, "2026-27", 4, "2026-09-08T09:00:00Z",
+                                        deadlines) == 22
+        path = os.path.join(d, "lineups", "2026-27.csv")
+        with open(path, encoding="utf-8") as fh:
+            rows = list(csv.DictReader(fh))
+        assert {(r["gw"], r["kickoff_utc"]) for r in rows} == {
+            ("3", "2026-09-05T14:00:00Z"), ("4", "2026-09-12T14:00:00Z")}

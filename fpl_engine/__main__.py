@@ -114,6 +114,34 @@ def cmd_train(args):
           f"`predict --gw 1 --blend auto`.")
 
 
+def cmd_postmortem(args):
+    from . import postmortem
+    with db.session(args.db) as conn:
+        rep = postmortem.run(conn, season=args.season, gw=args.gw, top=args.top)
+    postmortem.print_report(rep)
+    return 0
+
+
+def cmd_lineup_feed(args):
+    from . import lineup_feed
+    season = args.season or config.CURRENT_SEASON
+    with db.session(args.db) as conn:
+        archive = lineup_feed.load_archive(season, args.archive)
+        gw = args.gw or lineup_feed.latest_scorable_gw(conn, season, archive)
+        if gw is None:
+            raise SystemExit("nothing to score yet: no finished fixture and no "
+                             "confirmed XI in the archive")
+        rep = lineup_feed.score_gw(conn, season, gw, archive=archive)
+    path = lineup_feed.save(season, rep)
+    import json
+    with open(path, encoding="utf-8") as fh:
+        pool = json.load(fh).get("pooled")
+    lineup_feed.print_report(rep, pool)
+    print()
+    print(f"saved: {path}")
+    return 0
+
+
 def cmd_verify(args):
     from . import verify
     db.init_db(args.db)
@@ -442,6 +470,23 @@ def main(argv=None):
     sp = sub.add_parser("verify",
                         help="check the data invariants; exits non-zero on error")
     sp.set_defaults(func=cmd_verify)
+
+    sp = sub.add_parser("postmortem",
+                        help="what the model believed at the deadline vs what happened")
+    sp.add_argument("--gw", type=int, default=None,
+                    help="gameweek (default: latest with results)")
+    sp.add_argument("--top", type=int, default=12, help="rows per block")
+    sp.set_defaults(func=cmd_postmortem)
+
+    sp = sub.add_parser("lineup-feed",
+                        help="score the archived predicted XIs against the model "
+                             "in the ambiguous band (E8b pricing)")
+    sp.add_argument("--gw", type=int, default=None,
+                    help="gameweek (default: latest with a finished fixture or a "
+                         "confirmed XI)")
+    sp.add_argument("--archive", default=None,
+                    help="lineup CSV (default data/collected/lineups/<season>.csv)")
+    sp.set_defaults(func=cmd_lineup_feed)
 
     sp = sub.add_parser("prices", help="who is about to rise or fall in price")
     sp.add_argument("--gw", type=int, default=None,

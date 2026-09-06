@@ -180,3 +180,19 @@ def test_unresolved_transfermarkt_rows_are_reported_as_coverage(conn):
     conn.commit()
     r = verify.run(conn)
     assert any(f.check == "coverage.tm_injury" for f in r.warnings)
+
+
+def test_player_rows_on_an_unfinished_fixture_are_an_error(conn):
+    """FPL lists a fixture in element-summary the moment it goes live, with
+    zero minutes; a pull during kickoff wrote a phantom 0-minute appearance
+    for both squads, which the minutes model read as "did not play"."""
+    fx = {"season": SEASON, "fixture_id": 1, "gw": 1,
+          "kickoff_utc": "2025-09-01T14:00:00Z", "team_h": 1, "team_a": 2,
+          "team_h_score": None, "team_a_score": None, "finished": 0}
+    db.upsert(conn, "fixture", [fx])
+    conn.commit()
+    assert "time.no_rows_for_unfinished_fixtures" in _checks(conn, "error")
+    db.upsert(conn, "fixture", [{**fx, "finished": 1, "team_h_score": 1,
+                                 "team_a_score": 0}])
+    conn.commit()
+    assert "time.no_rows_for_unfinished_fixtures" not in _checks(conn)
