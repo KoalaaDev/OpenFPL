@@ -534,9 +534,9 @@
   null
  ],
  "193278": [
-  "d",
-  0.75,
-  "Unspecified injury - 75% chance of playing",
+  "a",
+  1.0,
+  null,
   "2026-08-29T16:30:08.151841Z"
  ],
  "194010": [
@@ -1412,7 +1412,7 @@
  "248875": [
   "i",
   0.0,
-  "Calf injury - Expected back 5 Sep",
+  "Calf injury - Expected back 13 Sep",
   "2026-08-18T17:00:08.385597Z"
  ],
  "249231": [
@@ -1495,8 +1495,8 @@
  ],
  "432830": [
   "d",
-  0.75,
-  "Calf injury - 75% chance of playing",
+  0.25,
+  "Calf injury - 25% chance of playing",
   "2026-09-05T18:00:06.182495Z"
  ],
  "432987": [
