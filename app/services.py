@@ -9,6 +9,7 @@ Bridges fpl_engine (SQLite + models + optimiser) and the HTTP layer:
 """
 from __future__ import annotations
 
+import calendar
 import json
 import os
 import threading
@@ -36,7 +37,7 @@ FPL_BASE = "https://fantasy.premierleague.com/api"
 _TTL = 600.0
 # bumped whenever the API contract changes; the frontend compares it with
 # its own build so a stale `python -m app` process is flagged, not puzzling
-API_VERSION = "2026-08-27.1"
+API_VERSION = "2026-09-03.1"
 
 _mem: dict[str, tuple[float, object]] = {}
 _bundle = None
@@ -552,7 +553,22 @@ def entry_payload(entry_id: int) -> dict:
                     "unlimited_transfers": bool(state.get("unlimited_transfers")),
                     "picks_gw": state.get("gw"),
                     "squad_source": state.get("source", "public")})
+    out["chips"] = entry_chips(entry_id, state)
     return out
+
+
+def entry_chips(entry_id: int, state: dict | None = None) -> dict:
+    """Chips spent, held and active — so the planner stops guessing.
+
+    Never raises: a chip panel is worth losing, a squad is not.
+    """
+    try:
+        return manager.chip_state(
+            entry_id, boot=bootstrap(),
+            my_team_chips_=(state or {}).get("my_team_chips") or None)
+    except Exception as exc:
+        return {"played": [], "active": None, "available": [], "windows": [],
+                "next_gw": None, "source": "unavailable", "error": str(exc)}
 
 
 # --------------------------------------------------------------------------
@@ -768,6 +784,11 @@ def save_my_team(doc: dict | None) -> dict | None:
            "free_transfers": int(doc.get("free_transfers") or 1),
            "unlimited_transfers": bool(doc.get("unlimited_transfers")),
            "team_value": doc.get("team_value"),
+           # the authenticated import is the only place a chip ACTIVE for the
+           # coming deadline is visible — the public history only lists chips
+           # whose gameweek has already been played
+           "chips": doc.get("chips") or [],
+           "active_chip": doc.get("active_chip"),
            "source": doc.get("source", "manual"),
            "saved_at": time.time()}
     tmp = MYTEAM_PATH + ".tmp"
@@ -822,35 +843,91 @@ def _save_my_team_json(entry_id: int | None, data: dict, source: str) -> dict:
     tr = data.get("transfers", {}) or {}
     limit = tr.get("limit")
     made = tr.get("made", 0) or 0
-    # before the GW1 deadline FPL grants unlimited free transfers
+    # before the GW1 deadline FPL grants unlimited free transfers. A live
+    # Wildcard/Free Hit also reports "unlimited" here, but that is modelled as
+    # the chip itself (see unlimited_applies), not as free opening transfers.
     unlimited = tr.get("status") == "unlimited"
+    chip_rows = manager.my_team_chips(data)
+    active = next((c["chip"] for c in chip_rows if c["status"] == "active"), None)
     return save_my_team({
         "entry_id": entry_id, "squad": squad,
         "bank": (tr.get("bank", 0) or 0) / 10.0,
         "free_transfers": max(0, (limit or 1) - made) if limit is not None else 1,
         "unlimited_transfers": unlimited,
         "team_value": (tr.get("value") or 0) / 10.0 or None,
+        "chips": chip_rows, "active_chip": active,
         "source": source})
 
 
+def _deadlines() -> dict[int, float]:
+    """gw -> deadline as a unix timestamp, from the live bootstrap."""
+    out: dict[int, float] = {}
+    for e in bootstrap().get("events", []) or []:
+        t = e.get("deadline_time")
+        if not t:
+            continue
+        try:
+            out[int(e["id"])] = calendar.timegm(
+                time.strptime(t, "%Y-%m-%dT%H:%M:%SZ"))
+        except (ValueError, TypeError):
+            continue
+    return out
+
+
+def _my_team_is_fresher(mine: dict, picks_gw: int | None) -> bool:
+    """Is the saved my-team newer than the picks the public API serves?
+
+    The public picks endpoint freezes at the last deadline, so it cannot see
+    transfers made — or a Wildcard/Free Hit activated — for the gameweek that
+    has not kicked off yet. An authenticated import taken AFTER that deadline
+    can, and is then the better description of the squad you actually own.
+    Once the next deadline passes, the public picks overtake it again, so this
+    corrects itself with no state to clear.
+    """
+    saved = mine.get("saved_at")
+    if not saved or picks_gw is None or mine.get("source") == "manual":
+        return False
+    deadline = _deadlines().get(int(picks_gw))
+    return bool(deadline) and float(saved) > float(deadline)
+
+
+def _from_my_team(entry_id: int, mine: dict, **over) -> dict:
+    state = {"entry_id": entry_id, "name": None, "gw": None,
+             "bank": mine["bank"], "squad": mine["squad"],
+             "free_transfers": mine["free_transfers"],
+             "unlimited_transfers": bool(mine.get("unlimited_transfers")),
+             "active_chip": mine.get("active_chip"),
+             "my_team_chips": mine.get("chips") or [],
+             "saved_at": mine.get("saved_at"),
+             "source": mine.get("source", "manual")}
+    state.update(over)
+    return state
+
+
 def squad_state(entry_id: int) -> dict | None:
-    """Current squad for an entry: public picks if available (post-deadline,
-    authoritative), else the locally saved my-team (cookie import or manual)."""
+    """Current squad for an entry.
+
+    Public picks when they are the freshest thing available (post-deadline,
+    authoritative), otherwise the locally saved my-team — which is both the
+    only pre-deadline source and, after a mid-week import, the only one that
+    shows a chip played for the coming gameweek.
+    """
     state = None
     try:
         state = manager.current_squad(entry_id)
     except Exception:
         state = None
-    if state is not None:
-        state["source"] = "public"
-        return state
     mine = load_my_team()
-    if mine and (mine.get("entry_id") in (None, entry_id)):
-        return {"entry_id": entry_id, "name": None, "gw": None,
-                "bank": mine["bank"], "squad": mine["squad"],
-                "free_transfers": mine["free_transfers"],
-                "unlimited_transfers": bool(mine.get("unlimited_transfers")),
-                "source": mine.get("source", "manual")}
+    mine = mine if mine and (mine.get("entry_id") in (None, entry_id)) else None
+    if state is not None:
+        if mine and _my_team_is_fresher(mine, state.get("gw")):
+            return _from_my_team(entry_id, mine, name=state.get("name"),
+                                 gw=state.get("gw"))
+        state["source"] = "public"
+        state["active_chip"] = None
+        return state
+    if mine:
+        return _from_my_team(entry_id, mine)
     return None
 
 
@@ -1023,6 +1100,43 @@ def unlimited_applies(flag: bool, played_gws: int, first_gw: int, next_gw_: int)
     return bool(flag) and played_gws == 0 and first_gw == next_gw_
 
 
+def _apply_chip_state(state: dict, chip_gws: dict[str, list[int]],
+                      chip_force: dict[str, int], reserve: dict[str, float],
+                      gws: list[int]) -> list[str]:
+    """Hold the solve to the chips the entry actually has.
+
+    Three rules, all of them things the planner previously had to be told by
+    hand: a chip already spent cannot be planned; a chip can only be planned
+    inside a window that is still unused (so a first-half Wildcard spent in
+    GW3 leaves the GW20+ one live); and a chip ALREADY ACTIVATED for the
+    coming deadline is not a choice at all — it is pinned there, with no
+    option value, because FPL will play it whatever the solver decides.
+
+    Returns the chips it removed, so the UI can say why.
+    """
+    active = state.get("active")
+    windows = state.get("windows") or []
+    dropped: list[str] = []
+    for c in list(chip_gws):
+        if c == active:
+            continue
+        legal = [g for g in chip_gws[c]
+                 if any(w["chip"] == c and w["used_gw"] is None
+                        and w["start"] <= g <= w["stop"] for w in windows)]
+        forced = chip_force.get(c)
+        if not legal or (forced is not None and forced not in legal):
+            chip_gws.pop(c)
+            chip_force.pop(c, None)
+            dropped.append(c)
+        else:
+            chip_gws[c] = legal
+    if active and active in chips.CHIPS and gws and             gws[0] == (state.get("next_gw") or gws[0]):
+        chip_gws[active] = [gws[0]]
+        chip_force[active] = gws[0]
+        reserve[active] = 0.0        # already spent: saving it is not on offer
+    return dropped
+
+
 def run_solve(job_id: str, params: dict) -> dict:
     season = config.CURRENT_SEASON
     conn = db.connect(config.DB_PATH)
@@ -1085,6 +1199,9 @@ def run_solve(job_id: str, params: dict) -> dict:
         chip_gws[c] = [g for g in allowed if g in gws]
         if cfg.get("force") and int(cfg["force"]) in gws:
             chip_force[c] = int(cfg["force"])
+    reserve = {k: float(v) for k, v in (params.get("chip_reserve") or {}).items()}
+    chip_state = entry_chips(int(entry_id), entry_state) if entry_id else None
+    dropped = _apply_chip_state(chip_state, chip_gws, chip_force, reserve, gws)         if chip_state and not params.get("ignore_chip_state") else []
 
     unlimited = unlimited_applies(
         bool((entry_state or {}).get("unlimited_transfers")), played, gws[0], start)
@@ -1108,8 +1225,7 @@ def run_solve(job_id: str, params: dict) -> dict:
         max_transfers_per_gw=int(params.get("max_transfers") or 3),
         time_limit=int(params.get("time_limit") or 60),
         chip_gws=chip_gws, chip_force=chip_force,
-        chip_reserve={k: float(v) for k, v in
-                      (params.get("chip_reserve") or {}).items()},
+        chip_reserve=reserve,
         locked=locked, avoid=avoid,
         banned_clubs=set(params.get("banned_teams") or []),
         sell_clubs=set(params.get("sell_teams") or []),
@@ -1131,6 +1247,7 @@ def run_solve(job_id: str, params: dict) -> dict:
         "entry_id": entry_id, "gws": gws,
         "state": {"bank": bank, "free_transfers": fts,
                   "unlimited_transfers": unlimited,
+                  "chips": chip_state, "chips_dropped": dropped,
                   "team_name": (entry_state or {}).get("name") if entry_state
                   else None},
         "plans": [{"objective": p.objective, "status": p.status,

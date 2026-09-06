@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { api } from '../api'
 import { useStore } from '../store'
-import { money } from '../util'
+import { ALL_CHIPS, CHIP_NAME, CHIP_SHORT, chipAvailability, chipNote, money } from '../util'
 
 const SLOTS = [['GK', 2], ['DEF', 5], ['MID', 5], ['FWD', 3]]
 
@@ -135,6 +135,8 @@ export default function MyTeamModal({ close }) {
             <button style={{ color: 'var(--muted)', fontSize: 16, marginLeft: 4 }} onClick={close}>✕</button>
           </span>
         </div>
+
+        <ChipStrip chips={entry?.chips} />
 
         {mode === 'bookmark' ? (
           <div style={{ padding: 18 }}>
@@ -287,6 +289,37 @@ function SlotRow({ pos, need, ids, setIds, players, byId, teams, taken }) {
           </span>
         ))}
       </div>
+    </div>
+  )
+}
+
+/* What FPL says you have left. The public API only reports chips whose
+   gameweek has been PLAYED, so a Wildcard activated for the coming deadline
+   shows up here only after a bookmarklet/cookie import — which is exactly the
+   thing this modal is for, and worth saying on the modal itself. */
+function ChipStrip({ chips }) {
+  if (!chips || !(chips.windows || []).length) return null
+  const avail = chipAvailability(chips)
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
+                  padding: '10px 18px', borderBottom: '1px solid var(--line)',
+                  fontSize: 11, color: 'var(--muted-2)' }}>
+      <span style={{ fontWeight: 700 }}>Chips</span>
+      {ALL_CHIPS.map((c) => {
+        const a = avail[c]
+        const tone = a.active ? 'gold' : a.usable ? 'green' : 'dim'
+        return (
+          <span key={c} className={`chip ${tone}`} title={chipNote(a, CHIP_NAME[c])}>
+            {CHIP_SHORT[c]}
+            {a.active ? ' live' : a.played.length ? ` GW${a.played.join(',')}` : ''}
+          </span>
+        )
+      })}
+      <span style={{ marginLeft: 'auto' }}>
+        {chips.source === 'my-team'
+          ? 'from your imported team — an active chip is visible'
+          : 'from the public API — a chip activated for this deadline is not visible until you import'}
+      </span>
     </div>
   )
 }

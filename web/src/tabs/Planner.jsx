@@ -7,9 +7,9 @@ import { useFixtureLookup, useStore } from '../store'
 import { Radar, VIZ, VIZ_NEUTRAL as VIZ_MUTED } from '../charts'
 import { DNA_AXES, dnaOf, dnaRaw, dnaScaled } from '../dna'
 import {
-  CHIP_LONG, CHIP_SHORT, POS_ORDER, baselineDeltas, bestAffordableXI, bestXI,
-  epOf, fdrColor, formationRows, fmt1, gwEV, gwHasProj, money, shirtUrl,
-  withBaseline, xiLegal,
+  CHIP_LONG, CHIP_NAME, CHIP_SHORT, POS_ORDER, baselineDeltas,
+  bestAffordableXI, bestXI, chipAvailability, chipNote, epOf, fdrColor,
+  formationRows, fmt1, gwEV, gwHasProj, money, shirtUrl, withBaseline, xiLegal,
 } from '../util'
 
 const DEFAULT_HORIZON = 8    // gameweeks in a new draft
@@ -202,7 +202,10 @@ export default function Planner() {
       const sorted = [...xi].sort((a, b) => epFor(b) - epFor(a))
       const captain = cap && xi.includes(cap) ? cap : sorted[0]
       return {
-        gw, chip: null, squad: structuredClone(squad), xi,
+        // a chip already activated on the FPL site is a fact about this
+        // gameweek, not a plan — carry it in rather than making it be re-set
+        gw, chip: gw === horizon[0] ? entry?.chips?.active || null : null,
+        squad: structuredClone(squad), xi,
         captain,
         vice: vice && xi.includes(vice) && vice !== captain
           ? vice : sorted.find((id) => id !== captain) || null,
@@ -314,7 +317,7 @@ export default function Planner() {
           <AddPlayerPanel plan={plan} players={players} byId={byId} proj={proj}
             posOf={posOf} armed={armed} setArmed={setArmed} />
           <ChipAdvisor draft={draft} proj={proj} byId={byId} players={players}
-            posOf={posOf} updateDraft={updateDraft} />
+            posOf={posOf} updateDraft={updateDraft} entryChips={entry?.chips} />
           <DraftsPanel drafts={drafts} setDrafts={setDrafts} proj={proj}
             activeDraftId={draft.id} setActiveDraftId={setActiveDraftId}
             gwIdx={gwIdx} setGwIdx={setGwIdx} createFromEntry={createFromEntry}
@@ -361,7 +364,8 @@ export default function Planner() {
 const ALL_CHIPS = ['bench_boost', 'triple_captain', 'wildcard', 'freehit']
 
 function GwBar({ draft, gwIdx, setGwIdx, evs, deltas, plan, nMoves, updateDraft, undo, canUndo }) {
-  const { proj, status } = useStore()
+  const { proj, status, entry } = useStore()
+  const avail = chipAvailability(entry?.chips, draft.gws.map((p) => p.gw))
   const total = evs.reduce((a, b) => a + b, 0)
   const dTotal = deltas ? deltas.reduce((a, b) => a + b, 0) : null
   const [openChip, setOpenChip] = useState(null)
@@ -424,12 +428,16 @@ function GwBar({ draft, gwIdx, setGwIdx, evs, deltas, plan, nMoves, updateDraft,
         )}
         {ALL_CHIPS.map((c) => {
           const at = draft.gws.find((p) => p.chip === c)
+          const a = avail[c]
           return (
             <div className="dd" key={c}>
-              <button className={`chip-btn ${at ? 'on' : ''}`}
-                title={CHIP_LONG[c].replace(' Played', '')}
+              <button className={`chip-btn ${at ? 'on' : ''} ${!a?.usable ? 'spent' : ''}`}
+                title={chipNote(a, CHIP_NAME[c])}
+                disabled={!a?.usable}
                 onClick={() => setOpenChip(openChip === c ? null : c)}>
-                ⚡ {CHIP_SHORT[c]}{at ? ` GW${at.gw}` : ''} ▾
+                ⚡ {CHIP_SHORT[c]}{at ? ` GW${at.gw}` : ''}
+                {a?.active && <em> live</em>}
+                {!a?.usable && a?.played?.length ? <em> GW{a.played[a.played.length - 1]}</em> : null} ▾
               </button>
               {openChip === c && (
                 <div className="dd-menu" style={{ minWidth: 150 }}>
@@ -437,7 +445,9 @@ function GwBar({ draft, gwIdx, setGwIdx, evs, deltas, plan, nMoves, updateDraft,
                   <button className="dd-item" onClick={() => setChip(c, null)}>
                     Don't use
                   </button>
-                  {draft.gws.map((p) => (
+                  {draft.gws.filter((p) => !a?.known
+                    || a.windows.some(([x, y]) => p.gw >= x && p.gw <= y))
+                    .map((p) => (
                     <button key={p.gw}
                       className={`dd-item ${p.chip === c ? 'on' : ''}`}
                       onClick={() => setChip(c, p.gw)}>
@@ -743,7 +753,7 @@ function AddPlayerPanel({ plan, players, byId, proj, posOf, armed, setArmed }) {
 
 // Heuristic chip hints from this draft's own projections. The Solver is the
 // authority (it evaluates chips exactly); these flag where a chip looks valuable.
-function ChipAdvisor({ draft, proj, byId, players, posOf, updateDraft }) {
+function ChipAdvisor({ draft, proj, byId, players, posOf, updateDraft, entryChips }) {
   const stats = useMemo(() => draft.gws.map((p) => {
     const xiEp = p.xi.reduce((a, id) => a + epOf(proj, id, p.gw), 0)
     const cap = p.xi.reduce((best, id) => {
@@ -767,7 +777,7 @@ function ChipAdvisor({ draft, proj, byId, players, posOf, updateDraft }) {
   }), [draft, proj, players])
 
   const median = (xs) => { const s = [...xs].sort((a, b) => a - b); return s.length ? s[Math.floor(s.length / 2)] : 0 }
-  const hints = []
+  let hints = []
   if (stats.length) {
     const tc = stats.reduce((b, s) => (s.cap.ep > b.cap.ep ? s : b), stats[0])
     const tcEdge = tc.cap.ep - median(stats.map((s) => s.cap.ep))
@@ -788,6 +798,12 @@ function ChipAdvisor({ draft, proj, byId, players, posOf, updateDraft }) {
         gain: worse.gap - first, text: `gap to the best XI grows by ${fmt1(worse.gap - first)} from GW${worse.gw}` })
     }
   }
+  // A chip you have already played is not advice, it is noise: drop the hint
+  // rather than let the panel recommend something FPL will not let you do.
+  const usable = chipAvailability(entryChips, draft.gws.map((p) => p.gw))
+  hints = hints.filter((h) => usable[h.chip]?.usable
+    && (!usable[h.chip].known
+        || usable[h.chip].windows.some(([x, y]) => h.gw >= x && h.gw <= y)))
   const [showXi, setShowXi] = useState(null)
   const apply = (chip, gw) => updateDraft((d) => {
     for (const p of d.gws) if (p.chip === chip) p.chip = null

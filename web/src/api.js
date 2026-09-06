@@ -1,6 +1,6 @@
 // must match app/services.py API_VERSION — mismatch means the running
 // `python -m app` predates this build and needs a restart
-export const API_VERSION = '2026-08-27.1'
+export const API_VERSION = '2026-09-03.1'
 
 const j = async (r) => {
   if (!r.ok) {

@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react'
 import { api, pollJob } from '../api'
 import { useStore } from '../store'
-import { bestXI, epOf, fmt1 } from '../util'
+import { CHIP_NAME, bestXI, chipAvailability, chipNote, epOf, fmt1 } from '../util'
 
 /* The Planner used to be a drawing tool: it let you move players around and
    told you the total afterwards. Everything the model knew lived in the Solver
@@ -19,11 +19,15 @@ import { bestXI, epOf, fmt1 } from '../util'
 export default function ModelAssist({
   draft, gwIdx, plan, posOf, updateDraft, setToast,
 }) {
-  const { byId, proj, status } = useStore()
+  const { byId, proj, status, entry, entryId } = useStore()
   const [busy, setBusy] = useState(null)
   const [note, setNote] = useState(null)
 
   const epFor = (id) => epOf(proj, id, plan?.gw)
+  // Asking for the best Free Hit you cannot play is a plan you cannot execute:
+  // the backend refuses the chip anyway, so say so here rather than hand back
+  // a "wildcard" plan that is really just three transfers and four hits.
+  const avail = chipAvailability(entry?.chips, plan ? [plan.gw] : [])
 
   /* --- the always-visible gap: your XI against the best legal one --------- */
   const xiGap = useMemo(() => {
@@ -75,6 +79,9 @@ export default function ModelAssist({
     const horizon = kind === 'freehit' ? 1 : Math.min(rest.length, 5)
     const gws = rest.slice(0, horizon)
     const params = {
+      // the entry rides along so the solver can refuse a chip you have
+      // already spent; the seeded squad below still overrides its fifteen
+      entry: entryId,
       solve_from: plan.gw,
       horizon,
       initial_squad: seed,
@@ -178,16 +185,20 @@ export default function ModelAssist({
         </button>
 
         <button className={`pill-btn ${chip === 'freehit' ? 'accent' : ''}`}
-          disabled={!!busy || isPast}
+          disabled={!!busy || isPast || !avail.freehit?.usable}
           onClick={() => runSolve('freehit')}
-          title="Build the best possible one-week squad for this gameweek">
+          title={avail.freehit?.usable
+            ? 'Build the best possible one-week squad for this gameweek'
+            : chipNote(avail.freehit, CHIP_NAME.freehit)}>
           {busy === 'freehit' ? <span className="spinner" /> : '🃏'} Best Free Hit
         </button>
 
         <button className={`pill-btn ${chip === 'wildcard' ? 'accent' : ''}`}
-          disabled={!!busy || isPast}
+          disabled={!!busy || isPast || !avail.wildcard?.usable}
           onClick={() => runSolve('wildcard')}
-          title="Rebuild the squad from this gameweek onward">
+          title={avail.wildcard?.usable
+            ? 'Rebuild the squad from this gameweek onward'
+            : chipNote(avail.wildcard, CHIP_NAME.wildcard)}>
           {busy === 'wildcard' ? <span className="spinner" /> : '♻'} Best Wildcard
         </button>
       </div>

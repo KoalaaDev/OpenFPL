@@ -1,9 +1,10 @@
-import React, { useMemo, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { api, pollJob } from '../api'
 import { useStore } from '../store'
 import RadarLoader from '../components/RadarLoader'
 import SolverOutput from '../components/SolverOutput'
-import { CHIP_SHORT, fmt1, money, planToDraft, withBaseline } from '../util'
+import { CHIP_NAME, CHIP_SHORT, chipAvailability, chipNote, fmt1, money,
+         planToDraft, withBaseline } from '../util'
 
 const CHIP_DEFS = [
   ['wildcard', 'WC'], ['freehit', 'FH'], ['bench_boost', 'BB'], ['triple_captain', 'TC'],
@@ -44,6 +45,21 @@ export default function Solver({ goPlanner }) {
   const gws = useMemo(() =>
     (status?.scheduled_gws || []).filter((g) => g >= from).slice(0, horizon),
     [status, from, horizon])
+
+  // What FPL says this entry still holds. A chip already spent is not a
+  // planning option, and a chip already ACTIVATED for the coming deadline is
+  // not a choice either — it will be played whatever the solver decides, so
+  // it is pinned to the first gameweek with no option value. The backend
+  // enforces both; this is the same truth on screen.
+  const chipState = useEntry ? entry?.chips : null
+  const avail = useMemo(() => chipAvailability(chipState, gws), [chipState, gws])
+  const activeChip = chipState?.active || null
+  useEffect(() => {
+    if (!activeChip || !gws.length) return
+    if (chipState?.next_gw && chipState.next_gw !== gws[0]) return
+    setChips((s) => (s[activeChip]?.enabled && s[activeChip]?.force === gws[0]
+      ? s : { ...s, [activeChip]: { enabled: true, force: gws[0] } }))
+  }, [activeChip, chipState?.next_gw, gws])
 
   const start = async () => {
     if (running) return
@@ -173,16 +189,25 @@ export default function Solver({ goPlanner }) {
           <div className="chipplan">
             {CHIP_DEFS.map(([name, short]) => {
               const c = chips[name] || {}
+              const a = avail[name]
+              const locked = a?.active
               return (
-                <span key={name} className={`chip-btn ${c.enabled ? 'on' : ''}`}>
-                  <button onClick={() => setChips((s) => ({ ...s, [name]: { ...c, enabled: !c.enabled } }))}>
+                <span key={name}
+                  className={`chip-btn ${c.enabled ? 'on' : ''} ${!a?.usable ? 'spent' : ''}`}
+                  title={chipNote(a, CHIP_NAME[name])}>
+                  <button disabled={!a?.usable || locked}
+                    onClick={() => setChips((s) => ({ ...s, [name]: { ...c, enabled: !c.enabled } }))}>
                     ⚡ {short}
+                    {locked && <em> live</em>}
+                    {!a?.usable && a?.played?.length ? <em> GW{a.played[a.played.length - 1]}</em> : null}
                   </button>
-                  {c.enabled && (
+                  {c.enabled && !locked && (
                     <select value={c.force || ''}
                       onChange={(e) => setChips((s) => ({ ...s, [name]: { ...c, force: e.target.value ? Number(e.target.value) : null } }))}>
                       <option value="">free</option>
-                      {gws.map((g) => <option key={g} value={g}>GW{g}</option>)}
+                      {gws.filter((g) => !a?.known
+                        || a.windows.some(([x, y]) => g >= x && g <= y))
+                        .map((g) => <option key={g} value={g}>GW{g}</option>)}
                     </select>
                   )}
                 </span>
@@ -190,8 +215,17 @@ export default function Solver({ goPlanner }) {
             })}
           </div>
           <div style={{ fontSize: 11, color: 'var(--muted-2)', marginTop: 10 }}>
+            {activeChip ? (
+              <>
+                <b style={{ color: 'var(--accent)' }}>{CHIP_NAME[activeChip]} is live</b> on
+                your FPL team for GW{chipState?.next_gw ?? gws[0]} — it is pinned there and
+                costs nothing to “save”, so the solve plans around it.{' '}
+              </>
+            ) : null}
             Enabled chips are available to the optimiser within the horizon;
-            “free” lets it pick the week, or pin one.
+            “free” lets it pick the week, or pin one. Chips you have already
+            played are greyed out{chipState?.source === 'public'
+              ? ' — import your team to see one activated for this deadline.' : '.'}
           </div>
         </div>
       </div>

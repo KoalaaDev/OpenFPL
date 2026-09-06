@@ -1864,6 +1864,23 @@ Solver specifics worth knowing:
 * **Club rules.** `banned_clubs` blocks *buying* from a club; `sell_clubs` also
   forces players already owned out by the end of the horizon, letting the
   solver choose the cheapest gameweek so the exit still uses free transfers.
+* **Chip state comes from FPL, not from you.** `manager.chip_state` reads the
+  season's chip windows out of the bootstrap (two of each since 2024-25, one
+  per half — never hardcode the halves, the table is published) and charges
+  each played chip to the first unused window containing its gameweek, so a
+  Wildcard spent in GW3 leaves the GW20-38 one live. The solver enforces it
+  (`services._apply_chip_state`): a spent chip is dropped from the solve, a
+  chip is held to a window it still owns, and a chip **already activated for
+  the coming deadline** is pinned to that gameweek with reserve 0 — it is not
+  a choice, FPL will play it whatever the optimiser decides.
+* **Only an authenticated import can see an active chip.**
+  `entry/{id}/history/` lists chips whose gameweek has PASSED, and the public
+  picks endpoint freezes at the last deadline — so a Wildcard activated
+  mid-week is invisible to both, along with the squad it bought. The saved
+  my-team document (bookmarklet or cookie) therefore takes precedence over
+  public picks whenever it was saved *after* that gameweek's deadline
+  (`_my_team_is_fresher`). It self-corrects: once the next deadline passes the
+  public picks are newer again, so nothing has to be cleared by hand.
 * **Chips have option value.** A rolling-horizon optimiser sees a chip as pure
   upside and burns every available one inside the horizon (all four across
   GW2-6, for single-digit gains). `chip_reserve` prices what a chip is worth *saved*. For Triple Captain and

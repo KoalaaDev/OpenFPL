@@ -366,6 +366,10 @@ input[type='range'] { accent-color: var(--accent); flex: 1; }
   color: var(--muted); font-family: var(--mono);
 }
 .chip-btn.on { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+/* a chip already played, or out of window: still legible, plainly not on offer */
+.chip-btn.spent { opacity: 0.42; border-style: dashed; }
+.chip-btn.spent button { cursor: not-allowed; }
+.chip-btn em { font-style: normal; font-size: 10px; opacity: 0.75; margin-left: 4px; }
 .chip-btn select {
   background: var(--bg-deep); border: 1px solid var(--line); border-radius: 5px;
   color: var(--text); font-family: var(--mono); font-size: 11px; padding: 2px 4px;

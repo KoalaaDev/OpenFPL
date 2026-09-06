@@ -10,6 +10,59 @@ export const CHIP_LONG = {
   bench_boost: 'Bench Boost Played', triple_captain: 'Triple Captain Played',
 }
 
+export const CHIP_NAME = {
+  wildcard: 'Wildcard', freehit: 'Free Hit',
+  bench_boost: 'Bench Boost', triple_captain: 'Triple Captain',
+}
+export const ALL_CHIPS = ['wildcard', 'freehit', 'bench_boost', 'triple_captain']
+
+// What the entry can still do with each chip, over a given run of gameweeks.
+// `chipState` is /api/entry's `chips` block: the season's chip windows (two of
+// each since 2024-25, one per half) with the gameweek each was spent in, plus
+// the one activated for the coming deadline — which only an authenticated
+// my-team import can see, because the public API freezes at the last deadline.
+//
+// With no chip state at all (offline, or FPL changed the payload) everything
+// reads as usable: the planner falling back to "you tell me" is the old
+// behaviour, and is much better than silently refusing a chip you do hold.
+export function chipAvailability(chipState, gws = []) {
+  const windows = chipState?.windows || []
+  const known = windows.length > 0
+  const active = chipState?.active || null
+  const out = {}
+  for (const c of ALL_CHIPS) {
+    const mine = windows.filter((w) => w.chip === c)
+    const open = mine.filter((w) => w.used_gw == null)
+    const inRange = gws.length
+      ? open.filter((w) => gws.some((g) => g >= w.start && g <= w.stop))
+      : open
+    out[c] = {
+      known,
+      active: active === c,
+      held: !known || open.length > 0,
+      usable: !known || active === c || inRange.length > 0,
+      played: mine.filter((w) => w.used_gw != null).map((w) => w.used_gw),
+      windows: open.map((w) => [w.start, w.stop]),
+    }
+  }
+  return out
+}
+
+// One line of English for a chip's status — the tooltip that stops anyone
+// wondering why a button is greyed out.
+export function chipNote(a, name) {
+  if (!a) return name
+  if (a.active) return `${name} is ACTIVE for the coming gameweek`
+  if (a.played.length && !a.held) return `${name} already played (GW${a.played.join(', GW')})`
+  if (!a.usable) {
+    const w = a.windows[0]
+    return w ? `${name} is next available in GW${w[0]}–${w[1]}`
+      : `${name} already played`
+  }
+  if (a.played.length) return `${name} held (the GW${a.played.join(', GW')} one is spent)`
+  return `${name} available`
+}
+
 // Served from the local disk cache (app/images.py), not the Premier League
 // CDN. A pitch is 15 shirts and the projections table is a badge per row; as
 // cross-origin requests on a cold cache that was seconds of blank boxes.

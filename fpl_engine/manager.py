@@ -192,3 +192,142 @@ def current_squad(entry_id: int, *, use_cache: bool = False) -> dict | None:
         "squad": squad,
         "free_transfers": estimate_free_transfers(history),
     }
+
+
+# --------------------------------------------------------------------------
+# chips
+#
+# FPL names chips differently from the optimiser ("bboost" vs "bench_boost"),
+# and since 2024-25 each chip is granted TWICE — once per half of the season,
+# with the windows published in the bootstrap's own ``chips`` table. Reading
+# that table rather than hardcoding the halves means a rule change (or a
+# one-off extra chip) is picked up for free; the fallback below only covers a
+# bootstrap that has no table at all.
+#
+# What the public API can and cannot see is the whole design constraint here:
+# ``entry/{id}/history/`` lists chips whose gameweek has PASSED, so a chip
+# activated for the upcoming deadline is invisible to it. That state lives
+# only in the authenticated ``my-team/{id}/`` response, which is why
+# :func:`chip_state` takes an optional my-team document and prefers it.
+# --------------------------------------------------------------------------
+
+FPL_CHIP_NAMES = {"wildcard": "wildcard", "freehit": "freehit",
+                  "bboost": "bench_boost", "3xc": "triple_captain"}
+CHIP_LABELS = {"wildcard": "Wildcard", "freehit": "Free Hit",
+               "bench_boost": "Bench Boost", "triple_captain": "Triple Captain"}
+HALVES = ((1, 19), (20, 38))
+
+
+def _default_windows() -> list[dict]:
+    return [{"chip": c, "start": a, "stop": b}
+            for a, b in HALVES for c in CHIP_LABELS]
+
+
+def chip_windows(boot: dict | None = None) -> list[dict]:
+    """Every chip slot this season offers: {chip, start, stop}, engine names.
+
+    Unknown chips (2024-25's assistant manager, anything FPL adds later) are
+    dropped rather than guessed at — the optimiser can only model the four it
+    implements, and silently mapping a fifth onto one of them would be worse
+    than not seeing it.
+    """
+    try:
+        boot = fetch_bootstrap() if boot is None else boot
+    except Exception:
+        return _default_windows()
+    out = []
+    for c in (boot.get("chips") or []):
+        chip = FPL_CHIP_NAMES.get(c.get("name"))
+        if not chip:
+            continue
+        out.append({"chip": chip,
+                    "start": int(c.get("start_event") or 1),
+                    "stop": int(c.get("stop_event") or 38)})
+    return out or _default_windows()
+
+
+def _next_gw_from(boot: dict) -> int | None:
+    for e in boot.get("events", []) or []:
+        if e.get("is_next"):
+            return int(e["id"])
+    for e in boot.get("events", []) or []:
+        if not e.get("finished"):
+            return int(e["id"])
+    return None
+
+
+def my_team_chips(my_team: dict | None) -> list[dict]:
+    """Normalise the ``chips`` block of a my-team response.
+
+    Shape per entry: ``{"chip": ..., "status": available|active|played,
+    "start": gw, "stop": gw, "played_gw": gw|None}``. This is the only source
+    that knows a chip is ACTIVE for the upcoming deadline.
+    """
+    out = []
+    for c in ((my_team or {}).get("chips") or []):
+        chip = FPL_CHIP_NAMES.get(c.get("name"))
+        if not chip:
+            continue
+        played = [int(g) for g in (c.get("played_by_entry") or [])]
+        status = str(c.get("status_for_entry") or
+                     ("played" if played else "available"))
+        out.append({"chip": chip, "status": status,
+                    "start": int(c.get("start_event") or 1),
+                    "stop": int(c.get("stop_event") or 38),
+                    "played_gw": played[0] if played else None})
+    return out
+
+
+def chip_state(entry_id: int | None = None, *, history: dict | None = None,
+               my_team_chips_: list[dict] | None = None,
+               boot: dict | None = None, next_gw: int | None = None,
+               use_cache: bool = False) -> dict:
+    """Which chips this entry has spent, holds, and has active right now.
+
+    ``history`` (public) supplies chips played in gameweeks that have already
+    passed; ``my_team_chips_`` (from an authenticated import) supplies the
+    active one and confirms the rest. A played chip is charged to the first
+    unused window containing its gameweek, which is what makes "wildcard used
+    in GW3" leave the GW20-38 wildcard still available.
+    """
+    boot = boot if boot is not None else fetch_bootstrap()
+    if next_gw is None:
+        next_gw = _next_gw_from(boot)
+    if history is None and entry_id is not None:
+        try:
+            history = fetch_history(entry_id, use_cache=use_cache)
+        except Exception:
+            history = None
+
+    played: list[dict] = []
+    for c in ((history or {}).get("chips") or []):
+        chip = FPL_CHIP_NAMES.get(c.get("name"))
+        if chip and c.get("event") is not None:
+            played.append({"chip": chip, "gw": int(c["event"])})
+    mine = my_team_chips_ or []
+    for c in mine:                      # my-team knows chips history misses
+        if c["status"] == "played" and c.get("played_gw") is not None:
+            if not any(p["chip"] == c["chip"] and p["gw"] == c["played_gw"]
+                       for p in played):
+                played.append({"chip": c["chip"], "gw": int(c["played_gw"])})
+    played.sort(key=lambda p: p["gw"])
+    active = next((c["chip"] for c in mine if c["status"] == "active"), None)
+
+    windows = [dict(w, used_gw=None) for w in chip_windows(boot)]
+    for p in played:
+        slot = next((w for w in windows
+                     if w["chip"] == p["chip"] and w["used_gw"] is None
+                     and w["start"] <= p["gw"] <= w["stop"]), None)
+        if slot is None:                # window table disagrees with reality
+            slot = next((w for w in windows if w["chip"] == p["chip"]
+                         and w["used_gw"] is None), None)
+        if slot is not None:
+            slot["used_gw"] = p["gw"]
+
+    gw = next_gw or 1
+    available = sorted({w["chip"] for w in windows
+                        if w["used_gw"] is None and w["stop"] >= gw
+                        and w["chip"] != active})
+    return {"played": played, "active": active, "available": available,
+            "windows": windows, "next_gw": next_gw,
+            "source": "my-team" if mine else "public"}
