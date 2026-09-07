@@ -747,3 +747,4 @@
 {"chance_next": 0.75, "code": 232928, "news": "Unspecified injury - 75% chance of playing", "news_added": "2026-09-06T18:00:08.301702Z", "observed_utc": "2026-09-06T18:26:01.932220+00:00", "player_id": 239, "season": "2026-27", "status": "d", "web_name": "Garner"}
 {"chance_next": null, "code": 629068, "news": null, "news_added": null, "observed_utc": "2026-09-06T18:26:01.932220+00:00", "player_id": 654, "season": "2026-27", "status": "a", "web_name": "Graham"}
 {"chance_next": 1.0, "code": 184341, "news": null, "news_added": "2026-08-15T16:00:07.879135Z", "observed_utc": "2026-09-06T18:26:01.932220+00:00", "player_id": 430, "season": "2026-27", "status": "a", "web_name": "Mount"}
+{"chance_next": 0.75, "code": 500040, "news": "Muscular injury - 75% chance of playing", "news_added": "2026-09-04T14:00:08.080310Z", "observed_utc": "2026-09-07T15:56:18.924134+00:00", "player_id": 11, "season": "2026-27", "status": "d", "web_name": "Mosquera"}
