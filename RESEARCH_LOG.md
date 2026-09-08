@@ -1201,3 +1201,51 @@ well-powered after E14's five. Expectation setting, pre-registered: if
 RotoWire's band accuracy matches the model's own ~55%, every arm ties the
 baseline; each point of accuracy above that is worth
 `(acc − 0.55)/0.45 × 89` points a season, concentrated in the removals.
+
+### E17, GW3 scored — the first real gameweek, and the hard arm's lesson
+
+Archive at scoring time: 1,276 rows (1,144 predicted + 132 confirmed), of
+which 572 pre-deadline predicted rows for GW3; snapshot 220/220 matched over
+all 20 clubs; 307 players played, so full outcome scoring ran. n = 1 gameweek
+— every number below is an accrual entry, not a conclusion.
+
+**The feed as a start classifier** (654 covered rows): TPR 0.905, FPR 0.048.
+Strong on the easy mass — and exactly TIED with the model where it matters:
+false-starter rate model 0.096 vs feed 0.095 overall, 0.077 vs 0.080 in
+ranks 5-30, 0.182 vs 0.200 in ranks 5-15.
+
+**The one high-value call was wrong.** The deadline snapshot removed exactly
+one rank-5-30 player the model had above 0.6: Iliman Ndiaye, rank 5, model
+P(start) 0.95 — he started and played 86 minutes. Removal precision 0/1. The
+dry run's earlier removal (Gakpo, Aug 31 forecast) had been withdrawn by
+RotoWire before the deadline — he started and scored 11 — so forecast churn
+cut both ways this week: the feed corrected one wrong call before the
+deadline and introduced another.
+
+**Arms** (baseline / hard / soft / oracle):
+
+| | top11 | top30 | ll_start (covered) | calibration gap |
+|---|---|---|---|---|
+| baseline | 4.09 | 4.07 | 0.2299 | +0.019 |
+| hard | 4.27 | 3.83 | **0.8868** | 0.000 |
+| soft (LR=4) | 4.18 | 4.10 | **0.2024** | +0.008 |
+| oracle | 4.36 | 4.30 | 0 | 0 |
+
+Two structural reads that do not need more sample:
+
+1. **The hard override is falsified as an implementation at the feed's
+   observed error rate.** Forcing P(start) to 1/0 on a source with 9.5%
+   false-negative and 4.8% false-positive rates multiplies start log-loss
+   3.9× — every miss costs unboundedly. Its top11 (+0.18, 67% of the oracle
+   gain this week) is real money on this one draw, but it comes packaged
+   with a worse top30 (−0.23) and a certainty the feed has not earned.
+2. **The soft arm already improves what a probability should improve**:
+   −12% start log-loss and a halved calibration gap at the pre-registered
+   LR=4, capturing 12% of the residual P(start) error — consistent with a
+   feed that knows real things about the easy 620 rows and nothing extra
+   about the hard 26 yet.
+
+The pre-registered accrual continues: removal precision needs ~10 gameweeks
+(~1-3 removals each), the TPR/FPR + calibration battery is powered after ~5.
+From GW4 the soft arm's LRs are fitted on scored gameweeks only (GW3 gives
+LR+ ≈ 18.7, far above the default 4 — the first refit will sharpen it).
