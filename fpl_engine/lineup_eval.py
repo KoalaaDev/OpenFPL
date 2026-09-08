@@ -365,6 +365,42 @@ def soft_frame(base: pd.DataFrame, snap: pd.DataFrame,
     return out
 
 
+def prior_scored_rows(conn, season: str, gw: int,
+                      feed: pd.DataFrame) -> pd.DataFrame | None:
+    """(feed_start, started) rows from every COMPLETED gameweek before `gw`
+    that has pre-deadline coverage — the soft arm's forward-in-time training
+    set. Gameweeks without coverage or without played matches are skipped
+    (each skip is printed); returns None when nothing is scoreable yet."""
+    parts = []
+    for g in range(2, gw):
+        try:
+            snap = snapshot(feed, conn, season, g)
+        except ValueError as e:
+            print(f"[lineup-eval] prior GW{g}: no usable coverage ({e})")
+            continue
+        act = pd.read_sql_query(
+            "SELECT player_id, MAX(starts) starts, SUM(minutes) minutes "
+            "FROM player_gw WHERE season=? AND gw=? GROUP BY player_id",
+            conn, params=(season, g))
+        act["minutes"] = pd.to_numeric(act.minutes, errors="coerce").fillna(0)
+        if (act.minutes > 0).sum() < 150:
+            print(f"[lineup-eval] prior GW{g}: not complete — skipped")
+            continue
+        pl = pd.read_sql_query(
+            "SELECT player_id, team_id FROM player WHERE season=?",
+            conn, params=(season,))
+        cov = pl[pl.team_id.isin(set(snap.fpl_team_id))].copy()
+        xi = set(snap.player_id.dropna().astype(int))
+        cov["feed_start"] = cov.player_id.isin(xi)
+        cov = cov.merge(act[["player_id", "starts"]], on="player_id",
+                        how="left")
+        cov["started"] = pd.to_numeric(cov.starts, errors="coerce"
+                                       ).fillna(0) > 0
+        parts.append(cov[["feed_start", "started"]])
+        print(f"[lineup-eval] prior GW{g}: {len(cov)} scored rows for LR fit")
+    return pd.concat(parts, ignore_index=True) if parts else None
+
+
 def fitted_lrs(scored: pd.DataFrame | None) -> tuple[float, float]:
     """LRs from previously scored gameweeks; the pre-registered default when
     none exist yet."""
@@ -487,7 +523,7 @@ def evaluate(conn, season: str, gw: int, feed: pd.DataFrame) -> dict:
         res[f"n_{name}"] = int(len(g))
 
     prof = _exposure_profiles(conn, season)
-    lr_in, lr_out = fitted_lrs(None)   # prior scored gws wired in later
+    lr_in, lr_out = fitted_lrs(prior_scored_rows(conn, season, gw, feed))
     # the full-minutes oracle normalises every arm: (arm - baseline) /
     # (oracle - baseline) is the share of the reachable gain the feed gets
     oracle = base.copy()
