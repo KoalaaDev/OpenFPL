@@ -748,3 +748,5 @@
 {"chance_next": null, "code": 629068, "news": null, "news_added": null, "observed_utc": "2026-09-06T18:26:01.932220+00:00", "player_id": 654, "season": "2026-27", "status": "a", "web_name": "Graham"}
 {"chance_next": 1.0, "code": 184341, "news": null, "news_added": "2026-08-15T16:00:07.879135Z", "observed_utc": "2026-09-06T18:26:01.932220+00:00", "player_id": 430, "season": "2026-27", "status": "a", "web_name": "Mount"}
 {"chance_next": 0.75, "code": 500040, "news": "Muscular injury - 75% chance of playing", "news_added": "2026-09-04T14:00:08.080310Z", "observed_utc": "2026-09-07T15:56:18.924134+00:00", "player_id": 11, "season": "2026-27", "status": "d", "web_name": "Mosquera"}
+{"chance_next": 1.0, "code": 101282, "news": null, "news_added": "2026-08-29T15:00:08.569326Z", "observed_utc": "2026-09-09T00:23:08.604158+00:00", "player_id": 289, "season": "2026-27", "status": "a", "web_name": "Crooks"}
+{"chance_next": 1.0, "code": 553783, "news": null, "news_added": "2026-08-04T18:30:11.016909Z", "observed_utc": "2026-09-09T00:23:08.604158+00:00", "player_id": 294, "season": "2026-27", "status": "a", "web_name": "Zambrano"}
