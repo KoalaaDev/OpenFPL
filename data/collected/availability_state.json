@@ -1296,10 +1296,10 @@
   null
  ],
  "243298": [
-  "a",
-  null,
-  null,
-  null
+  "d",
+  0.75,
+  "Thigh injury - 75% chance of playing",
+  "2026-09-09T18:30:08.772955Z"
  ],
  "243413": [
   "a",
@@ -2276,7 +2276,7 @@
  "486672": [
   "d",
   0.75,
-  "Unspecified injury - 75% chance of playing",
+  "Calf injury - 75% chance of playing",
   "2026-08-30T16:00:08.393562Z"
  ],
  "487053": [
@@ -2616,10 +2616,10 @@
   null
  ],
  "503037": [
-  "a",
-  1.0,
-  null,
-  "2026-07-24T20:30:10.622380Z"
+  "d",
+  0.75,
+  "Hamstring injury - 75% chance of playing",
+  "2026-09-09T15:00:09.063849Z"
  ],
  "503139": [
   "a",
