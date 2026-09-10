@@ -1283,6 +1283,12 @@
   null,
   null
  ],
+ "242893": [
+  "a",
+  null,
+  null,
+  null
+ ],
  "242898": [
   "a",
   null,
@@ -1620,10 +1626,10 @@
   null
  ],
  "439668": [
-  "a",
-  null,
-  null,
-  null
+  "i",
+  0.0,
+  "Unspecified injury - Expected back 12 Oct",
+  "2026-09-10T18:30:08.877110Z"
  ],
  "440089": [
   "a",
@@ -3120,10 +3126,10 @@
   null
  ],
  "554578": [
-  "a",
-  null,
-  null,
-  null
+  "d",
+  0.5,
+  "Ankle injury - 50% chance of playing",
+  "2026-09-10T16:00:09.127466Z"
  ],
  "556637": [
   "a",
