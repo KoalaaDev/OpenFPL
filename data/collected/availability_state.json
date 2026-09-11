@@ -810,10 +810,10 @@
   "2026-09-04T12:32:39.183614Z"
  ],
  "213292": [
-  "a",
-  null,
-  null,
-  null
+  "u",
+  0.0,
+  "Has joined Omonoia FC permanently",
+  "2026-09-11T14:42:38.120231Z"
  ],
  "214225": [
   "i",
@@ -1254,9 +1254,9 @@
   null
  ],
  "241117": [
-  "d",
-  0.75,
-  "Muscular injury - 75% chance of playing",
+  "a",
+  1.0,
+  null,
   "2026-07-29T18:00:10.305484Z"
  ],
  "241293": [
@@ -1644,10 +1644,10 @@
   null
  ],
  "441164": [
-  "a",
-  1.0,
-  null,
-  "2026-08-21T15:22:48.149081Z"
+  "d",
+  0.75,
+  "Unspecified injury - 75% chance of playing",
+  "2026-09-11T18:00:09.076279Z"
  ],
  "441191": [
   "a",
@@ -2028,10 +2028,10 @@
   null
  ],
  "465920": [
-  "a",
-  null,
-  null,
-  null
+  "i",
+  0.0,
+  "Ankle injury - Unknown return date",
+  "2026-09-11T18:00:09.154412Z"
  ],
  "466052": [
   "a",
@@ -2190,9 +2190,9 @@
   "2026-07-23T12:01:23.481435Z"
  ],
  "481624": [
-  "d",
-  0.75,
-  "Ankle injury - 75% chance of playing",
+  "a",
+  1.0,
+  null,
   "2026-08-25T11:30:07.532993Z"
  ],
  "481655": [
@@ -2286,10 +2286,10 @@
   "2026-08-30T16:00:08.393562Z"
  ],
  "487053": [
-  "a",
-  null,
-  null,
-  null
+  "d",
+  0.75,
+  "Unspecified injury - 75% chance of playing",
+  "2026-09-11T18:00:09.092110Z"
  ],
  "487117": [
   "i",
@@ -2874,10 +2874,10 @@
   null
  ],
  "536694": [
-  "a",
-  null,
-  null,
-  null
+  "u",
+  0.0,
+  "Has joined Alverca on loan for the rest of the season",
+  "2026-09-11T14:42:19.322912Z"
  ],
  "536916": [
   "u",
@@ -2976,9 +2976,9 @@
   "2026-08-18T14:12:31.904433Z"
  ],
  "547686": [
-  "d",
-  0.75,
-  "Unspecified injury - 75% chance of playing",
+  "u",
+  0.0,
+  "has joined  Real Salt Lake on loan for the rest of the seaon.",
   "2026-08-28T11:30:08.336405Z"
  ],
  "547701": [
@@ -3102,10 +3102,10 @@
   null
  ],
  "553746": [
-  "a",
-  null,
-  null,
-  null
+  "u",
+  0.0,
+  "has joined Arouca on loan for the rest of the seaon.",
+  "2026-09-11T14:41:57.406766Z"
  ],
  "553783": [
   "a",
@@ -3172,6 +3172,12 @@
   0.0,
   "Knee injury - Unknown return date",
   "2026-07-29T18:00:10.338170Z"
+ ],
+ "566213": [
+  "a",
+  null,
+  null,
+  null
  ],
  "567119": [
   "a",
@@ -3552,9 +3558,9 @@
   null
  ],
  "614071": [
-  "i",
-  0.0,
-  "Knee injury - Expected back 12 Sep",
+  "d",
+  0.5,
+  "Knee injury - 50% chance of playing",
   "2026-08-15T15:30:06.388335Z"
  ],
  "614574": [
@@ -3594,9 +3600,9 @@
   null
  ],
  "620109": [
-  "d",
-  0.75,
-  "Unspecified injury - 75% chance of playing",
+  "i",
+  0.0,
+  "Unspecified injury - Expected back 18 Sep",
   "2026-08-24T18:30:07.421239Z"
  ],
  "620487": [
