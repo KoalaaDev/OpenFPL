@@ -25,7 +25,7 @@ import numpy as np
 import pandas as pd
 
 from .. import scoring
-from . import (leaky, minutes_model, odds_model, rates as rates_mod,
+from . import (cs_model, leaky, minutes_model, odds_model, rates as rates_mod,
                set_pieces, team_model)
 
 ATTACK_SCALER_CAP = (0.55, 1.75)
@@ -168,8 +168,11 @@ def xpts_predict_gw(conn, season: str, gw: int, *, as_of: str | None = None,
     dispersion instead of Poisson), ``def_attack_exp=e`` (a defender's xG/xA
     scale with the fixture as scaler**e), ``venue_adj=a`` (a home side's
     lambda_against x(1+a), an away side's x(1-a); the attack side is
-    untouched), and ``rates={...}`` forwarded to ``rates.fit``
-    (``bonus_defcon``, ``xa_blend``, ``k_by_pos``, ``calibrate_by_pos``).
+    untouched), ``cs_model={"kind": "logit"|"gbm", ...}`` (a learned P(no
+    goals) per fixture from ``xpts/cs_model.py`` replaces the Poisson zero in
+    the clean-sheet component), and ``rates={...}`` forwarded to
+    ``rates.fit`` (``bonus_defcon``, ``xa_blend``, ``k_by_pos``,
+    ``calibrate_by_pos``).
 
     ``minutes_override`` and ``oracle`` exist for the ORACLE DECOMPOSITION —
     "what would a perfect estimate of X be worth?" — and are None on every
@@ -237,14 +240,28 @@ def xpts_predict_gw(conn, season: str, gw: int, *, as_of: str | None = None,
         if od:
             lh = (1 - ow) * lh + ow * od[0]
             la = (1 - ow) * la + ow * od[1]
-        team_fixtures.setdefault(f["team_h"], []).append((lh, la * (1 + venue_adj)))
-        team_fixtures.setdefault(f["team_a"], []).append((la, lh * (1 - venue_adj)))
+        team_fixtures.setdefault(f["team_h"], []).append(
+            [lh, la * (1 + venue_adj), None, f["fixture_id"]])
+        team_fixtures.setdefault(f["team_a"], []).append(
+            [la, lh * (1 - venue_adj), None, f["fixture_id"]])
     league = max(1e-6, tm.league_rate)
+    # research (E18): a learned P(no goals conceded) per (club, fixture)
+    # replaces the Poisson zero for the clean-sheet component only
+    if tw.get("cs_model"):
+        cm = dict(tw["cs_model"])
+        train = cm.pop("train_seasons", None) or [
+            s_ for s_ in getattr(__import__("fpl_engine.config", fromlist=["x"]),
+                                 "BACKFILL_SEASONS") if s_ < season]
+        p0_map = cs_model.p_clean_sheet_map(conn, season, gw, as_of, train, **cm)
+        for _t, _fx in team_fixtures.items():
+            for _e in _fx:
+                _e[2] = p0_map.get((int(_t), int(_e[3])))
     if leak_cfg and leak_cfg.get("mode") not in (None, "goals_def", "xga_def"):
         leak = leaky.defence_leak_factors(conn, season, as_of, leak_cfg)
         for _t, _fx in team_fixtures.items():
             _f = leak.get(_t, 1.0)
-            team_fixtures[_t] = [(lf, la * _f) for lf, la in _fx]
+            for _e in _fx:
+                _e[1] = _e[1] * _f
 
     # Penalty duty enters as a CORRECTION toward today's published order, not
     # as a bonus: the player's trailing xG already contains the penalties he
@@ -296,7 +313,7 @@ def xpts_predict_gw(conn, season: str, gw: int, *, as_of: str | None = None,
         comp = {k: 0.0 for k in ("goals", "assists", "cs", "conceded",
                                  "saves", "bonus", "cards", "defcon",
                                  "appearance", "residual")}
-        for lam_for, lam_against in fx:
+        for lam_for, lam_against, p0_learned, _fid in fx:
             scaler = float(np.clip(lam_for / league, *ATTACK_SCALER_CAP))
             if def_att_exp is not None and pos == "DEF":
                 scaler = scaler ** float(def_att_exp)
@@ -304,6 +321,8 @@ def xpts_predict_gw(conn, season: str, gw: int, *, as_of: str | None = None,
             a = (r.xa90 or 0.0) * exposure * scaler
             p0 = (math.exp(-lam_against) if cs_phi <= 0
                   else (1.0 + cs_phi * lam_against) ** (-1.0 / cs_phi))
+            if p0_learned is not None:
+                p0 = p0_learned
             cs = (r.p_full or 0.0) * p0
             e_goals += g
             e_assists += a

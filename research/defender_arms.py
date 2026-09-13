@@ -36,3 +36,21 @@ ARMS = {
     # H10 recent defensive form: team-model half-life 90 days instead of 180
     "h10_hl90": {"constants": {"team_model": {"HALF_LIFE_DAYS": 90.0}}},
 }
+
+# E18: a learned clean-sheet engine (pre-registered before any arm ran)
+ARMS.update({
+    # full feature set, logistic
+    "cs_logit": {"tweaks": {"cs_model": {"kind": "logit"}}},
+    # full feature set, small gradient-boosted classifier
+    "cs_gbm": {"tweaks": {"cs_model": {"kind": "gbm"}}},
+    # lambdas and venue only: does re-weighting market vs model alone help?
+    "cs_lam": {"tweaks": {"cs_model": {"kind": "logit", "features": [
+        "log_lam_market", "log_lam_model", "market_missing", "home"]}}},
+})
+ARMS.update({
+    # the one Stage 1 form that ties the Poisson zero: the engine's own logit
+    # as a fixed offset, no intercept, both sides' trailing record
+    "cs_offset": {"tweaks": {"cs_model": {"kind": "offset", "features": [
+        "own_xga", "own_ga", "own_cs", "own_ga_xga",
+        "opp_xg", "opp_gf", "opp_blank", "opp_gf_xg"]}}},
+})

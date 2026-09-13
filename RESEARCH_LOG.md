@@ -1077,3 +1077,62 @@ roughly `(accuracy − 0.55)/0.45 × 89` points a season.
   columns on the engine output ship, because a post-mortem should be able
   to say which component missed. Diagnostic:
   `python research/defenders.py diagnose --frame <frame.csv>`.
+
+## E18. A better clean-sheet engine: a learned P(clean sheet) against the Poisson zero
+
+* **Owner's request.** "We need a better clean sheet engine." E17 found
+  clean-sheet luck to be 39% of the defender pick error and E13 priced
+  perfect clean-sheet knowledge at +2.35 points per pick, so this is the
+  component where a better estimator would be worth the most if one exists.
+* **What "better" has to beat.** The shipped P(no goals conceded) is the
+  Poisson zero exp(-lambda_against), lambda being the bookmaker's implied
+  goals for the opponent (85%) blended with the team model (15%). E16
+  showed it calibrated (slope 0.997 on its own logit) and unimproved by any
+  scoreline feature. A better engine therefore has to be a different
+  functional form or a different information set, judged on the direct
+  question first: held-out log-loss of P(clean sheet) on team-matches,
+  740 a season, before any decision backtest.
+* **Design (pre-registered).** `xpts/cs_model.py`: one row per club and
+  fixture, features strictly point-in-time at the gameweek's first kickoff:
+  the market lambda, the model lambda and the engine's blend (log scale),
+  venue, the club's trailing 10-match xGA, goals against, clean-sheet share
+  and goals-against-minus-xGA, and the opponent's trailing xG, goals for,
+  blank share and goals-for-minus-xG (all shrunk by 3 pseudo-matches).
+  Trained on the seasons before the one scored (2022-23 + 2023-24 for
+  2024-25; those plus 2024-25 for 2025-26). Forms: a logistic regression
+  on lambdas + venue only (a market/model re-weighting), a logistic
+  regression on everything, a small gradient-boosted classifier, and an
+  offset logit with NO intercept (the engine's own logit as a fixed
+  offset, ridge-regularised coefficients on the trailing record). Decision
+  arms through the standard 74-gameweek harness for each form, judged on
+  the defender metrics; family alpha 0.05/4.
+* **Stage 1: held-out team-match log-loss (lower is better).**
+
+  | P(clean sheet) from | 2024-25 log-loss / Brier / mean p | 2025-26 log-loss / Brier / mean p |
+  |---|---|---|
+  | **Poisson zero, engine blend (shipped)** | **0.5193** / 0.1710 / 0.243 | 0.5293 / 0.1755 / 0.262 |
+  | Poisson zero, market lambda only | 0.5200 / 0.1712 / 0.244 | **0.5286** / 0.1753 / 0.264 |
+  | Poisson zero, team-model lambda only | 0.5194 / 0.1708 / 0.243 | 0.5379 / 0.1783 / 0.257 |
+  | logit: lambdas + venue | 0.5239 / 0.1725 / 0.209 | 0.5309 / 0.1760 / 0.232 |
+  | logit: full features | 0.5250 / 0.1731 / 0.210 | 0.5301 / 0.1759 / 0.234 |
+  | gradient boosting: full features | 0.5332 / 0.1748 / 0.210 | 0.5411 / 0.1813 / 0.241 |
+  | offset logit, no intercept: trailing record | 0.5194 / 0.1711 / 0.234 | 0.5284 / 0.1755 / 0.251 |
+  | offset logit, no intercept: record + lambdas | 0.5216 / 0.1720 / 0.236 | 0.5294 / 0.1757 / 0.255 |
+  | realised clean-sheet rate | 0.232 | 0.250 |
+
+  Every free-intercept model is WORSE than the Poisson zero, in both
+  seasons, and the mean-p column says why: the league clean-sheet rate
+  moves from season to season (0.272, 0.207, 0.234, 0.255 across the four
+  in the database), a fitted intercept inherits the training seasons' rate
+  and carries it into a season with a different one (0.210 predicted
+  against 0.232 realised), and the gradient-boosted model pays that price
+  and a variance price on top. The Poisson zero has no intercept to
+  inherit: its level comes from this week's lambda, which the market
+  re-prices every week. Removing the intercept (the offset form) removes
+  the loss and buys nothing: the trailing record on top of the engine's own
+  logit is worth +0.0001 log-loss in 2024-25 and -0.0009 in 2025-26, a tie.
+  Adding the lambdas as free features to that form makes it worse again.
+  The logit coefficients say the same thing as E16's regression: after the
+  blend, own xGA and opponent xG carry the only weight and goals-against-
+  minus-xGA enters with the sign of luck reverting.
+* **Stage 2: decision arms.** See the results block below.
