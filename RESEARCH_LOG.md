@@ -1136,3 +1136,42 @@ roughly `(accuracy − 0.55)/0.45 × 89` points a season.
   blend, own xGA and opponent xG carry the only weight and goals-against-
   minus-xGA enters with the sign of luck reverting.
 * **Stage 2: decision arms.** See the results block below.
+* **Stage 2 results, 74 paired gameweeks vs the shipped engine** (GK+DEF
+  metrics first; family alpha 0.0125):
+
+  | arm | def_top5 | def_top10 | def_spearman_played | spearman_played | top11 | rmse |
+  |---|---|---|---|---|---|---|
+  | logit: lambdas + venue | -0.04 | +0.01 | -0.0015 (p=0.043) | +0.0004 | +0.03 | +0.0013 (p=0.017, worse) |
+  | logit: full features | -0.02 | -0.02 | -0.0021 (p=0.14) | +0.0003 | +0.04 | +0.0015 (p=0.018, worse) |
+  | gradient boosting | -0.12 | -0.12 (p=0.21) | -0.0019 | +0.0004 | +0.10 (p=0.10) | +0.0019 |
+  | offset logit, no intercept | +0.08 (p=0.34) | -0.03 | -0.0009 | +0.0001 | +0.03 | +0.0002 |
+
+  Nothing reaches the family alpha in the right direction; the two forms
+  that reach p < 0.05 at all do so on rmse, and worse. Every defender
+  points metric is inside noise and flips sign between seasons (the offset
+  form is def_top5 +0.18 in 2024-25 and -0.02 in 2025-26). The decision
+  layer agrees with the team-match layer, which is the better-powered one.
+* **Verdict: the Poisson zero on the market-blended lambda IS the better
+  clean-sheet engine, and now it has been shown to be.** Four learned forms,
+  two seasons, 1,480 held-out team-matches and 74 paired gameweeks, and the
+  best of them ties. The reason is structural rather than a shortage of
+  features: P(no goals) is one number per fixture, the bookmaker re-prices
+  that number every week with more information than any trailing record
+  carries (E13's encompassing test, market coefficient 0.90 against the
+  model's 0.00), and the Poisson zero converts it without a fitted level.
+  The trailing record adds +0.0001 / -0.0009 log-loss on top of it, which is
+  the E16 regression's null again in a form that could not be more
+  generous to the features. The 39% of defender pick error that is
+  clean-sheet variance is variance, not estimator error.
+* **The one thing that is not closed.** All of this is a marginal P(no
+  goals) from a marginal lambda. A source that carries the joint scoreline
+  distribution directly, Polymarket's exact-score market (recorded in the
+  Polymarket section as the one thing it has that the bookmaker feed does
+  not), prices P(0 goals) without going through a Poisson at all. It is
+  live-only and un-backtestable here, so it is a forward-collection
+  question, not a modelling one.
+* **Status.** `xpts/cs_model.py` stays as a research module; the engine's
+  `cs_model` tweak is None on every shipped path (`tests/test_cs_model.py`
+  pins the hook off, the rows point-in-time, and the offset form's
+  reduction to the Poisson zero at zero coefficients). Stage 1 reproduces
+  with `python research/cs_engine.py`.

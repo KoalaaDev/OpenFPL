@@ -286,6 +286,20 @@ because the out-of-sample gain did not survive:
   ~10-19% fewer goals than modelled xG and more assists than blended xA.
   `research/defenders.py`, `research/defender_arms.py`, engine `tweaks`
   hook and `c_*` component columns.
+* **A learned clean-sheet engine** (E18). Point-in-time P(clean sheet)
+  models (logistic on lambdas + venue, logistic and gradient boosting on
+  both sides' trailing xG/xGA/blank/clean-sheet record, and an offset logit
+  with the engine's own logit fixed and no intercept), trained on prior
+  seasons and scored on 740 held-out team-matches per season: every
+  free-intercept form has WORSE log-loss than the shipped Poisson zero
+  exp(-lambda) in both seasons (a fitted intercept inherits the training
+  seasons' clean-sheet rate, which drifts 0.21-0.27 season to season; the
+  Poisson zero has no level to inherit), and the offset form ties it
+  (+0.0001 / -0.0009). Through the 74-gameweek decision harness all four are
+  null on defender points and two are significantly worse on rmse. The
+  market-blended Poisson zero is the clean-sheet engine; the remaining
+  clean-sheet error is variance. `xpts/cs_model.py`, `research/cs_engine.py`,
+  `cs_model` tweak.
 * **Adaptive (change-point) Bayesian shrinkage on the player rates.** Two
   estimates per player — fast (70-day half-life, weak shrinkage) and slow
   (420-day, strong) — blended by how much evidence there is that they differ,
