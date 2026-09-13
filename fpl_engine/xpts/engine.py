@@ -25,7 +25,7 @@ import numpy as np
 import pandas as pd
 
 from .. import scoring
-from . import (minutes_model, odds_model, rates as rates_mod,
+from . import (leaky, minutes_model, odds_model, rates as rates_mod,
                set_pieces, team_model)
 
 ATTACK_SCALER_CAP = (0.55, 1.75)
@@ -138,7 +138,8 @@ def xpts_predict_gw(conn, season: str, gw: int, *, as_of: str | None = None,
                     oracle: dict | None = None,
                     rate_scale: dict | None = None,
                     rate_override: "pd.DataFrame | None" = None,
-                    lambda_override: dict | None = None) -> pd.DataFrame:
+                    lambda_override: dict | None = None,
+                    defence_leak: dict | None = None) -> pd.DataFrame:
     """Expected points per player for one gameweek (point-in-time at as_of).
 
     Returns player_id-indexed frame with the prediction and its components.
@@ -151,6 +152,12 @@ def xpts_predict_gw(conn, season: str, gw: int, *, as_of: str | None = None,
     All three are research affordances for asking "what would a better
     ESTIMATOR be worth", as distinct from the outcome oracle's "what would
     clairvoyance be worth", and none is ever set on a shipped path.
+
+    ``defence_leak`` (RESEARCH_LOG E16) scales ``lambda_against`` for a club's
+    DEFENSIVE components only -- clean sheet, conceded, saves -- by a factor
+    built from its own trailing scorelines (``xpts/leaky.py``); its opponent's
+    attack scaler is untouched. ``{"mode": "goals_def"}`` instead refits the
+    team model's defence on realised goals alone. None on every shipped path.
 
     ``minutes_override`` and ``oracle`` exist for the ORACLE DECOMPOSITION —
     "what would a perfect estimate of X be worth?" — and are None on every
@@ -171,7 +178,9 @@ def xpts_predict_gw(conn, season: str, gw: int, *, as_of: str | None = None,
     if not fixtures:
         return pd.DataFrame()
 
-    tm = team_model.fit(conn, as_of)
+    leak_cfg = defence_leak or {}
+    tm = team_model.fit(conn, as_of, xg_blend_def=(
+        0.0 if leak_cfg.get("mode") == "goals_def" else None))
     clf, meta = minutes_bundle or minutes_model.ensure(conn)
     if clf is None:
         raise RuntimeError("minutes model could not be trained — is player_gw "
@@ -214,6 +223,11 @@ def xpts_predict_gw(conn, season: str, gw: int, *, as_of: str | None = None,
         team_fixtures.setdefault(f["team_h"], []).append((lh, la))
         team_fixtures.setdefault(f["team_a"], []).append((la, lh))
     league = max(1e-6, tm.league_rate)
+    if leak_cfg and leak_cfg.get("mode") not in (None, "goals_def"):
+        leak = leaky.defence_leak_factors(conn, season, as_of, leak_cfg)
+        for _t, _fx in team_fixtures.items():
+            _f = leak.get(_t, 1.0)
+            team_fixtures[_t] = [(lf, la * _f) for lf, la in _fx]
 
     # Penalty duty enters as a CORRECTION toward today's published order, not
     # as a bonus: the player's trailing xG already contains the penalties he
@@ -261,6 +275,7 @@ def xpts_predict_gw(conn, season: str, gw: int, *, as_of: str | None = None,
             xg90 += 0.10
         total = 0.0
         e_goals = e_assists = e_cs = 0.0
+        lam_agg = 0.0
         comp = {k: 0.0 for k in ("goals", "assists", "cs", "conceded",
                                  "saves", "bonus", "cards", "defcon",
                                  "appearance", "residual")}
@@ -272,6 +287,7 @@ def xpts_predict_gw(conn, season: str, gw: int, *, as_of: str | None = None,
             e_goals += g
             e_assists += a
             e_cs += cs
+            lam_agg += lam_against
             total += g * p_goal.get(pos, 4) + a * rules["assist"]
             comp["goals"] += g * p_goal.get(pos, 4)
             comp["assists"] += a * rules["assist"]
@@ -319,6 +335,7 @@ def xpts_predict_gw(conn, season: str, gw: int, *, as_of: str | None = None,
             "e_min": round(r.e_min or 0.0, 1),
             "e_goals": round(e_goals, 3), "e_assists": round(e_assists, 3),
             "p_cs": round(e_cs, 3),
+            "lam_against": round(lam_agg, 4),
             "prediction": round(total, 3),
         })
     return pd.DataFrame(rows)
