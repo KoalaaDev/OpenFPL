@@ -268,6 +268,24 @@ because the out-of-sample gain did not survive:
   predicts MORE clean sheets next, i.e. luck reverts. lambda is 85% market
   and the market has watched the same scorelines. `xpts/leaky.py`,
   `research/leaky_defence.py`, `defence_leak` research hook.
+* **Ten defender hypotheses** (E17), after "the model struggles to pick
+  defenders". Measured first: the engine's defenders are worse picks than
+  its midfielders and forwards (4.2 vs 5.2 / 4.4 points per pick) and so
+  are every baseline's, because a clean sheet is a coin toss decided by
+  eleven other people; the engine's edge over points-per-game is largest
+  for defenders (+1.2 pts/pick, +0.11 Spearman), its top-10 defender
+  projections are honest (4.31 vs 4.24 realised), and clean-sheet luck is
+  39% of the pick error. Ten pre-registered arms over 74 paired gameweeks
+  (finishing calibration, set-piece fixture scaling, on-pitch conceded
+  exposure, negative-binomial clean sheets, DefCon in the bonus fit,
+  DefCon x1.13, market-only lambda, a venue correction, harder shrinkage
+  of defenders' attacking rates, a 90-day team half-life): none improves
+  defender points per pick; the structurally "more correct" conceded and
+  clean-sheet forms are significantly WORSE on rank. Two calibration
+  defects are real and do not reorder players: every position scores
+  ~10-19% fewer goals than modelled xG and more assists than blended xA.
+  `research/defenders.py`, `research/defender_arms.py`, engine `tweaks`
+  hook and `c_*` component columns.
 * **Adaptive (change-point) Bayesian shrinkage on the player rates.** Two
   estimates per player — fast (70-day half-life, weak shrinkage) and slow
   (420-day, strong) — blended by how much evidence there is that they differ,

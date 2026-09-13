@@ -1026,3 +1026,54 @@ roughly `(accuracy − 0.55)/0.45 × 89` points a season.
   standing rejections on the metric that could see them. H8 is generated
   from the calibration table itself and is the one most at risk of being
   noise. Results follow.
+* **Results, 74 paired gameweeks vs the shipped engine** (family alpha
+  0.005; `def_*` are GK+DEF pooled, the clean-sheet positions):
+
+  | arm | def_top5 | def_top10 | def_spearman_played | spearman_played | top30 | rmse |
+  |---|---|---|---|---|---|---|
+  | H1 xg_cal | -0.03 | -0.06 (p=0.12) | **+0.0009 (p=0.001)** | +0.0007 (p=0.036) | +0.00 | +0.0010 (p=0.017, worse) |
+  | H2 def_att_exp | +0.02 | **-0.11 (p=0.025)** | -0.0014 (p=0.060) | -0.0005 | +0.02 | -0.0004 |
+  | H3 conc_emin | -0.01 | -0.00 | **-0.0018 (p<0.001)** | **-0.0015 (p<0.001)** | +0.02 (p=0.048) | -0.0001 |
+  | H4 cs_nb | +0.02 | +0.01 | -0.0003 | **-0.0007 (p=0.001)** | +0.01 | -0.0001 |
+  | H5 bonus_dc | +0.10 (p=0.055) | -0.01 | -0.0005 | +0.0008 (p=0.040) | -0.04 (p=0.073) | -0.0013 (p=0.010) |
+  | H6 defcon_113 | 0.00 | +0.01 | -0.0006 | +0.0001 | -0.02 | -0.0002 |
+  | H7 odds_10 | +0.06 | -0.02 | +0.0003 | -0.0002 | +0.02 | +0.0005 |
+  | H8 venue | +0.10 (p=0.17) | +0.05 | -0.0013 | -0.0004 | +0.05 (p=0.051) | -0.0007 |
+  | H9 def_k12 | +0.02 | -0.04 | +0.0004 | +0.0001 | +0.02 | +0.0001 |
+  | H10 hl90 | +0.02 | -0.01 | -0.0005 (p=0.029) | +0.0000 | -0.01 | -0.0002 |
+
+  Per season, the two arms that looked alive pooled do not replicate:
+  H8 `venue` is def_top5 **+0.21 (p=0.016)** in 2024-25 and -0.01 in
+  2025-26, with def_spearman_played -0.0047 (p=0.049) in 2025-26; H1's
+  top11 is -0.11 (p=0.010) in 2024-25 and +0.17 (p=0.015) in 2025-26.
+  H6 is an exact zero in 2024-25 because DefCon counts only exist from
+  the 2025-26 rule era, which is the harness working, not a bug.
+* **Verdict: none of the ten survives.** Not one arm improves defender
+  points per pick at any conventional level, let alone the family alpha.
+  The two significant results are the wrong way: H3 and H4, the
+  structurally *more correct* forms of conceded exposure and clean-sheet
+  probability, both lower rank quality significantly. That is E14's rule
+  a fifth time: a component that is already calibrated on average is not
+  improved by a better formula for it, because the noise is in the
+  outcome, not the estimator. H1 earns a +0.0009 rank gain among
+  defenders who played at p=0.001, which is real, a tenth of the role
+  features' gain, and paid for with worse rmse and no points. Not shipped.
+* **What the diagnostic did establish, which is the actual answer to the
+  owner's observation.** The engine's defenders ARE worse picks than its
+  midfielders and forwards (4.2 against 5.2 and 4.4 points per pick), and
+  every predictor shares that ordering, because a defender's score is a
+  4-point clean sheet decided by his whole team plus rare attacking
+  returns. The engine's projections of them are honest (4.31 projected,
+  4.24 realised across 740 picks) and its edge over a points-per-game
+  rule is +1.2 points per defender pick, the largest of any position.
+  Clean-sheet luck is 39% of the pick error and E13 already priced perfect
+  clean-sheet knowledge at +2.35 points per pick: that is the ceiling,
+  and it is not knowable at the deadline. The two measured calibration
+  defects (goals 19% over xG, assists 26% under, in every position) are
+  level errors that do not reorder players, which is why correcting them
+  (H1) moves rank a hair and points not at all.
+* **Status.** All hooks stay as research affordances, None on every
+  shipped path (`tests/test_defender_hooks.py`). The `c_*` component
+  columns on the engine output ship, because a post-mortem should be able
+  to say which component missed. Diagnostic:
+  `python research/defenders.py diagnose --frame <frame.csv>`.
