@@ -254,6 +254,52 @@ because the out-of-sample gain did not survive:
 * **Recency-weighted minutes training** (550-day half-life on the sample
   weights): log-loss got slightly *worse*. Rotation patterns from three
   seasons ago still generalise.
+* **Penalising defenders for their own club's leakiness** (E16). The
+  hypothesis was that a club which has shown it concedes makes its defenders
+  worse than projected on easy fixtures, whatever their own numbers. Point-
+  in-time trailing scorelines (goals against, share conceding 2+, GA minus
+  xGA) add nothing to the engine's clean-sheet lambda once standard errors
+  are clustered by gameweek; P(CS | 60+) is calibrated to within 1.6 points
+  in the leakiest tercile; only 13% of the engine's top-10 defender picks
+  come from leaky clubs and those picks score as projected. Scaling
+  `lambda_against` toward the record is monotonically worse (alpha 1.0:
+  `spearman_played` -0.0056, p=0.010; `def_top10` -0.19 pts/pick, p=0.049).
+  The one borderline residual runs the other way: conceding MORE than xGA
+  predicts MORE clean sheets next, i.e. luck reverts. lambda is 85% market
+  and the market has watched the same scorelines. `xpts/leaky.py`,
+  `research/leaky_defence.py`, `defence_leak` research hook.
+* **Ten defender hypotheses** (E17), after "the model struggles to pick
+  defenders". Measured first: the engine's defenders are worse picks than
+  its midfielders and forwards (4.2 vs 5.2 / 4.4 points per pick) and so
+  are every baseline's, because a clean sheet is a coin toss decided by
+  eleven other people; the engine's edge over points-per-game is largest
+  for defenders (+1.2 pts/pick, +0.11 Spearman), its top-10 defender
+  projections are honest (4.31 vs 4.24 realised), and clean-sheet luck is
+  39% of the pick error. Ten pre-registered arms over 74 paired gameweeks
+  (finishing calibration, set-piece fixture scaling, on-pitch conceded
+  exposure, negative-binomial clean sheets, DefCon in the bonus fit,
+  DefCon x1.13, market-only lambda, a venue correction, harder shrinkage
+  of defenders' attacking rates, a 90-day team half-life): none improves
+  defender points per pick; the structurally "more correct" conceded and
+  clean-sheet forms are significantly WORSE on rank. Two calibration
+  defects are real and do not reorder players: every position scores
+  ~10-19% fewer goals than modelled xG and more assists than blended xA.
+  `research/defenders.py`, `research/defender_arms.py`, engine `tweaks`
+  hook and `c_*` component columns.
+* **A learned clean-sheet engine** (E18). Point-in-time P(clean sheet)
+  models (logistic on lambdas + venue, logistic and gradient boosting on
+  both sides' trailing xG/xGA/blank/clean-sheet record, and an offset logit
+  with the engine's own logit fixed and no intercept), trained on prior
+  seasons and scored on 740 held-out team-matches per season: every
+  free-intercept form has WORSE log-loss than the shipped Poisson zero
+  exp(-lambda) in both seasons (a fitted intercept inherits the training
+  seasons' clean-sheet rate, which drifts 0.21-0.27 season to season; the
+  Poisson zero has no level to inherit), and the offset form ties it
+  (+0.0001 / -0.0009). Through the 74-gameweek decision harness all four are
+  null on defender points and two are significantly worse on rmse. The
+  market-blended Poisson zero is the clean-sheet engine; the remaining
+  clean-sheet error is variance. `xpts/cs_model.py`, `research/cs_engine.py`,
+  `cs_model` tweak.
 * **Adaptive (change-point) Bayesian shrinkage on the player rates.** Two
   estimates per player — fast (70-day half-life, weak shrinkage) and slow
   (420-day, strong) — blended by how much evidence there is that they differ,
@@ -1985,3 +2031,52 @@ python -m fpl_engine train                 # optional: retrain models (GPU-aware
 python -m fpl_engine predict --gw 1 --blend auto   # blend retrained + OpenFPL
 python -m pytest tests/ -q
 ```
+
+## For the next run: open questions E16-E18 could not settle
+
+Written at the owner's request so the next session picks these up without
+being asked. Each is stated with the reason it stayed open and the concrete
+first step. The E16-E18 entries in `RESEARCH_LOG.md` hold the numbers.
+
+1. **The exact-score market as a direct P(no goals).** Every clean-sheet
+   model here (E18) goes through a Poisson zero on a marginal lambda, and
+   the best learned form only ties it. Polymarket's exact-score market
+   prices the scoreline distribution directly, so P(0 conceded) needs no
+   Poisson at all. It is live-only, so the step is forward collection:
+   extend `acquire/actions.py` to archive exact-score quotes per fixture
+   on every scheduled run (append-only, before the deadline), then after
+   8-10 gameweeks score them against realised clean sheets on log-loss
+   next to `exp(-lambda)` (the harness is `research/cs_engine.py`).
+2. **Every E16-E18 replay ran without Understat.** This session's database
+   was rebuilt from a fresh clone and `pull --understat` was not run, so
+   the minutes model's three shipped role features were NaN in every arm
+   AND in the baseline. The comparisons are paired and unaffected, but the
+   absolute baseline differs from the committed `data/backtest_*.json`.
+   Re-run the E16 leak arm (`ga_a10`) and the E18 offset arm once with
+   Understat pulled to confirm the nulls hold under the shipped feature set.
+3. **A third replay season.** Two of the borderline results have the same
+   shape: a sign that leans one way pooled and flips between seasons (E16's
+   `xga_def` +0.02 pts/pick p=0.13; E17's finishing calibration +0.0009
+   rank at p=0.001 with no points). The rank harness already replays
+   2023-24 with a minutes model trained on 2022-23 (n=111); the projection
+   backtest can do the same (`backtest.run(conn, "2023-24")`). Run the
+   E16-E18 baselines and those two arms on it before believing either.
+4. **The finishing-calibration defect is real and unshipped.** Every
+   position scores 11-19% fewer goals than modelled xG and 7-30% more
+   assists than blended xA (E17 diagnostic, near-certain starters). A level
+   correction does not reorder players (that is why H1 moved nothing), but
+   it does change absolute projections, which the simulator's P(haul) and
+   the chip reserves consume. Test `rates.calibrate_by_pos` on the Round 6
+   calibration table (P(haul), XI sd) rather than on rank.
+5. **Assists under-projection was built and never armed.** `rates.fit`
+   gained `xa_blend` (position -> weight on Opta xA vs FPL assists) but no
+   arm ran it after E17's list was fixed at ten. One arm: `xa_blend`
+   {"DEF": 0.0, "MID": 0.25, "FWD": 0.25}, judged on top11/top30.
+6. **Goalkeepers were never the subject.** E17 pooled GK into the defender
+   metrics; GK rank quality is 0.14 against 0.32 for DEF and the saves
+   channel has its own scaler. If "the model struggles with defenders" was
+   partly about keepers, that is untested.
+7. **The forward tests keep accruing.** Run `lineup-feed --gw N` for every
+   gameweek since GW3 and `postmortem` after each pull; the E15 pre-
+   registration needs 8-10 gameweeks of band rows before the RotoWire feed
+   is priceable, and the manager panel needs 10-15.
