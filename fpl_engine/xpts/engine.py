@@ -139,7 +139,8 @@ def xpts_predict_gw(conn, season: str, gw: int, *, as_of: str | None = None,
                     rate_scale: dict | None = None,
                     rate_override: "pd.DataFrame | None" = None,
                     lambda_override: dict | None = None,
-                    defence_leak: dict | None = None) -> pd.DataFrame:
+                    defence_leak: dict | None = None,
+                    tweaks: dict | None = None) -> pd.DataFrame:
     """Expected points per player for one gameweek (point-in-time at as_of).
 
     Returns player_id-indexed frame with the prediction and its components.
@@ -159,6 +160,14 @@ def xpts_predict_gw(conn, season: str, gw: int, *, as_of: str | None = None,
     attack scaler is untouched. ``{"mode": "goals_def"}`` / ``"xga_def"`` instead
     refit the team model's defence on realised goals alone / on xGA alone.
     None on every shipped path.
+
+    ``tweaks`` (RESEARCH_LOG E17, defender hypotheses; None on every shipped
+    path) is a dict of structural variants: ``conceded_exposure="e_min"``
+    (conceded goals counted over E[minutes]/90 rather than P(plays)),
+    ``cs_dispersion=phi`` (P(no goals) from a negative binomial with that
+    dispersion instead of Poisson), ``def_attack_exp=e`` (a defender's xG/xA
+    scale with the fixture as scaler**e), and ``rates={...}`` forwarded to
+    ``rates.fit`` (``bonus_defcon``, ``xa_blend``, ``k_by_pos``).
 
     ``minutes_override`` and ``oracle`` exist for the ORACLE DECOMPOSITION —
     "what would a perfect estimate of X be worth?" — and are None on every
@@ -189,8 +198,12 @@ def xpts_predict_gw(conn, season: str, gw: int, *, as_of: str | None = None,
     mins = (minutes_override if minutes_override is not None
             else minutes_model.predict_gw(conn, season, as_of, clf, meta, gw=gw,
                                           use_availability=use_availability))
-    rates = rates_mod.fit(conn, season, as_of, rules=rules)
+    tw = tweaks or {}
+    rates = rates_mod.fit(conn, season, as_of, rules=rules, **(tw.get("rates") or {}))
     bonus_coef = rates.attrs.get("bonus_coef", {})   # merge drops attrs
+    cs_phi = float(tw.get("cs_dispersion") or 0.0)
+    conc_emin = tw.get("conceded_exposure") == "e_min"
+    def_att_exp = tw.get("def_attack_exp")
     df = mins.merge(rates.drop(columns=["position"]), on="player_id", how="left")
     team_of = {r["player_id"]: r["team_id"] for r in conn.execute(
         "SELECT player_id, team_id FROM player WHERE season=?", (season,))}
@@ -282,9 +295,13 @@ def xpts_predict_gw(conn, season: str, gw: int, *, as_of: str | None = None,
                                  "appearance", "residual")}
         for lam_for, lam_against in fx:
             scaler = float(np.clip(lam_for / league, *ATTACK_SCALER_CAP))
+            if def_att_exp is not None and pos == "DEF":
+                scaler = scaler ** float(def_att_exp)
             g = xg90 * exposure * scaler
             a = (r.xa90 or 0.0) * exposure * scaler
-            cs = (r.p_full or 0.0) * math.exp(-lam_against)
+            p0 = (math.exp(-lam_against) if cs_phi <= 0
+                  else (1.0 + cs_phi * lam_against) ** (-1.0 / cs_phi))
+            cs = (r.p_full or 0.0) * p0
             e_goals += g
             e_assists += a
             e_cs += cs
@@ -295,8 +312,9 @@ def xpts_predict_gw(conn, season: str, gw: int, *, as_of: str | None = None,
             total += cs * p_cs.get(pos, 0)
             comp["cs"] += cs * p_cs.get(pos, 0)
             if pos in ("GK", "DEF"):
-                _gc = gc_pts * _e_floor_div(lam_against * max(p_play, 0.0),
-                                            gc_per)
+                _gc = gc_pts * _e_floor_div(
+                    lam_against * max(exposure if conc_emin else p_play, 0.0),
+                    gc_per)
                 total += _gc
                 comp["conceded"] += _gc
             if pos == "GK":
@@ -308,7 +326,9 @@ def xpts_predict_gw(conn, season: str, gw: int, *, as_of: str | None = None,
                 comp["saves"] += _sv
             bc = bonus_coef.get(pos)
             if bc:   # E[bonus] from expected events + player deviation
-                _b = bc[0] * g + bc[1] * a + bc[2] * cs + bc[3] * p_play
+                _b = bc[0] * g + bc[1] * a + bc[2] * cs + bc[-1] * p_play
+                if len(bc) == 5:   # research: DefCon crossings in the bonus fit
+                    _b += bc[3] * (r.defcon_cross90 or 0.0) * exposure
                 total += _b
                 comp["bonus"] += _b
             total += (r.bonus_resid90 or 0.0) * exposure
@@ -338,5 +358,8 @@ def xpts_predict_gw(conn, season: str, gw: int, *, as_of: str | None = None,
             "p_cs": round(e_cs, 3),
             "lam_against": round(lam_agg, 4),
             "prediction": round(total, 3),
+            # the modelled points per component, so a post-mortem or a
+            # calibration study can see WHICH part of a projection was wrong
+            **{f"c_{k}": round(v, 3) for k, v in comp.items()},
         })
     return pd.DataFrame(rows)

@@ -49,11 +49,20 @@ def _parse(s: pd.Series) -> pd.Series:
     return pd.to_datetime(s, utc=True, format="ISO8601")
 
 
-def fit(conn, season: str, as_of: str, *, rules: dict | None = None) -> pd.DataFrame:
+def fit(conn, season: str, as_of: str, *, rules: dict | None = None,
+        bonus_defcon: bool = False, xa_blend: dict | None = None,
+        k_by_pos: dict | None = None) -> pd.DataFrame:
     """Return one row per current-season player with shrunk per-90 rates.
 
     Uses all player_gw history strictly before ``as_of`` across seasons.
     League-level bonus coefficients ride along in ``.attrs["bonus_coef"]``.
+
+    The keyword options are research variants (RESEARCH_LOG E17), all off on
+    every shipped path: ``bonus_defcon`` adds DefCon threshold crossings to
+    the bonus regression (fitted on rule-era rows only, coefficient list
+    becomes [g, a, cs, dc, c0]); ``xa_blend`` maps position -> weight on Opta
+    xA against realised FPL assists (default 0.5 everywhere); ``k_by_pos``
+    maps position -> shrinkage pseudo-90s for the base stats.
     """
     rules = rules or scoring.load_rules()
     hist = pd.read_sql_query(
@@ -125,28 +134,37 @@ def fit(conn, season: str, as_of: str, *, rules: dict | None = None) -> pd.DataF
     # deflected passes all count), so pure xA systematically lowballs the
     # assist rate (GW1 2026-27: league xA 15.4 vs 24 FPL assists). Blend the
     # stable estimator with the realised FPL-definition rate 50/50.
+    bxa = hist["position"].map(xa_blend or {}).fillna(0.5).to_numpy(float)
     hist["xa"] = np.where(hist["xa"].notna(),
-                          0.5 * hist["xa"].fillna(0) + 0.5 * hist["assists"].fillna(0),
+                          bxa * hist["xa"].fillna(0) + (1 - bxa) * hist["assists"].fillna(0),
                           hist["assists"].fillna(0))
 
     # league bonus structure: per-position weighted least squares on the
     # events the engine models; each player keeps only his deviation
     hb = hist.dropna(subset=["position"])
+    if bonus_defcon:      # only rows that carry DefCon counts can inform it
+        hb = hb[hb["has_dc"] > 0]
     bonus_coef: dict[str, list[float]] = {}
     for pos, d in hb.groupby("position"):
-        X = np.c_[d["goals_scored"].fillna(0), d["assists"].fillna(0),
-                  d["clean_sheets"].fillna(0), np.ones(len(d))]
+        cols = [d["goals_scored"].fillna(0), d["assists"].fillna(0),
+                d["clean_sheets"].fillna(0)]
+        if bonus_defcon:
+            cols.append(d["defcon_cross"].fillna(0))
+        X = np.c_[tuple(cols) + (np.ones(len(d)),)]
         y = d["bonus"].fillna(0).to_numpy(float)
         sw = np.sqrt(d["w"].to_numpy(float))
         coef, *_ = np.linalg.lstsq(X * sw[:, None], y * sw, rcond=None)
         bonus_coef[pos] = [float(v) for v in coef]
-    for name, i in (("g", 0), ("a", 1), ("cs", 2), ("c0", 3)):
+    for name, i in (("g", 0), ("a", 1), ("cs", 2), ("c0", -1)):
         hist[f"_bc_{name}"] = hist["position"].map(
             {p: c[i] for p, c in bonus_coef.items()}).fillna(0.0)
+    hist["_bc_dc"] = (hist["position"].map({p: c[3] for p, c in bonus_coef.items()})
+                      .fillna(0.0) if bonus_defcon else 0.0)
     hist["bonus_resid"] = (hist["bonus"].fillna(0)
                            - hist["_bc_g"] * hist["goals_scored"].fillna(0)
                            - hist["_bc_a"] * hist["assists"].fillna(0)
                            - hist["_bc_cs"] * hist["clean_sheets"].fillna(0)
+                           - hist["_bc_dc"] * hist["defcon_cross"].fillna(0)
                            - hist["_bc_c0"])
 
     gates = {"residual": hist["in_era"], "defcon_cross": hist["has_dc"]}
@@ -189,6 +207,8 @@ def fit(conn, season: str, as_of: str, *, rules: dict | None = None) -> pd.DataF
         pri = out["position"].map(prior[s]).fillna(0.0)
         k = (K_RESIDUAL_90S if s in ("residual", "defcon_cross")
              else K_EFFECTIVE_90S)
+        if k_by_pos and s in BASE_STATS:
+            k = out["position"].map(k_by_pos).fillna(k).to_numpy(float)
         expo = expo_of.get(s, out["exposure"])
         out[f"{s}90"] = ((out[f"sum_{s}"].fillna(0) + k * pri) / (expo + k))
     out = out[["player_id", "player_code", "position", "exposure"]
