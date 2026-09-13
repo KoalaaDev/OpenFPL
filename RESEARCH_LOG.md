@@ -921,15 +921,19 @@ roughly `(accuracy − 0.55)/0.45 × 89` points a season.
   | ga alpha 0.5 | -0.0018 | -0.028 | -0.24 | +0.0019 | -0.15 | -0.11 | -0.0006 |
   | ga alpha 1.0 | **-0.0056** (p=0.010) | -0.049 | -0.28 | **+0.0075*** | -0.28 (p=0.055) | **-0.19** (p=0.049) | -0.0066 |
   | tail (2+ conceded share) | -0.0021 | -0.024 | -0.20 | +0.0018 | -0.11 | -0.10 | -0.0022 |
-  | xga_def (post-hoc, defence on xGA alone) | run in progress, row filled in the follow-up commit |
+  | xga_def (post-hoc, defence on xGA alone) | +0.0002 | +0.018 | +0.04 | -0.0002 (p=0.024) | +0.04 | +0.02 | +0.0002 |
 
   Every scoreline arm is flat to worse on every metric, in both seasons
   separately, and the effect is monotone in the strength: alpha 1.0 costs
   0.19 points per defender pick and 0.006 of rank quality among players who
   played, both at the edge of significance and both the wrong sign. Fitting
   the defence on realised goals instead of the goals/xGA blend changes
-  nothing (rmse +0.0002 is significant and negligible). The post-hoc xGA arm
-  was run after D2 to check the reverted sign; see the row.
+  nothing (rmse +0.0002 is significant and negligible). The post-hoc xGA arm,
+  run after D2 to check the reverted sign, leans the way D2 said, positive on
+  every metric in the pooled set, but only rmse reaches p < 0.05 and the
+  points metrics are +0.02 per pick at p 0.13-0.19: the team model is 15%
+  of lambda, so the most it can move is small, and it is not shippable on
+  this evidence. Direction noted, not acted on.
 * **Verdict: rejected, on the metric that could see it.** The engine is
   not over-projecting leaky clubs' defenders on easy fixtures. Their P(CS)
   is calibrated to within 1.6 points, they are 13% of its defender picks,
