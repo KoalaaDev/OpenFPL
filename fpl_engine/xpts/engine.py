@@ -166,8 +166,10 @@ def xpts_predict_gw(conn, season: str, gw: int, *, as_of: str | None = None,
     (conceded goals counted over E[minutes]/90 rather than P(plays)),
     ``cs_dispersion=phi`` (P(no goals) from a negative binomial with that
     dispersion instead of Poisson), ``def_attack_exp=e`` (a defender's xG/xA
-    scale with the fixture as scaler**e), and ``rates={...}`` forwarded to
-    ``rates.fit`` (``bonus_defcon``, ``xa_blend``, ``k_by_pos``).
+    scale with the fixture as scaler**e), ``venue_adj=a`` (a home side's
+    lambda_against x(1+a), an away side's x(1-a); the attack side is
+    untouched), and ``rates={...}`` forwarded to ``rates.fit``
+    (``bonus_defcon``, ``xa_blend``, ``k_by_pos``, ``calibrate_by_pos``).
 
     ``minutes_override`` and ``oracle`` exist for the ORACLE DECOMPOSITION —
     "what would a perfect estimate of X be worth?" — and are None on every
@@ -204,6 +206,7 @@ def xpts_predict_gw(conn, season: str, gw: int, *, as_of: str | None = None,
     cs_phi = float(tw.get("cs_dispersion") or 0.0)
     conc_emin = tw.get("conceded_exposure") == "e_min"
     def_att_exp = tw.get("def_attack_exp")
+    venue_adj = float(tw.get("venue_adj") or 0.0)   # home lam_against x(1+a), away x(1-a)
     df = mins.merge(rates.drop(columns=["position"]), on="player_id", how="left")
     team_of = {r["player_id"]: r["team_id"] for r in conn.execute(
         "SELECT player_id, team_id FROM player WHERE season=?", (season,))}
@@ -234,8 +237,8 @@ def xpts_predict_gw(conn, season: str, gw: int, *, as_of: str | None = None,
         if od:
             lh = (1 - ow) * lh + ow * od[0]
             la = (1 - ow) * la + ow * od[1]
-        team_fixtures.setdefault(f["team_h"], []).append((lh, la))
-        team_fixtures.setdefault(f["team_a"], []).append((la, lh))
+        team_fixtures.setdefault(f["team_h"], []).append((lh, la * (1 + venue_adj)))
+        team_fixtures.setdefault(f["team_a"], []).append((la, lh * (1 - venue_adj)))
     league = max(1e-6, tm.league_rate)
     if leak_cfg and leak_cfg.get("mode") not in (None, "goals_def", "xga_def"):
         leak = leaky.defence_leak_factors(conn, season, as_of, leak_cfg)

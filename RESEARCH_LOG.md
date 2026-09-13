@@ -953,3 +953,76 @@ roughly `(accuracy − 0.55)/0.45 × 89` points a season.
   hook (None on every shipped path, pinned by `tests/test_leaky.py`); the
   defender metrics stay in the backtest harness because the DefCon result
   showed a defensive change can hide inside board-wide points per pick.
+
+## E17. "The model struggles to pick defenders": where, by how much, and ten hypotheses
+
+* **Owner's observation.** The engine's defender picks feel weak. Ten
+  hypotheses requested, each backtested.
+* **Premise, measured first.** Rank quality among players who played and
+  points per pick of the engine's top-10 by position, 74 gameweeks, against
+  the naive baselines on the same rows:
+
+  | position | engine spearman_played | engine top-10 pts/pick (projected) | realised best-10 | ppg baseline | trail-4 baseline |
+  |---|---|---|---|---|---|
+  | DEF | 0.324 | 4.24 (4.31) | 9.27 | 0.21 / 3.0 | 0.20 / 3.3 |
+  | MID | 0.417 | 5.15 (5.32) | 11.09 | 0.34 / 3.9 | 0.34 / 4.2 |
+  | FWD | 0.477 | 4.41 (4.44) | 7.28 | 0.42 / 3.9 | 0.40 / 3.9 |
+  | GK | 0.140 | 3.49 (3.50) | 5.21 | 0.06 / 2.5 | 0.07 / 3.2 |
+
+  So the engine ranks defenders worse than midfielders and forwards, and
+  that is true of every predictor here: defenders are a harder position,
+  because a 4-point clean sheet is a coin toss decided by eleven other
+  people. Against the naive rules the engine's defender edge is the LARGEST
+  of any position (+0.11 to +0.12 Spearman, +0.9 to +1.2 points per pick),
+  and its top-10 projections are honest (4.31 projected, 4.24 realised).
+* **Where the defender error lives.** Modelled vs realised points per
+  component, DEF, from the engine's own `c_*` columns:
+
+  | component | near-certain starters (P(60+) > 0.85, n = 2,394): model / real / ratio | top-10 picks: model / real |
+  |---|---|---|
+  | goals | 0.302 / 0.246 / **0.81** | 0.516 / 0.349 |
+  | assists | 0.158 / 0.199 / **1.26** | 0.272 / 0.320 |
+  | clean sheet | 0.919 / 0.954 / 1.04 | 1.390 / 1.427 |
+  | conceded | -0.456 / -0.419 / 0.92 | -0.258 / -0.278 |
+  | bonus | 0.205 / 0.206 / 1.01 | 0.346 / 0.326 |
+  | DefCon | 0.263 / 0.281 / 1.07 | 0.321 / 0.311 |
+  | appearance | 1.841 / 1.854 / 1.01 | 1.873 / 1.828 |
+  | total | 3.076 / 3.134 / 1.02 | 4.308 / 4.235 |
+
+  Two calibration defects and one non-defect. Defenders score **19% fewer
+  goals than their xG says** and this is not a defender thing: midfielders
+  and forwards convert at 0.89 of their modelled xG too, and every position
+  is under-projected on assists (DEF 1.26, MID 1.07, FWD 1.30). Among the
+  top-10 defender picks the goals gap widens to a third, which is the
+  winner's curse on a noisy rate. Everything else is calibrated: P(60+) for
+  defenders to within 1.5 points in every band, clean sheets to 4%, bonus
+  and DefCon to within 7%. Share of the top-10 pick error variance: clean
+  sheet **39%**, goals 21%, bonus 16%, assists 8%, everything else under 5%.
+  Home clean sheets read 1.6 points high (0.285 vs 0.269) and away 1.8 low
+  (0.215 vs 0.233), n ~ 2,800 each.
+* **Pre-registered arms** (written before any ran; `research/defender_arms.py`;
+  10 arms against one baseline, alpha 0.05/10 = 0.005; judged on
+  `def_top5`, `def_top10`, `def_spearman_played` first and the board-wide
+  metrics second; the 2025-26 GW12 no-op check confirmed every arm moves
+  defender projections):
+
+  | arm | hypothesis | mechanism |
+  |---|---|---|
+  | H1 `xg_cal` | finishing calibration: xG90 and xA90 scaled by the position's point-in-time realised/expected ratio | `rates.calibrate_by_pos` |
+  | H2 `def_att_exp` | a defender's goals are set pieces, which scale less with the fixture | attack scaler ** 0.5 for DEF |
+  | H3 `conc_emin` | conceded goals count while on the pitch: Poisson mean on E[min]/90 not P(plays) | `conceded_exposure` |
+  | H4 `cs_nb` | team goals are overdispersed (var/mean 1.078): P(0) from a negative binomial | `cs_dispersion` 0.056 |
+  | H5 `bonus_dc` | DefCon actions earn BPS: crossings enter the bonus regression | `rates.bonus_defcon` |
+  | H6 `defcon_113` | the measured 13% DefCon shortfall, re-judged on defender metrics | `rate_scale` |
+  | H7 `odds_10` | market-only lambda for the clean-sheet channel | `odds_weight` 1.0 |
+  | H8 `venue` | the home/away clean-sheet gap in the calibration | home lambda x1.06, away x0.94 |
+  | H9 `def_k12` | defenders' attacking rates shrunk twice as hard | `rates.k_by_pos` DEF 12 |
+  | H10 `hl90` | recent defensive form: team-model half-life 90 days | `team_model.HALF_LIFE_DAYS` |
+* **Prior.** H1 is the one aimed at a measured defect with a mechanism the
+  engine lacks (a level calibration, the Understat lesson). H3, H4 and H5
+  are structurally more correct forms of components that are already
+  calibrated on average, so the E14 rule (a better estimator of a
+  calibrated quantity moves nothing) says null. H6, H7 and H10 re-test
+  standing rejections on the metric that could see them. H8 is generated
+  from the calibration table itself and is the one most at risk of being
+  noise. Results follow.

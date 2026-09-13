@@ -51,7 +51,7 @@ def _parse(s: pd.Series) -> pd.Series:
 
 def fit(conn, season: str, as_of: str, *, rules: dict | None = None,
         bonus_defcon: bool = False, xa_blend: dict | None = None,
-        k_by_pos: dict | None = None) -> pd.DataFrame:
+        k_by_pos: dict | None = None, calibrate_by_pos: bool = False) -> pd.DataFrame:
     """Return one row per current-season player with shrunk per-90 rates.
 
     Uses all player_gw history strictly before ``as_of`` across seasons.
@@ -62,7 +62,10 @@ def fit(conn, season: str, as_of: str, *, rules: dict | None = None,
     the bonus regression (fitted on rule-era rows only, coefficient list
     becomes [g, a, cs, dc, c0]); ``xa_blend`` maps position -> weight on Opta
     xA against realised FPL assists (default 0.5 everywhere); ``k_by_pos``
-    maps position -> shrinkage pseudo-90s for the base stats.
+    maps position -> shrinkage pseudo-90s for the base stats;
+    ``calibrate_by_pos`` multiplies every player's xG90 / xA90 by his
+    position's decay-weighted realised-goals / xG (assists / blended xA)
+    ratio over the same history, i.e. a point-in-time finishing calibration.
     """
     rules = rules or scoring.load_rules()
     hist = pd.read_sql_query(
@@ -211,6 +214,13 @@ def fit(conn, season: str, as_of: str, *, rules: dict | None = None,
             k = out["position"].map(k_by_pos).fillna(k).to_numpy(float)
         expo = expo_of.get(s, out["exposure"])
         out[f"{s}90"] = ((out[f"sum_{s}"].fillna(0) + k * pri) / (expo + k))
+    if calibrate_by_pos:
+        hp = hist.dropna(subset=["position"])
+        for stat, real in (("xg", "goals_scored"), ("xa", "assists")):
+            num = (hp["w"] * hp[real].fillna(0)).groupby(hp["position"]).sum()
+            den = (hp["w"] * hp[stat].fillna(0)).groupby(hp["position"]).sum()
+            ratio = (num / den.replace(0, np.nan)).clip(0.5, 1.5)
+            out[f"{stat}90"] = out[f"{stat}90"] * out["position"].map(ratio).fillna(1.0)
     out = out[["player_id", "player_code", "position", "exposure"]
               + [f"{s}90" for s in STATS]]
     out.attrs["bonus_coef"] = bonus_coef

@@ -38,13 +38,14 @@ def realised_components(df: pd.DataFrame, rules: dict) -> pd.DataFrame:
     uses (``engine._realised``), so modelled and realised are like for like."""
     out = {k: [] for k in COMPONENTS}
     for r in df.to_dict("records"):
+        r["minutes"] = r.get("mins", 0.0)       # _realised reads FPL's column name
         for k in COMPONENTS:
             if k == "residual":
                 continue
             v = _realised(k, r, r["position"], rules)
             out[k].append(0.0 if v is None else float(v))
-    res = pd.DataFrame(out, index=df.index)
-    res["residual"] = df["pts"].to_numpy() - res.drop(columns=["residual"]).sum(axis=1)
+    res = pd.DataFrame({k: v for k, v in out.items() if k != "residual"}, index=df.index)
+    res["residual"] = df["pts"].to_numpy() - res.sum(axis=1)
     return res.add_prefix("r_")
 
 
@@ -91,7 +92,23 @@ def diagnose(df: pd.DataFrame) -> None:
                 "top10_model": top["prediction"].mean(), "top10_real": top["pts"].mean()})
     t = pd.DataFrame(tab).set_index("component")
     t["top10_gap"] = t["top10_real"] - t["top10_model"]
-    print(t.round(3))
+    print(t.round(3).to_string())
+
+    print("\n== DEF near-certain starters (P(60+) > 0.85): modelled vs realised per component ==")
+    print("(conditional on playing, so exposure cannot explain a gap)")
+    sure = d[d["p_60"] > 0.85]
+    tab = [{"component": k, "model": sure[f"c_{k}"].mean(), "real": sure[f"r_{k}"].mean(),
+            "ratio": sure[f"r_{k}"].sum() / sure[f"c_{k}"].sum() if sure[f"c_{k}"].sum() else np.nan}
+           for k in COMPONENTS]
+    tab.append({"component": "TOTAL", "model": sure["prediction"].mean(), "real": sure["pts"].mean(),
+                "ratio": sure["pts"].sum() / sure["prediction"].sum()})
+    print(f"n = {len(sure)}")
+    print(pd.DataFrame(tab).set_index("component").round(3).to_string())
+    for pos in ("MID", "FWD"):
+        sp = df[(df["position"] == pos) & (df["p_60"] > 0.85)]
+        print(f"{pos} near-certain starters, goals model {sp['c_goals'].mean():.3f} vs real "
+              f"{sp['r_goals'].mean():.3f} (ratio {sp['r_goals'].sum() / sp['c_goals'].sum():.3f}); "
+              f"assists {sp['c_assists'].mean():.3f} vs {sp['r_assists'].mean():.3f}")
 
     print("\n== DEF top-10 picks: which component's error explains the miss? ==")
     # variance of (realised - modelled) per component among top-10 picks
