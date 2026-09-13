@@ -826,3 +826,126 @@ roughly `(accuracy − 0.55)/0.45 × 89` points a season.
 * **Also run.** GW2 post-mortem on the repaired cache and completed results:
   predicted 895 vs actual 891 (100%), Spearman 0.698, model captain Bruno
   Fernandes = the week's top scorer (23).
+
+## E16. Leaky defences: are defenders on easy fixtures over-projected when their own club keeps conceding?
+
+* **Hypothesis (owner's, pre-registered before any number).** The engine
+  takes a defender on an easy fixture whenever his own numbers are good,
+  but a club that has *shown* it concedes should make that defender worse
+  than projected however good his stats are. Test it on the scoreline
+  record, not on xG.
+* **Where leakiness already enters.** P(CS) = P(60+) x exp(-lambda_against)
+  and E[conceded] is a Poisson floor-division on the same lambda, where
+  lambda_against is the market's implied goals for the opponent (85%)
+  blended with the team model's rate, whose defence rating is fitted on
+  realised goals against blended 50/50 with xGA over a 180-day half-life. So
+  the question is whether that lambda is CALIBRATED with respect to the
+  club's own record, not whether the record is used.
+* **Design.** 2024-25 + 2025-26, replayed point-in-time on the shipped
+  engine (no Understat, no OpenFPL arm; bit-identical elsewhere). Trailing
+  scoreline features per club, 10 matches, cross-season by `team.code`,
+  shrunk toward the league mean by 3 pseudo-matches: goals against (`ga`),
+  clean-sheet share, share conceding 2+ (`two_plus`, the scoreline tail),
+  goals against minus xGA (`ga_xga`, "concedes more than the chances").
+  `xpts/leaky.py`; `research/leaky_defence.py`.
+  Diagnostics on 7,069 GK/DEF single-fixture rows who played 60+:
+  D1 calibration of P(CS | 60+) by decile and inside leakiness terciles;
+  D2 logistic regression on realised CS with the engine's own logit as an
+  OFFSET (so a coefficient is what leakiness adds beyond lambda), standard
+  errors clustered by gameweek; D3 the decision view, the 10 highest-
+  projected GK/DEF each gameweek, projected vs realised, split leaky x easy.
+  Arms, each scaling lambda_against for the club's DEFENSIVE components
+  only (its opponent's attack untouched), paired over 74 gameweeks through
+  the standard backtest with new defender metrics (`def_top5`, `def_top10`,
+  `def_spearman_played`): `goals_def` (defence fitted on realised goals,
+  xGA ignored), `ga` at alpha 0.5 / 1.0 (lambda x (ga/league_ga)^alpha),
+  `tail` (lambda x (1 + two_plus - league)). Four arms, alpha 0.05/4.
+
+* **D1: the clean-sheet probability is calibrated, including by leakiness.**
+  Slope on the engine's own logit **0.997** (se 0.13), intercept -0.01.
+
+  | own-club tercile | n | trailing GA/match | predicted P(CS) | realised | gap |
+  |---|---|---|---|---|---|
+  | solid | 2,358 | 1.11 | 0.294 | 0.292 | -0.002 |
+  | mid | 2,363 | 1.46 | 0.250 | 0.264 | +0.014 |
+  | leaky | 2,348 | 1.91 | 0.207 | 0.190 | **-0.016** |
+
+  The leaky tercile keeps 1.6 percentage points fewer clean sheets than
+  projected, on a base of 20.7%: about 0.06 points per defender-gameweek at
+  4 points a clean sheet. Inside P(CS) quartiles the sign flips around
+  (leaky is -0.024 / +0.028 / -0.077 / +0.020 from the lowest quartile up),
+  so it is not a monotone bias.
+* **D2: nothing the record adds survives clustering.** Coefficients on a
+  standardised feature, offset = engine logit, SE clustered by gameweek:
+
+  | covariate | coef | z (naive) | z (clustered) |
+  |---|---|---|---|
+  | goals against | -0.049 | -1.64 | -0.86 |
+  | share conceding 2+ (the scoreline tail) | -0.060 | -2.03 | -1.12 |
+  | clean-sheet share | -0.009 | -0.32 | -0.18 |
+  | GA minus xGA | **+0.064** | +2.20 | +1.07 |
+  | GA x easy-fixture interaction | +0.168 | +2.70 | +1.38 |
+  | joint: GA / tail / GA-xGA | -0.096 / -0.073 / +0.167 | | -0.68 / -0.58 / +2.23 |
+
+  Two things worth keeping. The naive z-scores look like a finding and the
+  clustered ones do not: defenders of one club in one gameweek share a
+  scoreline, so 7,069 rows are a few hundred effective observations. And
+  the one term that is even borderline runs the OTHER way: a club that has
+  been conceding more than its xGA keeps *more* clean sheets than lambda
+  says, i.e. finishing luck against it reverts. "Time has shown it likes to
+  concede" is, at that margin, the trap rather than the signal. Where the
+  goals-against term is negative at all it is in HARD fixtures (main effect
+  -0.155, interaction +0.168, net ~0 on easy ones), the opposite location
+  to the hypothesis.
+* **D3: the engine rarely picks them, and when it does they score.** Of 740
+  top-10 GK/DEF picks over 74 gameweeks, **94 (12.7%)** were from a club
+  conceding above the league rate.
+
+  | picks | n | projected | realised | gap |
+  |---|---|---|---|---|
+  | solid club | 646 | 4.41 | 4.31 | -0.10 |
+  | leaky club | 94 | 4.18 | 4.26 | +0.08 |
+  | leaky club, easy fixture | 25 | 4.24 | 4.52 | +0.28 |
+  | solid club, easy fixture | 294 | 4.47 | 4.24 | -0.23 |
+
+  Paired per gameweek, leaky picks' error minus solid picks' error: +0.24,
+  p = 0.65 (43 gameweeks with both). The cell the hypothesis names,
+  leaky x easy, is 25 picks and over-performed. If anything is over-
+  projected in easy fixtures it is the SOLID clubs' defenders (-0.23 on
+  n = 294, 1.3 standard errors, noise).
+* **Arms (74 paired gameweeks vs the shipped engine).**
+
+  | arm | spearman_played | top30 | captain | rmse | def_top5 | def_top10 | def_spearman_played |
+  |---|---|---|---|---|---|---|---|
+  | goals_def (defence on realised goals) | -0.0001 | -0.008 | 0.00 | +0.0002* | +0.05 | -0.03 | -0.0004 |
+  | ga alpha 0.5 | -0.0018 | -0.028 | -0.24 | +0.0019 | -0.15 | -0.11 | -0.0006 |
+  | ga alpha 1.0 | **-0.0056** (p=0.010) | -0.049 | -0.28 | **+0.0075*** | -0.28 (p=0.055) | **-0.19** (p=0.049) | -0.0066 |
+  | tail (2+ conceded share) | -0.0021 | -0.024 | -0.20 | +0.0018 | -0.11 | -0.10 | -0.0022 |
+  | xga_def (post-hoc, defence on xGA alone) | run in progress, row filled in the follow-up commit |
+
+  Every scoreline arm is flat to worse on every metric, in both seasons
+  separately, and the effect is monotone in the strength: alpha 1.0 costs
+  0.19 points per defender pick and 0.006 of rank quality among players who
+  played, both at the edge of significance and both the wrong sign. Fitting
+  the defence on realised goals instead of the goals/xGA blend changes
+  nothing (rmse +0.0002 is significant and negligible). The post-hoc xGA arm
+  was run after D2 to check the reverted sign; see the row.
+* **Verdict: rejected, on the metric that could see it.** The engine is
+  not over-projecting leaky clubs' defenders on easy fixtures. Their P(CS)
+  is calibrated to within 1.6 points, they are 13% of its defender picks,
+  those picks score as projected, and pushing lambda toward the scoreline
+  record costs points monotonically. The mechanism is the standing one:
+  lambda_against is 85% bookmaker, and the bookmaker has watched the same
+  scorelines. What the record adds beyond a market price is the part the
+  market has correctly discounted, luck.
+* **What the owner is seeing, then.** A defender on an easy fixture from a
+  club conceding 1.9 a match is projected with P(CS) around 0.19-0.21, i.e.
+  about 0.8 clean-sheet points, against 1.2 for a solid club's defender.
+  His own attacking and DefCon rates can legitimately outweigh that 0.4, and
+  D3 says when they do the pick pays. The recommendation to read is his
+  `p_cs` next to his `prediction`, which the projections table already
+  shows; the number is honest.
+* **Status.** Nothing ships to the engine. `defence_leak` stays as a research
+  hook (None on every shipped path, pinned by `tests/test_leaky.py`); the
+  defender metrics stay in the backtest harness because the DefCon result
+  showed a defensive change can hide inside board-wide points per pick.

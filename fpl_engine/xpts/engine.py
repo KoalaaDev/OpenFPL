@@ -156,8 +156,9 @@ def xpts_predict_gw(conn, season: str, gw: int, *, as_of: str | None = None,
     ``defence_leak`` (RESEARCH_LOG E16) scales ``lambda_against`` for a club's
     DEFENSIVE components only -- clean sheet, conceded, saves -- by a factor
     built from its own trailing scorelines (``xpts/leaky.py``); its opponent's
-    attack scaler is untouched. ``{"mode": "goals_def"}`` instead refits the
-    team model's defence on realised goals alone. None on every shipped path.
+    attack scaler is untouched. ``{"mode": "goals_def"}`` / ``"xga_def"`` instead
+    refit the team model's defence on realised goals alone / on xGA alone.
+    None on every shipped path.
 
     ``minutes_override`` and ``oracle`` exist for the ORACLE DECOMPOSITION —
     "what would a perfect estimate of X be worth?" — and are None on every
@@ -179,8 +180,8 @@ def xpts_predict_gw(conn, season: str, gw: int, *, as_of: str | None = None,
         return pd.DataFrame()
 
     leak_cfg = defence_leak or {}
-    tm = team_model.fit(conn, as_of, xg_blend_def=(
-        0.0 if leak_cfg.get("mode") == "goals_def" else None))
+    tm = team_model.fit(conn, as_of, xg_blend_def={
+        "goals_def": 0.0, "xga_def": 1.0}.get(leak_cfg.get("mode")))
     clf, meta = minutes_bundle or minutes_model.ensure(conn)
     if clf is None:
         raise RuntimeError("minutes model could not be trained — is player_gw "
@@ -223,7 +224,7 @@ def xpts_predict_gw(conn, season: str, gw: int, *, as_of: str | None = None,
         team_fixtures.setdefault(f["team_h"], []).append((lh, la))
         team_fixtures.setdefault(f["team_a"], []).append((la, lh))
     league = max(1e-6, tm.league_rate)
-    if leak_cfg and leak_cfg.get("mode") not in (None, "goals_def"):
+    if leak_cfg and leak_cfg.get("mode") not in (None, "goals_def", "xga_def"):
         leak = leaky.defence_leak_factors(conn, season, as_of, leak_cfg)
         for _t, _fx in team_fixtures.items():
             _f = leak.get(_t, 1.0)

@@ -39,6 +39,8 @@ ARMS = {
     "ga_a05": {"mode": "ga", "alpha": 0.5},
     "ga_a10": {"mode": "ga", "alpha": 1.0},
     "tail_a10": {"mode": "tail", "alpha": 1.0},
+    # post-hoc, after D2 found the GA - xGA residual runs the OTHER way
+    "xga_def": {"mode": "xga_def"},
 }
 
 
@@ -93,10 +95,15 @@ def _logit(p):
     return np.log(p / (1 - p))
 
 
-def logistic_offset(y, X, offset, names, n_iter=50):
-    """Logistic regression with a fixed offset (IRLS); returns coef, se, z."""
+def logistic_offset(y, X, offset, names, n_iter=50, cluster=None):
+    """Logistic regression with a fixed offset (IRLS); returns coef, se, z.
+
+    ``cluster`` (a label per row, here the gameweek) gives sandwich standard
+    errors: defenders of one club in one gameweek share a scoreline, so the
+    7,000 rows are nowhere near 7,000 independent observations."""
     y = np.asarray(y, float)
     X = np.asarray(X, float)
+    offset = np.asarray(offset, float)
     b = np.zeros(X.shape[1])
     for _ in range(n_iter):
         eta = offset + X @ b
@@ -111,7 +118,13 @@ def logistic_offset(y, X, offset, names, n_iter=50):
     eta = offset + X @ b
     p = 1 / (1 + np.exp(-eta))
     H = X.T @ (X * (p * (1 - p))[:, None])
-    se = np.sqrt(np.diag(np.linalg.inv(H)))
+    Hi = np.linalg.inv(H)
+    if cluster is None:
+        se = np.sqrt(np.diag(Hi))
+    else:
+        sc = X * (y - p)[:, None]
+        g = pd.DataFrame(sc).groupby(np.asarray(cluster)).sum().to_numpy()
+        se = np.sqrt(np.diag(Hi @ (g.T @ g) @ Hi))
     return pd.DataFrame({"coef": b, "se": se, "z": b / se}, index=names)
 
 
@@ -170,14 +183,16 @@ def diagnose(df: pd.DataFrame) -> dict:
             else:
                 X.append(reg[c])
         X = np.column_stack([np.ones(len(reg))] + X)
-        fit = logistic_offset(reg["cs"], X, off, ["intercept"] + cols)
+        fit = logistic_offset(reg["cs"], X, off, ["intercept"] + cols,
+                              cluster=reg["season"] + reg["gw"].astype(str))
         rows[name] = fit
     res["d2_logit"] = rows
     res["d2_n"] = len(reg)
     # the offset's own slope: 1.0 = the engine's ordering is right
     X = np.column_stack([np.ones(len(reg)), off])
     res["d2_slope"] = logistic_offset(reg["cs"], X, np.zeros(len(reg)),
-                                      ["intercept", "logit_pcs"])
+                                      ["intercept", "logit_pcs"],
+                                      cluster=reg["season"] + reg["gw"].astype(str))
 
     # D3: the decision view -- the 10 highest-predicted DEF/GK each gameweek
     top = (d.sort_values("prediction", ascending=False)
@@ -215,7 +230,8 @@ def print_diagnosis(res: dict) -> None:
     print(res["d1_leak_marginal"])
     print("\n== D1. inside P(CS) quartile, by leakiness tercile ==")
     print(res["d1_by_leak"])
-    print(f"\n== D2. logistic regression, offset = engine logit P(CS), n={res['d2_n']} ==")
+    print(f"\n== D2. logistic regression, offset = engine logit P(CS), n={res['d2_n']}, "
+          "SE clustered by gameweek ==")
     print("slope on the engine's own logit (1.0 = ordering right):")
     print(res["d2_slope"].round(4))
     for name, fit in res["d2_logit"].items():

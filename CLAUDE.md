@@ -254,6 +254,20 @@ because the out-of-sample gain did not survive:
 * **Recency-weighted minutes training** (550-day half-life on the sample
   weights): log-loss got slightly *worse*. Rotation patterns from three
   seasons ago still generalise.
+* **Penalising defenders for their own club's leakiness** (E16). The
+  hypothesis was that a club which has shown it concedes makes its defenders
+  worse than projected on easy fixtures, whatever their own numbers. Point-
+  in-time trailing scorelines (goals against, share conceding 2+, GA minus
+  xGA) add nothing to the engine's clean-sheet lambda once standard errors
+  are clustered by gameweek; P(CS | 60+) is calibrated to within 1.6 points
+  in the leakiest tercile; only 13% of the engine's top-10 defender picks
+  come from leaky clubs and those picks score as projected. Scaling
+  `lambda_against` toward the record is monotonically worse (alpha 1.0:
+  `spearman_played` -0.0056, p=0.010; `def_top10` -0.19 pts/pick, p=0.049).
+  The one borderline residual runs the other way: conceding MORE than xGA
+  predicts MORE clean sheets next, i.e. luck reverts. lambda is 85% market
+  and the market has watched the same scorelines. `xpts/leaky.py`,
+  `research/leaky_defence.py`, `defence_leak` research hook.
 * **Adaptive (change-point) Bayesian shrinkage on the player rates.** Two
   estimates per player — fast (70-day half-life, weak shrinkage) and slow
   (420-day, strong) — blended by how much evidence there is that they differ,
