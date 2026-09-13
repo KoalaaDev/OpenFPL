@@ -31,8 +31,11 @@ def test_rate_options_change_only_what_they_name(conn):
     for gw in (1, 2, 3):
         conn.execute("INSERT INTO player_gw (season, gw, source, player_id, fixture_id, "
                      "player_code, team_id, opponent_id, was_home, kickoff_utc, minutes, "
-                     "total_points, goals_scored, assists, xg, xa) VALUES "
-                     "('2024-25', ?, 'vaastav', 11, ?, 1100, 1, 2, 1, ?, 90, 2, 0, 0, 0.05, 0.05)",
+                     "total_points, goals_scored, assists, clean_sheets, goals_conceded, "
+                     "own_goals, penalties_saved, penalties_missed, yellow_cards, red_cards, "
+                     "saves, bonus, xg, xa) VALUES "
+                     "('2024-25', ?, 'vaastav', 11, ?, 1100, 1, 2, 1, ?, 90, 2, 0, 0, 0, 1, "
+                     "0, 0, 0, 0, 0, 0, 0, 0.05, 0.05)",
                      (gw, gw, f"2024-08-0{gw}T14:00:00Z"))
     conn.commit()
     as_of, rules = "2024-08-04T00:00:00Z", scoring.load_rules()
