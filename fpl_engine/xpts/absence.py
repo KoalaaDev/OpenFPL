@@ -8,6 +8,11 @@ Three kinds, each knowable before the deadline of the fixture it covers:
            same boundary `inj_currently_out` uses
   presser  a manager's "out" statement on BBC's Friday page for that
            gameweek, published before the fixture (`presser_obs`)
+  fpl      FPL's own flag, from the availability change log
+           (`acq_player_availability`, live season only): a spell of status
+           injured/suspended/unavailable, or chance of playing <= 25%, from
+           the change that opened it to the change that closed it — the
+           serve-time source for what Transfermarkt supplies in a replay
 
 `known_absences` is the long table for the minutes-model block (one row per
 player-fixture absent); `known_out_ids` is the per-gameweek set the engine's
@@ -20,7 +25,7 @@ import os
 
 import pandas as pd
 
-KINDS = ("sus", "inj", "presser")
+KINDS = ("sus", "inj", "presser", "fpl")
 COLS = ["season", "team_id", "player_code", "fixture_id", "kind"]
 
 
@@ -91,6 +96,28 @@ def known_absences(conn, kinds: tuple[str, ...] | None = None) -> pd.DataFrame:
             m = po.merge(pl, on=["season", "player_id"]).merge(cf, on=["season", "team_id", "gw"])
             m = m[m["pub"] < m["kick"]]
             parts.append(m.assign(kind="presser")[COLS].drop_duplicates())
+    if "fpl" in kinds:
+        try:
+            av = pd.read_sql_query(
+                "SELECT season, player_id, observed_utc, status, chance_next "
+                "FROM acq_player_availability ORDER BY player_id, observed_utc", conn)
+        except Exception:      # noqa: BLE001
+            av = pd.DataFrame()
+        if len(av):
+            if "inj" not in kinds and "presser" not in kinds:
+                cf = _club_fixtures(conn)
+                pl = _players(conn)
+            av["t"] = pd.to_datetime(av["observed_utc"], utc=True, errors="coerce")
+            ch = pd.to_numeric(av["chance_next"], errors="coerce")
+            av["out"] = av["status"].isin(["i", "s", "u"]) | (ch <= 25)
+            av = av.dropna(subset=["t"]).sort_values(["season", "player_id", "t"])
+            av["t_next"] = av.groupby(["season", "player_id"])["t"].shift(-1)
+            spells = av[av["out"]][["season", "player_id", "t", "t_next"]]
+            m = spells.merge(pl, on=["season", "player_id"]).merge(cf, on=["season", "team_id"])
+            known = m["t"] <= m["kick"] - pd.Timedelta(hours=12)
+            still = m["t_next"].isna() | (m["t_next"] >= m["kick"])
+            m = m[known & still]
+            parts.append(m.assign(kind="fpl")[COLS].drop_duplicates())
     if not parts:
         return pd.DataFrame(columns=COLS)
     out = pd.concat(parts, ignore_index=True)

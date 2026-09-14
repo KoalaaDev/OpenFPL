@@ -94,8 +94,17 @@ LINE_FEATURES = ["role_is_am", "role_is_dm", "role_vs_fpl_line"]
 BBC_ROLE_FEATURES = ["bbc_row_l1", "bbc_row_l5", "bbc_pos_l1", "bbc_pos_vs_fpl",
                      "bbc_is_am", "bbc_is_dm"]
 
+# Round 21 (shipped): the manager's last selection — a player's first match
+# back after a known absence and the regulars returning around him, whether
+# he was an unused substitute or out of the squad last time, his last-match
+# returns as a selection signal, and bookings to date. 74 paired gameweeks:
+# spearman_played +0.0050 (p=0.004), rmse -0.0145***; see RESEARCH_LOG E24.
+SELECTION_FEATURES = ["self_returning", "pos_regular_returning", "team_regular_returning",
+                      "prev_unused", "prev_absent", "pts_l1", "gi_l1", "pts_l1_vs_avg",
+                      "yellows_todate"]
 FEATURES = (HISTORY_FEATURES + ROLE_FEATURES + CONTEXT_FEATURES
-            + CROWD_FEATURES + LINE_FEATURES + BBC_ROLE_FEATURES)
+            + CROWD_FEATURES + LINE_FEATURES + BBC_ROLE_FEATURES
+            + SELECTION_FEATURES)
 LABELS = {0: "none", 1: "sub", 2: "full"}   # 0 min / 1-59 / 60+
 
 # --- optional exogenous blocks (Transfermarkt) ------------------------------
@@ -107,7 +116,8 @@ EXTRA_BLOCKS = {"age": "fpl birth date", "inj": "injury",
                 "tm": "transfermarkt", "tac": "tactics/manager",
                 "cal": "all-competition club calendar (BBC)",
                 "bbcrole": "per-match role from BBC lineups",
-                "absent": "suspensions and who they spill onto"}
+                "absent": "suspensions and who they spill onto",
+                "sel": "the manager's selection process (Round 21)"}
 EXTRA_FEATURES: list[str] = []
 
 
@@ -145,6 +155,17 @@ def _resolve_extras(names: list[str]) -> list[str]:
             out += _ab.FEATURES
         elif n == "absent_self":     # control: the player's own absence flag only
             out += ["sus_self"]
+        elif n == "sel":
+            from . import selection_features as _sel
+            out += _sel.FEATURES
+        elif n == "sel_core":
+            from . import selection_features as _sel
+            out += _sel.CORE
+        elif n == "sel_rep":         # Round 21b: the specific slot stand-in facing a return
+            out += ["replacement_for_returning"]
+        elif n == "sel_noret":       # ablation: the core without the returning features
+            from . import selection_features as _sel
+            out += [f for f in _sel.CORE if "returning" not in f]
         elif n in _tm.FAMILIES:
             out += _tm.FAMILIES[n]
         elif n in _tac.FAMILIES:
@@ -206,6 +227,9 @@ def _attach_extras(conn, df: pd.DataFrame) -> pd.DataFrame:
     from . import absence_features as _ab
     if any(f in EXTRA_FEATURES for f in _ab.FEATURES):
         df = _ab.add_features(df, _ab.load(conn))
+    from . import selection_features as _sel
+    if any(f in EXTRA_FEATURES for f in _sel.FEATURES):
+        df = _sel.add_features(df, _sel.load(conn))
     return df
 
 
@@ -473,6 +497,8 @@ def _frame(conn, seasons: list[str], before: str | None = None,
     df = _tac.add_line_features(df, _tac.load_roles(conn))
     from . import bbc_role_features as _br
     df = _br.add_features(df, _br.load(conn))
+    from . import selection_features as _sel
+    df = _sel.add_features(df, _sel.load(conn))
     return _attach_extras(conn, df)
 
 

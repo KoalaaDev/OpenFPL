@@ -1,0 +1,96 @@
+rows joined 54177 | in band 6692
+
+feature                       n     coef      t        p | band n     coef      t        p | notes
+prev_unused               53936   0.0265    7.4   0.0000 |   6682   0.0381    1.3   0.2060 | resid when 1: +0.024 (n=6900) vs 0: -0.002
+prev_absent               53936  -0.0140   -5.9   0.0000 |   6682  -0.0614   -2.9   0.0038 | resid when 1: -0.006 (n=25362) vs 0: +0.008
+prev_sub_mins             54177   0.0000    0.2   0.8432 |   6692  -0.0002   -0.5   0.6343 | 
+prev_hooked               54177  -0.0062   -0.7   0.4632 |   6692  -0.0191   -1.0   0.3053 | resid when 1: -0.005 (n=1110) vs 0: +0.001
+self_returning            54177   0.1502   19.7   0.0000 |   6692   0.2936    8.6   0.0000 | resid when 1: +0.148 (n=1335) vs 0: -0.002
+pos_regular_returning     54177  -0.0113   -3.8   0.0002 |   6692  -0.0499   -3.4   0.0007 | 
+team_regular_returning    54177  -0.0067   -3.8   0.0001 |   6692  -0.0283   -3.3   0.0010 | 
+home_start_bias           51629  -0.0131   -1.2   0.2181 |   6512  -0.0856   -2.4   0.0174 | 
+yellows_todate            54177   0.0031    4.5   0.0000 |   6692   0.0085    2.8   0.0051 | 
+ban_threat                54177   0.0341    3.1   0.0023 |   6692   0.0609    1.3   0.1942 | resid when 1: +0.035 (n=621) vs 0: +0.001
+pts_l1                    53936   0.0045    8.8   0.0000 |   6682   0.0130    5.3   0.0000 | 
+gi_l1                     54177   0.0262    6.5   0.0000 |   6692   0.0628    3.9   0.0001 | 
+pts_l1_vs_avg             52593   0.0048    8.1   0.0000 |   6590   0.0068    3.2   0.0015 | 
+team_ga_l1                54177   0.0012    1.2   0.2422 |   6692  -0.0011   -0.2   0.8131 | 
+team_gf_l1                54177  -0.0015   -1.5   0.1358 |   6692  -0.0096   -1.9   0.0564 | 
+team_lost_l1              54177   0.0042    1.7   0.0835 |   6692   0.0128    1.1   0.2898 | resid when 1: +0.004 (n=20335) vs 0: -0.000
+team_cs_l1                54177  -0.0017   -0.6   0.5496 |   6692   0.0034    0.2   0.8093 | resid when 1: +0.000 (n=13083) vs 0: +0.002
+xi_kept_l1                52845   0.0130    1.5   0.1367 |   6531   0.0441    1.0   0.3014 | 
+consec_x_congest          54177   0.0000    0.2   0.8220 |   6692  -0.0003   -0.3   0.7730 | 
+replacement_for_returning  54177  -0.0490   -6.8   0.0000 |   6692  -0.1025   -3.9   0.0001 | resid when 1: -0.046 (n=1506) vs 0: +0.003
+gd_l1                     54177  -0.0012   -1.8   0.0699 |   6692  -0.0036   -1.1   0.2737 | 
+
+start residual by consecutive starts (all rows with P(start) >= 0.5):
+         n  p_start  started  resid
+cs_b                               
+0     1443    0.640    0.647  0.007
+1     2514    0.712    0.715  0.003
+2     1886    0.783    0.777 -0.006
+3     1392    0.823    0.825  0.002
+4-5   2034    0.837    0.840  0.003
+6-8   1972    0.863    0.856 -0.007
+9-12  1454    0.880    0.874 -0.006
+13+   3164    0.921    0.925  0.003
+
+... split by congestion (matches in last 14 days >= 3):
+              size   mean
+congest cs_b             
+False   0     1299 -0.000
+        1     2355  0.006
+        2     1775 -0.004
+        3     1308  0.005
+        4-5   1907  0.001
+        6-8   1836 -0.010
+        9-12  1368 -0.005
+        13+   2956  0.002
+True    0      144  0.071
+        1      159 -0.051
+        2      111 -0.034
+        3       84 -0.043
+        4-5    127  0.027
+        6-8    136  0.038
+        9-12    86 -0.017
+        13+    208  0.019
+
+D. suspension threat by importance (one booking from a ban):
+  regular (start rate >= 0.7), one booking from a ban        n=   469 resid +0.028 vs +0.002  p=0.0897
+  fringe, one booking from a ban                             n=   152 resid +0.057 vs +0.001  p=0.1301
+  regular on exactly 4 yellows (any matchday)                n=  1264 resid +0.019 vs +0.001  p=0.0604
+
+B. the specific stand-in facing the regular's return:
+  replacement_for_returning == 1 (all)                       n=  1506 resid -0.046 vs +0.003  p=0.0000
+  replacement_for_returning == 1, in band                    n=   358 resid -0.089 vs +0.013  p=0.0001
+  pos_regular_returning >= 1 but NOT the slot holder         n=  5869 resid -0.002 vs +0.003  p=0.1097
+
+C. home/away bias with a minimum sample (>= 8 home and 8 away rows):
+  n=37124 coef +0.0095 p=0.4562
+  band n=4908 coef -0.0655 p=0.1241
+
+E. team shocks as MANAGER REACTION, by the player's position:
+  GK: conceded 3+ last match                                 n=  1015 resid +0.001 vs -0.001  p=0.7623
+  GK: lost by 3+ last match                                  n=   461 resid +0.002 vs -0.001  p=0.8336
+  GK: won by 3+ last match                                   n=   440 resid -0.006 vs -0.000  p=0.4135
+  GK: lost last match                                        n=  2206 resid +0.001 vs -0.002  p=0.6536
+  DEF: conceded 3+ last match                                n=  3094 resid +0.008 vs +0.001  p=0.2513
+  DEF: lost by 3+ last match                                 n=  1411 resid +0.003 vs +0.002  p=0.8890
+  DEF: won by 3+ last match                                  n=  1296 resid -0.001 vs +0.002  p=0.6283
+  DEF: lost last match                                       n=  6760 resid +0.006 vs +0.000  p=0.2294
+  MID: conceded 3+ last match                                n=  4091 resid +0.002 vs +0.001  p=0.8842
+  MID: lost by 3+ last match                                 n=  1820 resid +0.006 vs +0.001  p=0.4740
+  MID: won by 3+ last match                                  n=  1756 resid -0.002 vs +0.002  p=0.5995
+  MID: lost last match                                       n=  8989 resid +0.002 vs +0.001  p=0.7492
+  FWD: conceded 3+ last match                                n=  1095 resid +0.009 vs -0.001  p=0.2840
+  FWD: lost by 3+ last match                                 n=   498 resid +0.017 vs -0.000  p=0.1759
+  FWD: won by 3+ last match                                  n=   391 resid +0.003 vs +0.001  p=0.8621
+  FWD: lost last match                                       n=  2380 resid +0.009 vs -0.004  p=0.0482
+
+E2. share of last match's XI retained (team level), by last result:
+  conceded 3+    n=  240  XI kept 0.783
+  conceded < 3   n= 1160  XI kept 0.801
+  lost by 3+     n=  108  XI kept 0.785
+  won by 3+      n=  101  XI kept 0.807
+  lost           n=  524  XI kept 0.793
+  did not lose   n=  876  XI kept 0.801

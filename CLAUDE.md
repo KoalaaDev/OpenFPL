@@ -2305,6 +2305,35 @@ python -m fpl_engine predict --gw 1 --blend auto   # blend retrained + OpenFPL
 python -m pytest tests/ -q
 ```
 
+### Round 21: the manager's selection process — SHIPPED
+
+Nine owner hypotheses about selection (RESEARCH_LOG E24), gated on the
+model's own start residual over 54,177 player-gameweeks and then replayed.
+**Killed:** a consecutive-start rotation threshold (the model is calibrated
+at every run length, with or without congestion), being subbed off early,
+substitute minutes, XI continuity, last result, three conceded or scored, a
+clean sheet, a home/away start bias, and resting before a ban (players on
+four yellows start MORE — they are the regulars who tackle). **Survived and
+shipped** (`SELECTION_FEATURES`, `xpts/selection_features.py`): a player's
+first match back after a known absence (+0.29 start residual in the
+ambiguous band — the live overlay zeroes the absent and does nothing for the
+returning), the regulars returning at his position (the stand-in −0.05), an
+unused substitute last time (+0.024) versus out of the squad (−0.06, from
+BBC benches), last match's points and goal involvements (the model had no
+points features), and bookings to date. 74 paired gameweeks:
+`spearman_played` **+0.0050 (p=0.004)**, rmse −0.0145***, points per pick
+flat. Ablation: the two returning features carry +0.0030 (p=0.005) of it, the
+rest +0.0020 (p=0.17). The owner's refinements — the specific slot
+stand-in facing a return (strong at the gate, −0.089 in the band, but
+absorbed by the shipped block on replay: +0.0002), a minimum-sample
+home/away bias, the suspension threat split by importance, and manager
+reaction to result or performance shocks — were all gated and killed.
+Live model: 48 features, retrained 2026-09-14; `data/bt_base` is now
+this replay (`bt_base_pre_r21` kept, with the audits the residual gates
+read; regenerate audits for the new baseline before the next residual
+gate). Serve-time absences come from FPL's
+change log (`absence.py` kind `fpl`) plus bans and Transfermarkt spells.
+
 ## Two sessions on 2026-09-14: how the branches reconcile
 
 The defender studies (E16-E18) and this branch's Rounds 17-20 (RESEARCH_LOG

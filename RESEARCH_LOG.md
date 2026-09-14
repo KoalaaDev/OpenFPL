@@ -1586,3 +1586,89 @@ match officials parsed out of the 1,559 lineup payloads already on disk.
   only the increment over it. The injury boundary is E11c's (spell began a
   day before kickoff and had not ended), which is knowable at the deadline
   in kind but not always in extent.
+
+## E24. The manager's selection process: nine owner hypotheses gated, one block shipped
+
+Against `data/bt_base` (post-Round-19), 74 paired gameweeks. The owner
+listed nine selection mechanisms plus a set of "weird football" ones
+(2026-09-14, evening). Flagged first: consecutive starts, minutes when he
+starts, home/away and congestion are already features; days since last
+START, the calendar ahead, European ties with a rest control, XI churn,
+formation changes and manager identity were tested in E8b, E12 and E21;
+slot competition in E21; absence spillover in E22-E23.
+
+**Gate** (`research/selection_gate.py`): the `sel` block built by the
+model's own frame builder, joined to the baseline's audit (`p_start`) on
+54,177 player-gameweeks; per feature, does it predict the START residual
+(actual − P(start)), overall and in the 0.3-0.7 band?
+
+| feature | overall t | band t | reading |
+|---|---|---|---|
+| consecutive starts (0 … 13+) | — | — | residual within ±0.01 at every run length, with and without congestion: **no rotation threshold** |
+| `self_returning` (first match after a known absence) | **+19.7** (+0.15) | **+8.6** (+0.29) | the model sees his zeros and under-rates him |
+| `pos_regular_returning` | −3.8 | **−3.4** (−0.05) | the stand-in's chance falls when the regular is back |
+| `prev_unused` (BBC bench, no minutes) | **+7.4** (+0.024) | +1.3 | unused subs start more than modelled |
+| `prev_absent` (not in the squad) | −5.9 | **−2.9** (−0.06) | |
+| `pts_l1` / `gi_l1` / `pts_l1_vs_avg` | **+8.8 / +6.5 / +8.1** | +5.3 / +3.9 / +3.2 | last match's returns drive selection; the model had no points features |
+| `yellows_todate` / `ban_threat` | +4.5 / +3.1 | +2.8 / +1.3 | more bookings, MORE starts (they are the regulars who tackle); no resting before a ban |
+| subbed off early, sub minutes, consec × congestion, XI kept, last result, 3+ conceded/scored, clean sheet, home/away bias | n.s. | n.s. | killed |
+
+**Replays.** Full block (19 features) and the gate's survivors (`CORE`, 9):
+
+| arm | spearman | spearman_played | p@20 | top11 | top30 | rmse |
+|---|---|---|---|---|---|---|
+| `sel` (all 19) | +0.0128*** | **+0.0058 (p=0.002)**; +0.0067** / +0.0049 (p=0.10) | +0.0007 | −0.04 | −0.01 | −0.0139*** |
+| `sel_core` (9 survivors) | +0.0123*** | **+0.0050 (p=0.004)**; +0.0065** / +0.0036 (p=0.18) | −0.002 | −0.00 | +0.01 | −0.0145*** |
+| full − core | +0.0005 | +0.0008 (p=0.31) | | | | |
+
+The null features add nothing; the core ships. Points-per-pick metrics are
+flat, as for every minutes gain before it (E12, E21): this is a rank-quality
+gain of the size of the Understat line features (+0.0047) and above the BBC
+roles (+0.0031). **Ablation** (`sel_noret`: the core without the two
+returning features): `spearman_played` +0.0020 (p=0.17), rmse −0.0103***;
+the returning features alone (core − noret) are **+0.0030 (p=0.005)**, rmse
+−0.0043***. So the proven rank gain is mostly the returning-player
+mechanism; bench status, last-match returns and bookings add who-plays
+accuracy and an unproven +0.002 of rank. The block ships whole (it clears
+the bar as a whole and the extra features cost nothing), stated that way.
+
+**Why this is not the availability channel again (E23's control).** The
+returning flag re-supplies "he is fit again", and the live overlay has no
+equivalent: it only zeroes players who are out and does nothing for a man
+whose trailing window is zeros because he was injured. So the increment is
+real at serve time. At serve time the absence source is FPL's own change log
+(`xpts/absence.py` kind `fpl`: status i/s/u or chance <= 25%, from the
+change that opened the spell to the one that closed it), bans from the card
+log, and Transfermarkt spells as crawled; in a replay it is bans + dated
+injuries. Transfermarkt's `until_date` typically sits days before the first
+match back, so the replay's returning flag is knowable in kind at the
+deadline, as FPL's status flip is live.
+
+**Round 21b, the owner's refinements, gated the same way.** (B) *The signal
+lives in the specific stand-in*, as predicted: the player who held the
+returning regular's modal pre-absence formation slot in the last match of
+the absence (`replacement_for_returning`, from BBC lineups) carries
+**−0.046 overall (t=−6.8) and −0.089 in the band (p=0.0001)**, while the
+position-level count WITHOUT that man is −0.002 (p=0.11). Replayed as an
+arm on top of the shipped block (`$FPL_MINUTES_EXTRA=sel_rep`) against the
+new baseline: `spearman_played` +0.0002 (p=0.59), rmse +0.0003, every
+decision metric flat in both seasons — the shipped block (his own return
+flag, the position count, and the depth features the tree interacts them
+with) already absorbs the specific stand-in. Not shipped; kept as a
+research feature. (C) Home/away start bias with a minimum of eight rows each way: coef
++0.0095 (p=0.46), band −0.07 (p=0.12) — null. (D) Suspension threat split by
+importance: regulars one booking from a ban +0.028 (p=0.09), fringe +0.057
+(p=0.13), regulars on exactly four yellows +0.019 (p=0.06) — every sign is
+MORE starts, managers do not rest them; killed. (E) Manager reaction to a
+shock, by position: conceding 3+, losing by 3+, winning by 3+ and losing
+move no position's residual (all p > 0.13; FWD after a loss +0.009,
+p=0.048, noise), and at team level a club that conceded 3+ keeps 78.3% of
+its XI against 80.1% otherwise — a fifth of a player. Killed.
+
+**Shipped:** `SELECTION_FEATURES` in `minutes_model.FEATURES` (48 features),
+attached in `_frame` from `xpts/selection_features.py`; live model retrained
+on all four seasons (holdout 2025-26 accuracy 0.836), projections rebuilt
+GW4-9, server restarted 2026-09-14 evening. Baseline rotated:
+`data/bt_base` = the `sel_core` replay, previous baseline in
+`data/bt_base_pre_r21` (audits there; regenerate for the new baseline before
+the next audit-based gate). Tests: `tests/test_selection_features.py`.
