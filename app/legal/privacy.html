@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy Policy — FPLabs by KoalaaDev</title>
+<link rel="icon" type="image/svg+xml" href="/icon.svg">
+<style>
+  :root { color-scheme: dark; }
+  body { margin: 0; background: #0f1222; color: #eef0ff; font: 15px/1.65 Inter, system-ui, sans-serif; }
+  main { max-width: 760px; margin: 0 auto; padding: 40px 20px 80px; }
+  a { color: #a99cff; }
+  h1 { font-size: 28px; margin: 0 0 4px; }
+  h2 { font-size: 18px; margin: 32px 0 8px; color: #fff; }
+  .meta { color: #9aa2c8; font-size: 13px; margin-bottom: 28px; }
+  .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 26px; font-weight: 800; }
+  .brand img { width: 28px; height: 28px; border-radius: 8px; }
+  .brand span { color: #9aa2c8; font-weight: 600; font-size: 13px; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #2a3050; vertical-align: top; }
+  th { color: #9aa2c8; font-weight: 600; }
+  ul { padding-left: 22px; }
+  footer { margin-top: 48px; color: #6c7397; font-size: 13px; }
+</style>
+</head>
+<body>
+<main>
+  <div class="brand"><img src="/icon.svg" alt="">FPLabs <span>by KoalaaDev</span></div>
+  <h1>Privacy Policy</h1>
+  <div class="meta">Effective {{DATE}} · applies to {{BASE_URL}}</div>
+
+  <p>FPLabs ("the app", "we") is a Fantasy Premier League planning tool operated by
+  KoalaaDev ("the operator"). This policy explains what the app stores about you,
+  why, for how long, and how to remove it. It is written to be read, not skimmed:
+  there is no advertising, no analytics tracking, and no sale or sharing of personal
+  data with third parties for their own purposes.</p>
+
+  <h2>1. What we collect and why</h2>
+  <table>
+    <tr><th>Data</th><th>When</th><th>Why</th><th>Kept</th></tr>
+    <tr><td>A random session identifier, in a cookie</td><td>Every visit</td><td>To keep your drafts, squad and team id between visits without an account</td><td>30 days from your last visit; the saved documents are deleted after 45 days of inactivity</td></tr>
+    <tr><td>Your FPL team id (a public number), any squad you enter or import, the drafts and transfer notes you create</td><td>When you enter or import them</td><td>This is the product: planning against your own squad</td><td>While your session or account exists</td></tr>
+    <tr><td>Google account identifier, email address, display name and avatar URL</td><td>Only if you sign in with Google</td><td>To recognise you across devices and attach your saved documents to your account</td><td>Until you delete the account</td></tr>
+    <tr><td>Client IP address</td><td>Every request, in memory</td><td>Rate limiting, so one visitor cannot exhaust the solver for everyone</td><td>Not written to a database; standard server logs are rotated within 30 days</td></tr>
+  </table>
+
+  <p>Signing in is optional. Everything the app does works without an account;
+  an account only makes your saved work follow you between devices.</p>
+
+  <h2>2. What we do not collect</h2>
+  <ul>
+    <li>No password: authentication is delegated to Google and we never see one.</li>
+    <li>No payment details: nothing is charged for at present.</li>
+    <li>No advertising or analytics trackers, no fingerprinting, no third-party cookies.</li>
+    <li>Your Fantasy Premier League login: the recommended way to load a private squad is a
+      bookmarklet that runs in your own browser and copies the squad to your clipboard. Your
+      FPL session cookie never reaches our server unless the operator has explicitly enabled the
+      optional cookie import, in which case it is used for one request and never stored.</li>
+  </ul>
+
+  <h2>3. Cookies</h2>
+  <p>Two first-party cookies only, both essential, both <code>HttpOnly</code> and
+  <code>SameSite=Lax</code>:</p>
+  <ul>
+    <li><code>fplabs_session</code>: a signed session token (30 days). It contains an opaque
+      session id and, if signed in, an opaque account id. Nothing else.</li>
+    <li><code>fplabs_oauth</code>: a short-lived (10 minute) token used only to complete a
+      Google sign-in securely.</li>
+  </ul>
+  <p>The app also remembers your team id in your browser's local storage so the page loads
+  faster. It is never sent anywhere except to this site.</p>
+
+  <h2>4. Third parties</h2>
+  <ul>
+    <li><b>Google Sign-In.</b> If you choose to sign in, Google receives the sign-in request and
+      returns your basic profile (name, email, avatar). Google's own privacy policy applies to that
+      exchange. We request only the <code>openid</code>, <code>email</code> and <code>profile</code> scopes.</li>
+    <li><b>Google Fonts.</b> The page loads two typefaces from Google's font service; your browser
+      makes that request directly to Google.</li>
+    <li><b>Fantasy Premier League and other public data sources.</b> The app's server fetches public
+      football data (fixtures, player statistics, public team picks by team id) to build its
+      projections. Those requests are made by the server on its own behalf and do not include your
+      personal data beyond the public team id you entered.</li>
+  </ul>
+  <p>We do not sell, rent or share personal data with anyone else. We would disclose data only
+  where required by law.</p>
+
+  <h2>5. Where data is kept and how it is protected</h2>
+  <p>Account data and saved documents live in a database on the operator's server, reachable only
+  over HTTPS. Session tokens are cryptographically signed so they cannot be forged or altered, and
+  every state-changing request is protected against cross-site forgery. Rate limiting, request
+  size limits and content security headers are applied to every response.</p>
+
+  <h2>6. Your rights and choices</h2>
+  <ul>
+    <li><b>Access and portability.</b> Everything stored about you is visible in the app (your team id,
+      squad, drafts and notes). You can ask for a copy at the contact address below.</li>
+    <li><b>Deletion.</b> Signed-in users can delete their account from the account menu; this removes
+      the Google identifiers, your email and name, and every saved document, immediately and
+      permanently. Anonymous sessions are removed by clearing the site's cookies, and their saved
+      documents expire automatically.</li>
+    <li><b>Sign out</b> ends the session on that device without deleting the account.</li>
+    <li><b>Objection and complaints.</b> If you are in the UK or EU you may also complain to your
+      data-protection authority (in the UK, the Information Commissioner's Office).</li>
+  </ul>
+
+  <h2>7. Children</h2>
+  <p>The app is not directed at children under 13 and we do not knowingly collect data from them.
+  Fantasy Premier League itself requires its participants to be at least 13.</p>
+
+  <h2>8. Changes</h2>
+  <p>If this policy changes materially, the effective date above changes and the app will show a
+  notice on the next visit. Continued use after that date means you accept the updated policy.</p>
+
+  <h2>9. Contact</h2>
+  <p>The operator can be reached at <a href="mailto:{{CONTACT}}">{{CONTACT}}</a>.</p>
+
+  <footer>FPLabs is an independent project and is not affiliated with, endorsed by or connected to the
+  Premier League or Fantasy Premier League. · <a href="/terms">Terms of Service</a> · <a href="/">Back to the app</a></footer>
+</main>
+</body>
+</html>

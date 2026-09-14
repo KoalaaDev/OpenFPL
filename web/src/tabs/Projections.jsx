@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react'
 import { api, pollJob } from '../api'
-import { useStore } from '../store'
+import { useStore, usePersisted } from '../store'
 import Flag from '../components/Flag'
 import { availPct, badgeUrl, downloadCSV, epColor, fdrColor, fmt1 } from '../util'
 import PlayerModal from '../components/PlayerModal'
@@ -33,20 +33,20 @@ const EXTRA_COL = ['pts95', 'fixtures', 'xmins', 'mins', 'goals', 'pk',
                    'assists', 'cbit', 'cs', 'avail']
 
 export default function Projections() {
-  const { proj, teams, byId, fixtures, status, projHistory, refreshProjections, setToast } = useStore()
+  const { proj, teams, byId, fixtures, status, projHistory, refreshProjections, setToast, isAdmin } = useStore()
   const [q, setQ] = useState('')
-  const [pos, setPos] = useState('ALL')
-  const [gwSel, setGwSel] = useState(null)      // null = all projected gws
+  const [pos, setPos] = usePersisted('proj.pos', 'ALL')
+  const [gwSel, setGwSel] = usePersisted('proj.gwSel', null)      // null = all projected gws
   const [gwOpen, setGwOpen] = useState(false)
-  const [sort, setSort] = useState({ key: 'total', dir: -1 })
-  const [sub, setSub] = useState('opp')         // secondary line in gw cells
+  const [sort, setSort] = usePersisted('proj.sort', { key: 'total', dir: -1 })
+  const [sub, setSub] = usePersisted('proj.sub', 'opp')         // secondary line in gw cells
   // colour the squares by the model's own number, or by fixture difficulty.
   // Both are useful and they answer different questions - "who scores most"
   // vs "who has the kind run" - so this is a toggle rather than a choice.
-  const [shade, setShade] = useState('ep')      // 'ep' | 'fdr'
-  const [fdrMode, setFdrMode] = useState('diff')  // diff | diff_att | diff_def
+  const [shade, setShade] = usePersisted('proj.shade', 'ep')      // 'ep' | 'fdr'
+  const [fdrMode, setFdrMode] = usePersisted('proj.fdrMode', 'diff')  // diff | diff_att | diff_def
   const [modalPid, setModalPid] = useState(null)
-  const [col3, setCol3] = useState('own')       // trailing column: own | ppm | none
+  const [col3, setCol3] = usePersisted('proj.col3', 'own')       // trailing column: own | ppm | none
   const [priceMax, setPriceMax] = useState(null)
   const [building, setBuilding] = useState(false)
   const [buildMsg, setBuildMsg] = useState(null)
@@ -148,7 +148,7 @@ export default function Projections() {
 
   const build = async () => {
     if (building) return
-    const from = status?.next_gw || 1
+    const from = status?.editable_gw || status?.next_gw || 1
     const gws = (status?.scheduled_gws || []).filter((g) => g >= from).slice(0, 6)
     if (!gws.length) {
       setToast({ kind: 'err', msg: 'No upcoming gameweeks known — run a data pull (⟳ Data, top right) first.' })
@@ -172,7 +172,7 @@ export default function Projections() {
   }
 
   const exportCsv = () => {
-    downloadCSV('openfpl_projections.csv',
+    downloadCSV('fplabs_projections.csv',
       ['player', 'team', 'pos', 'price', 'own%', ...shown.map((g) => `gw${g}`), 'total'],
       rows.map((r) => [r.name, r.teamShort, r.position, r.price, r.m.own,
         ...shown.map((g) => r.eps[g] ?? ''), r.total.toFixed(2)]))
@@ -183,17 +183,20 @@ export default function Projections() {
       <div className="panel">
         {building ? (
           <RadarLoader size={150} label="Projecting"
-            sub={buildMsg || 'Running the OpenFPL models over the horizon…'} />
+            sub={buildMsg || 'Running the FPLabs models over the horizon…'} />
         ) : (
           <div className="center-note">
             <h3>No projections yet</h3>
             <p style={{ marginBottom: 16 }}>
-              Run the OpenFPL models to project the next six gameweeks (a few
-              minutes, cached afterwards).
+              {isAdmin
+                ? 'Run the models to project the next six gameweeks (a few minutes, cached afterwards).'
+                : 'The lab rebuilds projections automatically every day and before each deadline — check back shortly.'}
             </p>
-            <button className="pill-btn accent" onClick={build}>
-              ▶ Build projections
-            </button>
+            {isAdmin && (
+              <button className="pill-btn accent" onClick={build}>
+                ▶ Build projections
+              </button>
+            )}
           </div>
         )}
       </div>

@@ -1,96 +1,121 @@
-import React, { useState } from 'react'
-import { useStore } from './store'
+import React, { useEffect, useState } from 'react'
+import { useStore, usePersisted } from './store'
 import Planner from './tabs/Planner'
 import Projections from './tabs/Projections'
 import Fixtures from './tabs/Fixtures'
 import MiniLeague from './tabs/MiniLeague'
 import Solver from './tabs/Solver'
 import Prices from './tabs/Prices'
+import Deadline from './tabs/Deadline'
 import MyTeamModal from './components/MyTeamModal'
+import AccountMenu from './components/AccountMenu'
+import { BrandMark, Wordmark } from './components/Brand'
 import { BootLoader } from './components/RadarLoader'
 import { API_VERSION, api, pollJob } from './api'
 
-const TABS = ['Planner', 'Projections', 'Fixtures', 'Prices', 'Mini League', 'Solver']
+const TABS = [
+  ['Planner', '⚽'], ['Projections', '📈'], ['Fixtures', '🗓'],
+  ['Prices', '💷'], ['Mini League', '🏆'], ['Solver', '🧪'],
+]
 
 export default function App() {
-  const [tab, setTab] = useState('Planner')
+  const [tab, setTab] = usePersisted('tab', 'Planner')
   // Tabs used to be swapped with `tab === 'X' && <X/>`, which UNMOUNTS the
   // old one and throws away everything it held - most painfully a solve that
   // took a minute to run. A tab is now mounted the first time it is opened
   // and then merely hidden, so results, filters and scroll position survive
   // switching. Unvisited tabs are still never mounted, so nothing fetches
   // league or projection data until it is actually asked for.
-  const [visited, setVisited] = useState({ Planner: true })
+  const [visited, setVisited] = useState({ Planner: true, [tab]: true })
   const openTab = (t) => { setVisited((v) => (v[t] ? v : { ...v, [t]: true })); setTab(t) }
   const { booted, status, setStatus, entryId, setEntryId, entry, toast, setToast,
-          refreshProjections } = useStore()
-  const [pulling, setPulling] = useState(false)
+          refreshProjections, isAdmin } = useStore()
+  // the deadline desk is the operator's view; the tab exists only for admins
+  const tabs = isAdmin ? [...TABS, ['Deadline', '🛰']] : TABS
+  const [refreshing, setRefreshing] = useState(false)
   const [teamModal, setTeamModal] = useState(false)
 
-  const doPull = async () => {
-    if (pulling) return
-    setPulling(true)
-    setToast({ kind: 'info', msg: 'Refreshing FPL data…' })
+  // the Google round-trip lands back here with ?login=…
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search)
+    const r = q.get('login')
+    if (!r) return
+    if (r === 'failed') setToast({ kind: 'err', msg: 'Google sign-in failed — please try again.' })
+    if (r === 'cancelled') setToast({ kind: 'info', msg: 'Sign-in cancelled.' })
+    window.history.replaceState({}, '', window.location.pathname)
+  }, [setToast])
+
+  const doRefresh = async () => {
+    if (refreshing) return
+    setRefreshing(true)
+    setToast({ kind: 'info', msg: 'Refreshing data and re-running the model…' })
     try {
-      const { job_id } = await api.pull()
+      const { job_id } = await api.refresh()
       await pollJob(job_id, (j) => {
         const last = j.progress[j.progress.length - 1]
         if (last) setToast({ kind: 'info', msg: last.msg })
       })
-      setToast({ kind: 'ok', msg: 'Data refreshed. Projections cache cleared — rebuild from the Solver or Projections tab.' })
+      setToast({ kind: 'ok', msg: 'Data refreshed and projections rebuilt.' })
       api.status().then(setStatus)
       refreshProjections()
     } catch (e) {
-      setToast({ kind: 'err', msg: `Pull failed: ${e.message}` })
+      setToast({ kind: 'err', msg: `Refresh failed: ${e.message}` })
     } finally {
-      setPulling(false)
+      setRefreshing(false)
     }
   }
 
   const stale = status && status.api_version !== API_VERSION
+  const autoBusy = (status?.jobs_running || []).includes('refresh')
 
   if (!booted) {
-    return <BootLoader sub={status ? 'Loading players and fixtures…' : 'Contacting the backend…'} />
+    return <BootLoader sub={status ? 'Loading players and fixtures…' : 'Contacting the lab…'} />
   }
 
   return (
     <>
       {stale && (
         <div className="stale-banner">
-          ⚠ The backend is running an older build than this page (API {status.api_version || 'unknown'}
-          vs {API_VERSION}). Stop and restart <b>python -m app</b>, then reload — otherwise new
-          features will fail with 404/405 errors.
+          ⚠ The server is running an older build than this page (API {status.api_version || 'unknown'}
+          vs {API_VERSION}). Reload in a minute — if it persists the server needs a restart.
         </div>
       )}
       <header className="topnav">
         <div className="brand">
-          <div className="brand-mark">⚽</div>
-          OpenFPL <span style={{ color: 'var(--muted-2)', fontWeight: 600 }}>planner</span>
+          <BrandMark />
+          <Wordmark />
         </div>
         <nav className="tabs">
-          {TABS.map((t) => (
+          {tabs.map(([t]) => (
             <button key={t} className={`tab ${tab === t ? 'active' : ''}`}
               onClick={() => openTab(t)}>{t}</button>
           ))}
         </nav>
         <div className="right">
-          <button className={`pill-btn ${entry?.squad ? '' : 'accent'}`}
+          <button className={`pill-btn squad-btn ${entry?.squad ? '' : 'accent'}`}
             title="import or enter your current 15" onClick={() => setTeamModal(true)}>
-            {entry?.squad ? '✓ squad set' : '⚠ set my team'}
+            {entry?.squad ? '✓ squad' : '⚠ set my team'}
           </button>
           <EntryBox entryId={entryId} setEntryId={setEntryId} entry={entry} />
-          <button className="pill-btn" onClick={doPull} disabled={pulling}>
-            {pulling ? <span className="spinner" /> : '⟳'} Data
-          </button>
+          {isAdmin && (
+            <button className="pill-btn admin-only" onClick={doRefresh} disabled={refreshing || autoBusy}
+              title="pull data + rebuild projections now (admin)">
+              {refreshing || autoBusy ? <span className="spinner" /> : '⟳'} Refresh
+            </button>
+          )}
           {status && (
-            <span className="chip dim num" title="next gameweek">
-              GW{status.next_gw}
+            <span className="chip dim num gw-chip" title={freshnessTitle(status)}>
+              GW{status.next_gw}{autoBusy ? ' ·' : ''}
             </span>
           )}
+          <AccountMenu />
         </div>
       </header>
 
       <main className={`page ${tab === 'Mini League' ? 'wide' : ''}`}>
+        {!entryId && tab !== 'Fixtures' && tab !== 'Prices' && (
+          <Welcome setEntryId={setEntryId} openTeam={() => setTeamModal(true)} />
+        )}
         {visited.Planner && <Pane on={tab === 'Planner'}><Planner /></Pane>}
         {visited.Projections && <Pane on={tab === 'Projections'}><Projections /></Pane>}
         {visited.Fixtures && <Pane on={tab === 'Fixtures'}><Fixtures /></Pane>}
@@ -101,14 +126,29 @@ export default function App() {
             <Solver goPlanner={() => openTab('Planner')} />
           </Pane>
         )}
+        {visited.Deadline && isAdmin && <Pane on={tab === 'Deadline'}><Deadline /></Pane>}
+        <footer className="site-foot">
+          <span><b>FPLabs</b> by KoalaaDev · models refresh automatically{status?.proj_updated_at ? ` · last run ${ago(status.proj_updated_at)}` : ''}</span>
+          <span className="muted">Built on the open OpenFPL research models. Not affiliated with the Premier League.
+            {' '}<a href="/privacy">Privacy</a> · <a href="/terms">Terms</a></span>
+        </footer>
       </main>
+
+      <nav className="bottomnav" aria-label="sections">
+        {tabs.map(([t, icon]) => (
+          <button key={t} className={`bn-tab ${tab === t ? 'active' : ''}`} onClick={() => openTab(t)}>
+            <span className="bn-icon" aria-hidden="true">{icon}</span>
+            <span className="bn-label">{t === 'Mini League' ? 'League' : t}</span>
+          </button>
+        ))}
+      </nav>
 
       {teamModal && <MyTeamModal close={() => setTeamModal(false)} />}
 
       {toast && (
         <div className="toast">
-          {toast.kind === 'ok' && <span className="ok">✓ SUCCESS:</span>}
-          {toast.kind === 'err' && <span style={{ color: 'var(--red)', fontWeight: 800 }}>✕ ERROR:</span>}
+          {toast.kind === 'ok' && <span className="ok">✓</span>}
+          {toast.kind === 'err' && <span style={{ color: 'var(--red)', fontWeight: 800 }}>✕</span>}
           {toast.kind === 'info' && <span className="spinner" />}
           <span>{toast.msg}</span>
           <button className="close" onClick={() => setToast(null)}>×</button>
@@ -118,10 +158,53 @@ export default function App() {
   )
 }
 
+function freshnessTitle(status) {
+  const parts = [`next gameweek: ${status.next_gw}`]
+  if (status.proj_updated_at) parts.push(`projections built ${ago(status.proj_updated_at)}`)
+  const ar = status.auto_refresh
+  if (ar?.enabled && ar.next_run) parts.push(`next auto-refresh ${new Date(ar.next_run * 1000).toLocaleString()}`)
+  return parts.join(' · ')
+}
+
+function ago(ts) {
+  const s = Math.max(0, Date.now() / 1000 - ts)
+  if (s < 90) return 'just now'
+  if (s < 3600) return `${Math.round(s / 60)} min ago`
+  if (s < 86400) return `${Math.round(s / 3600)} h ago`
+  return `${Math.round(s / 86400)} d ago`
+}
+
 // keeps a tab alive but out of the way; `hidden` would also stop layout but
 // display:none is what lets a re-shown tab keep its scroll position
 function Pane({ on, children }) {
   return <div style={{ display: on ? 'contents' : 'none' }}>{children}</div>
+}
+
+/* No team id yet: the first thing a new visitor sees. There is no default
+   manager on a public planner — the projections are the same for everyone,
+   the squad is yours. */
+function Welcome({ setEntryId, openTeam }) {
+  const [val, setVal] = useState('')
+  return (
+    <div className="welcome panel">
+      <div className="welcome-copy">
+        <h2>Your team, the lab's numbers.</h2>
+        <p>Enter your FPL team ID to load your squad, plan transfers and run the solver.
+          You can find it in the URL of your Points page on fantasy.premierleague.com:
+          <span className="num"> …/entry/<b>1234567</b>/event/…</span></p>
+      </div>
+      <form className="welcome-form" onSubmit={(e) => {
+        e.preventDefault()
+        const n = parseInt(val, 10)
+        if (n > 0) setEntryId(n)
+      }}>
+        <input inputMode="numeric" pattern="[0-9]*" className="num" placeholder="team id" value={val}
+          onChange={(e) => setVal(e.target.value.replace(/\D/g, ''))} />
+        <button className="pill-btn accent" type="submit" disabled={!val}>Load my team</button>
+        <button className="pill-btn" type="button" onClick={openTeam}>No id — enter squad</button>
+      </form>
+    </div>
+  )
 }
 
 function EntryBox({ entryId, setEntryId, entry }) {
@@ -135,19 +218,18 @@ function EntryBox({ entryId, setEntryId, entry }) {
         if (n > 0) setEntryId(n)
         setEditing(false)
       }}>
-        <input autoFocus className="num" value={val}
+        <input autoFocus className="num entry-input" value={val} inputMode="numeric"
           onChange={(e) => setVal(e.target.value.replace(/\D/g, ''))}
           onBlur={() => setEditing(false)}
-          placeholder="entry id"
-          style={{ width: 110, background: 'var(--bg-deep)', border: '1px solid var(--line)',
-                   borderRadius: 7, padding: '7px 10px', outline: 'none', fontSize: 12 }} />
+          placeholder="team id" />
       </form>
     )
   }
   return (
-    <button className="pill-btn" title="change FPL entry id"
+    <button className="pill-btn entry-btn" title="change FPL team id"
       onClick={() => { setVal(String(entryId || '')); setEditing(true) }}>
-      👤 {entry?.team_name || (entryId ? `#${entryId}` : 'set entry')}
+      <span className="entry-ico">👤</span>
+      <span className="entry-lbl">{entry?.team_name || (entryId ? `#${entryId}` : 'team id')}</span>
     </button>
   )
 }

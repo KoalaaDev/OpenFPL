@@ -84,9 +84,18 @@ CROWD_FEATURES = ["sel_share_lag", "sel_rank_pos", "net_transfer_frac"]
 # which the classifier tolerates — the model then behaves as it did before.
 # The only one of six tactical families that survived a held-out test.
 LINE_FEATURES = ["role_is_am", "role_is_dm", "role_vs_fpl_line"]
+# Round 19: the role he actually played last time, from BBC's match lineups
+# (played position on an attacking axis, his row in the formation graphic,
+# Attacking/Defensive Midfielder flags). Adds to the Understat line features
+# rather than replacing them — 74 paired gameweeks: spearman_played +0.0031
+# (p<0.001), rmse -0.0019 (p=0.001), positive in each season; as a
+# replacement for Understat it was -0.0041. NaN without the BBC archive
+# (`python -m acquire backfill --source bbc`), which the classifier tolerates.
+BBC_ROLE_FEATURES = ["bbc_row_l1", "bbc_row_l5", "bbc_pos_l1", "bbc_pos_vs_fpl",
+                     "bbc_is_am", "bbc_is_dm"]
 
 FEATURES = (HISTORY_FEATURES + ROLE_FEATURES + CONTEXT_FEATURES
-            + CROWD_FEATURES + LINE_FEATURES)
+            + CROWD_FEATURES + LINE_FEATURES + BBC_ROLE_FEATURES)
 LABELS = {0: "none", 1: "sub", 2: "full"}   # 0 min / 1-59 / 60+
 
 # --- optional exogenous blocks (Transfermarkt) ------------------------------
@@ -95,7 +104,10 @@ LABELS = {0: "none", 1: "sub", 2: "full"}   # 0 min / 1-59 / 60+
 # with $FPL_MINUTES_EXTRA (``inj``, ``tm``, ``tm_player``, …), which is how a
 # backtest runs the challenger arm without a second copy of the module.
 EXTRA_BLOCKS = {"age": "fpl birth date", "inj": "injury",
-                "tm": "transfermarkt", "tac": "tactics/manager"}
+                "tm": "transfermarkt", "tac": "tactics/manager",
+                "cal": "all-competition club calendar (BBC)",
+                "bbcrole": "per-match role from BBC lineups",
+                "absent": "suspensions and who they spill onto"}
 EXTRA_FEATURES: list[str] = []
 
 
@@ -119,13 +131,28 @@ def _resolve_extras(names: list[str]) -> list[str]:
             out += _tm.ALL
         elif n == "tac":
             out += _tac.ALL
+        elif n == "cal":
+            from . import calendar_features as _cal
+            out += _cal.FEATURES
+        elif n == "bbcrole":
+            from . import bbc_role_features as _br
+            out += _br.FEATURES
+        elif n == "bbcx":
+            from . import bbc_role_features as _br
+            out += _br.EXTRA
+        elif n == "absent":
+            from . import absence_features as _ab
+            out += _ab.FEATURES
+        elif n == "absent_self":     # control: the player's own absence flag only
+            out += ["sus_self"]
         elif n in _tm.FAMILIES:
             out += _tm.FAMILIES[n]
         elif n in _tac.FAMILIES:
             out += _tac.FAMILIES[n]
         else:
             raise ValueError(f"unknown minutes-model extra block: {n!r}")
-    return list(dict.fromkeys(out))
+    # a block that has since shipped into FEATURES must not be added twice
+    return [f for f in dict.fromkeys(out) if f not in FEATURES]
 
 
 def set_extras(names: list[str] | str | None) -> list[str]:
@@ -141,7 +168,13 @@ def set_extras(names: list[str] | str | None) -> list[str]:
 
 
 def active_features() -> list[str]:
-    return FEATURES + EXTRA_FEATURES
+    """The shipped set plus any extra block; $FPL_MINUTES_DROP=line removes
+    the Understat line features for one process (a research arm asking
+    whether another role source can replace them)."""
+    import os as _os
+    drop = {d.strip() for d in _os.environ.get("FPL_MINUTES_DROP", "").split(",") if d.strip()}
+    base = [f for f in FEATURES if not ("line" in drop and f in LINE_FEATURES)]
+    return base + EXTRA_FEATURES
 
 
 def _attach_extras(conn, df: pd.DataFrame) -> pd.DataFrame:
@@ -163,6 +196,16 @@ def _attach_extras(conn, df: pd.DataFrame) -> pd.DataFrame:
         seasons = sorted(df["season"].dropna().unique().tolist())
         df = _tac.add_features(df, _tac.load(conn),
                                opponents=_tac.opponent_map(conn, seasons))
+    from . import calendar_features as _cal, bbc_role_features as _br
+    if any(f in EXTRA_FEATURES for f in _cal.FEATURES):
+        df = _cal.add_features(df, _cal.load(conn))
+    if any(f in EXTRA_FEATURES for f in _br.FEATURES):
+        df = _br.add_features(df, _br.load(conn))
+    if any(f in EXTRA_FEATURES for f in _br.EXTRA):
+        df = _br.add_extra_features(df, _br.load(conn))
+    from . import absence_features as _ab
+    if any(f in EXTRA_FEATURES for f in _ab.FEATURES):
+        df = _ab.add_features(df, _ab.load(conn))
     return df
 
 
@@ -428,6 +471,8 @@ def _frame(conn, seasons: list[str], before: str | None = None,
     df = df.drop(columns=["_pm", "_ms", "_m5"])
     from . import tactics_features as _tac
     df = _tac.add_line_features(df, _tac.load_roles(conn))
+    from . import bbc_role_features as _br
+    df = _br.add_features(df, _br.load(conn))
     return _attach_extras(conn, df)
 
 

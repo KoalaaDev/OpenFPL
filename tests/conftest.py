@@ -66,3 +66,14 @@ def conn():
         os.remove(path)
     except PermissionError:
         pass  # Windows: WAL handles can outlive close(); temp dir cleans up
+
+
+@pytest.fixture(autouse=True)
+def _no_deployment_env(monkeypatch):
+    """Tests must not inherit the server's deployment settings (a real .env
+    or exported variables): an HTTPS base URL makes cookies `Secure`, which
+    the plain-HTTP test client silently drops."""
+    for k in list(os.environ):
+        if k.startswith("FPLABS_") or k.startswith("GOOGLE_") or k in ("ODDS_API_KEY",):
+            monkeypatch.delenv(k, raising=False)
+    monkeypatch.setenv("FPLABS_AUTO_REFRESH", "0")

@@ -954,6 +954,200 @@ baselines rather than assumed. The measured hierarchy — random −6.1, human
 make a manager's decisions better": yes, by about 2 points a week over a
 competent manual pick, roughly 80 points a season, before transfers.
 
+### Round 17: level, not rank — the calibration audit and what it shipped
+
+Every backtest metric is a rank metric or an aggregate, so nobody had asked
+the engine whether its *component sums* match what is scored. Replaying
+2023-24, 2024-25 and 2025-26 point-in-time (`research/audit_components.py`;
+the engine now emits per-component points as `c_*` columns) found three
+level biases that rank metrics cannot see inside a position:
+
+| all players, Σ expected / Σ actual | 2023-24 | 2024-25 | 2025-26 |
+|---|---|---|---|
+| assists | **0.82** | **0.91** | **0.87** |
+| defenders' goals | 1.00 | **1.22** | **1.19** |
+| clean sheets | **1.18** | 1.01 | 0.95 |
+| everything else | within 0.9-1.1 | | |
+
+Causes, measured raw: FPL assists per Opta xA are **DEF 1.2 / MID 1.35 /
+FWD 2.1** in every season (the old 50/50 xA-assists blend mixed two units),
+and defenders convert **0.76-0.93** of their xG against ~1.0 for MID/FWD.
+The 2023-24 clean-sheet excess is the goal-glut season the 240-day team
+window under-reacts to — same defender over-prediction, different cause.
+
+**Shipped:** `rates.py` converts xG into realised-goal units with a per-
+position conversion and xA into FPL-assist units with a per-position ratio,
+both point-in-time and shrunk toward 1 (`$FPL_XPTS_VARIANT=legacy_rates`
+restores the old estimator). 74 paired gameweeks: `spearman_played`
+**+0.0009 (p=0.002)**, top-30 +0.04, rmse identical; the xA half adds
++0.0004 (p=0.039) on top of the xG half. Live projections were rebuilt.
+
+**Tested and rejected this round** (all env-gated arms, `engine.variants()`):
+negative-binomial P(clean sheet) — significantly *worse* (−0.0007, p<0.001;
+clean sheets were already over-called, so more zero mass hurts, as the
+audit predicted); a goal-margin term in the bonus regression — nothing, rmse
+worse; renormalising each club's exposure to the 990-minute law — unproven
+(top-30 +0.06, p=0.11; the 7% overshoot it fixes is a 2023-24 phenomenon,
+1% in the test seasons); an online per-component multiplier — +0.035 top-30
+(p=0.023), rank flat; the same per position — **+0.071 top-30 (p=0.004)** but
+rank slightly worse in 2025-26, and superseded by fixing the causes. Also
+falsified as a cause: the 60+/clean-sheet dependence for midfielders is real
+(team CS 0.18 when hooked vs 0.25 when he lasts) but worth 2%, not the 12%
+gap. **Read the live post-mortem's "60+" component table with care**:
+conditioning on players who played 60+ selects the surprise starters, so it
+mostly measures the minutes channel, not a rate bias.
+
+**A standing correction to E14/Round 8b's "no estimator headroom":** that
+oracle substituted a perfect rate *in the units the engine already used*, so
+a level error common to a whole position was invisible to it by
+construction. Re-run the audit whenever a component's definition or provider
+changes.
+
+**Understat now covers every replay season** (`_pull_understat(...,
+history_seasons=4)` runs on `pull --understat`); before this round the
+shipped role features were NaN in any replay of 2024-25 or earlier.
+
+### Round 18: press conferences — the first pre-deadline text feed, gated and shipped conservatively
+
+BBC's Friday "Premier League news conferences" live blog (found by the
+owner; `acquire/sources/bbc_pressers.py`, 83 pages back to Oct 2023, 9,699
+posts) is timestamped manager quotes per fixture, published the day before
+the deadline. `fpl_engine/pressers.py` is a rules extractor: fixture label →
+two squads → unique-name resolution → the class of the CLAUSE naming the
+player (out > doubt > rested > available). Stored in `presser_obs`.
+
+**Gate 2 (information):** joined to the replayed minutes model, a likely
+starter (P(start) ≥ 0.6) the manager calls "out" starts **41-49%** of the
+time against the model's 83%; "doubt" 72%; "available" and in-match
+commentary injuries change nothing. **Gate 1 (timing, 2026-27, n=29):** by
+the deadline FPL had flagged 65% of "out" and 100% of "doubt" statements —
+a third of "out" calls are news FPL's status does not carry.
+
+**Decision test (74 paired gameweeks, against the post-Round-17 baseline):**
+scaling exposure by the statements makes `spearman_played` significantly
+**worse** (−0.0012, p=0.015; −0.0022 in 2024-25) while `spearman` — who plays
+at all — improves. Sparse and half-wrong is the worst combination for an
+overlay. The first reading of this test was against a stale baseline and
+looked null; see the standing rule below.
+
+**Shipped, shown not modelled:** the Friday page is archived and extracted
+by the scheduled refresh (`acquire/sources/bbc_pressers.py`,
+`fpl_engine/pressers.py`, table `presser_obs`) and the statement appears on
+the player card with class and timestamp, but `pressers.LIVE_FACTORS` are
+all 1.0 — nothing scales a projection until an extractor's "out" calls on
+likely starters are wrong less than a quarter of the time (rules: 41-49%).
+Precision accrues in `presser_obs` against realised starts. The next step
+is an LLM-labelled small extractor (`research/presser_label.py` scaffold;
+needs an API key and torch), not more rules. Backtests are bit-identical
+(the `pressers` research arm is env-gated). Tests: `tests/test_pressers.py`.
+
+**Standing rule (found here, the hard way): re-run the baseline after any
+shipped change before comparing an arm.** `data/bt_base` is the
+post-Round-17 replay; `bt_base_pre_r17` is the old one. A null arm — same
+features, retrained — is the check: it must reproduce the baseline exactly
+(it did, bit for bit), otherwise the comparison is measuring the drift.
+
+### Round 19: the BBC archive as model input — roles shipped
+
+Two minutes-model blocks from the BBC archive (`acquire/sources/bbc.py`).
+**Shipped: `BBC_ROLE_FEATURES`** (`xpts/bbc_role_features.py`) — the played
+position on an attacking axis, the row in the formation graphic and AM/DM
+flags from strictly prior starts, BBC URNs resolved to `player.code` by
+accent-aware token matching (99.7% of starter rows). 74 paired gameweeks
+against the corrected baseline: `spearman_played` **+0.0031 (p<0.001)**,
+rmse −0.0019 (p=0.001), positive in each season. As a *replacement* for
+the Understat line features it is −0.0041, so both stay; NaN without the
+archive, which the scheduled refresh keeps current (`acquire pull --source
+bbc`). All four backfill seasons must hold lineups before any role arm is
+believed — the first arm trained on seasons with no BBC rows.
+
+**Measured, not yet shipped: `cal`** (`xpts/calendar_features.py`,
+`$FPL_MINUTES_EXTRA=cal`): real rest days and congestion across every
+competition, plus a European tie within four days. Alone it clears the bar
+(`spearman_played` +0.0014, p=0.033); on top of the shipped roles it does
+not (+0.0003, p=0.63; rmse −0.0012, p=0.024) — the roles absorbed it. Not
+shipped; the archive (`acq_bbc_calendar`) is kept current so it can be
+re-tested after the next structural change.
+
+**The sweep of everything else BBC exposes per match** (checked, not
+assumed): `match-stats` — per-team possession, shots split (on/off/blocked,
+in/out of box), touches in box, corners, crosses, clearances, duels, and
+**xG split into open-play and set-play** plus xA; `match-momentum` — a
+per-minute pressure series (in-play only, no pre-deadline use);
+`football-on-the-day-events` — goals, penalties, cards with the player;
+`article` — the match report as prose. **Player of the match** is BBC's
+`player-rater` widget (crowd average out of 10 per player per match): the
+averages are server-rendered into the match page's `__INITIAL_DATA__`
+(`acquire backfill --source bbc_ratings`, table `acq_bbc_rating`, 2024-25
+on) — collected, gated in Round 20, and worth nothing for points.
+What that sweep makes possible and is NOT yet tested: set-play xG share
+for/against as a fixture scaler for defenders' goals (the Round 17 audit
+found defenders convert below xG), referee card rates (officials are in
+the lineups payload; the appointment is public before the deadline), and
+penalty takers from events instead of Understat shots. Captaincy and slot
+competition from lineups (`bbc_role_features.EXTRA`, `$FPL_MINUTES_EXTRA=bbcx`)
+were replayed — see RESEARCH_LOG E18 for the verdict.
+
+**Admin "Deadline" tab** (`app/deadline.py`, `/api/admin/deadline`, tab
+visible to admins only): the operator's desk before a deadline — scheduler
+state and the model actually serving (features, training seasons, holdout
+accuracy, trained-at), FPL status changes in the last week verbatim,
+Friday's manager statements for the coming gameweek, RotoWire's predicted
+XIs beside the model's P(start) with disagreements flagged, and the biggest
+projection moves since the previous build. It reads only what the pipeline
+already archives; nothing on it changes a projection.
+
+**Two rules this round bought.** (1) *Re-run the baseline after any shipped
+change*: `data/bt_base` had been replayed before Round 17 shipped, and every
+arm was being credited with that change until a null arm (same features,
+retrained) reproduced Round 17's numbers exactly. (2) A feature the model
+will see at serve time must exist in its training seasons — the birth-date
+lesson, relearned on lineups.
+
+### Round 20: absences, fatigue, the eye test — three hypotheses, one real effect, nothing shipped
+
+Full numbers in RESEARCH_LOG E19. **A starter's absence does spill onto his
+team-mates**: when a regular starter (>=4 of the club's last 5 starts) plays
+no minutes, the next man at his position starts 73% against the model's
+61%, +11 minutes, **+0.31 points over projection** (goalkeepers +1.4). The
+live overlay zeroes the absent man and redistributes nothing. As a
+minutes-model block built on SUSPENSIONS (the only absence a replay can
+know; `xpts/absence_features.py`, `$FPL_MINUTES_EXTRA=absent`) it improves
+`spearman` +0.0024*** and rmse −0.0035*** and moves **no decision metric**
+(`spearman_played` −0.0003, p=0.67) — the availability signature, fourth
+time: ~5 suspended players a gameweek cannot move a rank over 600. Not
+shipped; provable once the availability change log covers a replayable
+season. A missing starter weakens the club by ~0.1 goals at most (n.s.)
+and the odds blend already carries that live. **Fatigue is not a
+performance effect** (own rest days: xGI/90 coefficient 0.0000; a European
+midweek dips xGI 7% while points rise — no consistent sign). **BBC crowd
+ratings** were collected after all (server-rendered `playerRater` block)
+and carry nothing for points (+0.01% RMSE) and a 0.3% log-loss whisper for
+starts — rejected at the gate. Rule reaffirmed: a signal that is right per
+instance still has to be FREQUENT enough to move a 600-player rank; test
+the gate first, and read `spearman`/rmse gains without `spearman_played`
+as "who plays at all", which the overlay already handles.
+
+**Round 20b (RESEARCH_LOG E20), the owner's four follow-ups.** With
+Transfermarkt's 9,003 dated injury spells reloaded the absence block
+(`$FPL_ABSENCE_KINDS=sus,inj`, `xpts/absence.py`) scores `spearman_played`
++0.0082*** and top-30 +0.156*** — and the **own-flag control** (same data,
+no team-mate features) scores +0.0063*** / +0.148***: that is the
+availability channel, which the live overlay already earns (E11c). The
+spillover increment is +0.0019 (p=0.018 pooled, neither season alone) with
+prec@20 significantly WORSE; not shipped. **Always run the own-flag control
+for any feature that re-supplies "he is out" to a replay.** The ban
+derivation is now one match per red (a three-match straight red was wrong
+past match one 54-62% of the time; 344 bans, 94% precise). Imposed zeroing
+of a half-right absence set is significantly harmful; rate-side
+redistribution on a fixed set is exactly null. Referee card rates
+(officials parsed from the archived lineup payloads, `acq_bbc_official`)
+and the set-play/open-play xGA split (BBC `match-stats`,
+`acq_bbc_match_stats`, Opta split from Dec 2024) are both flat — engine
+arms `referee` and `setplay` stay env-gated. Collectors: `acquire backfill
+--source bbc_stats|bbc_officials`; the scheduled `pull` keeps stats and
+officials current.
+
 ## Sportmonks: audited, not usable
 
 Two independent hard blockers on the free plan, both verified against the API
@@ -1003,6 +1197,47 @@ Checked against the sites, not the documentation:
 | **Transfermarkt** | permissive `robots.txt`; its terms prohibit automated extraction, and robots.txt is not a licence. Originally not scraped for that reason. **Now scraped, at the owner's explicit instruction** for personal use — see the Transfermarkt section below. The `felipeall/transfermarkt-api` wrapper was evaluated first and rejected: unmaintained since April 2025, and its own issue #121 is "500 Error Status on all GET Endpoints" (confirmed — every endpoint 500s). |
 | **Premier League official** | crawlable (24 disallow rules, almost all query-string patterns). Viable if a need appears. |
 | **FPL API** | `robots.txt` present, no disallow rules, already used by the pipeline. |
+
+### BBC Sport: lineups, positions, per-match stats and live text (keyless, archived)
+
+`acquire/sources/bbc.py`, checked against the site on 2026-09-14. BBC match
+pages are built from JSON containers under `wc-data/container/`: a per-day
+fixtures index (any past date), `match-lineups` (both XIs with formation,
+pitch position, formation slot, captain, and per-player stats — minutes,
+shots, tackles, passes, fouls, xG/xA from 2024-25) and `stream` (the live
+text, paginated and timestamped from "Lineups are announced" to full time).
+Archived back to at least 2022-23. What it is NOT: a pre-deadline signal —
+the preview container holds head-to-head facts only and a match's live page
+does not exist a week out. Three hypotheses it exists to test, none run yet:
+per-match ROLE without Understat (whose robots.txt disallows everything),
+DefCon-style counts (`totalTackle`) for seasons before the rule existed, and
+in-match injury mentions as an early availability signal.
+
+    python -m acquire backfill --source bbc --season 2024-25   # ~1 h at 1 req/s
+    python -m acquire pull --source bbc                          # last 8 days
+
+Tables `acq_bbc_match` / `acq_bbc_lineup` / `acq_bbc_stream`; identity is
+BBC's player URN, resolution to FPL ids is the engine's job. Incremental and
+idempotent (a complete match is skipped). Tests: `tests/test_acquire_bbc.py`.
+
+**And the one that IS pre-deadline: the Friday "Premier League news
+conferences" live pages** (`acquire/sources/bbc_pressers.py`, found by the
+owner). A live blog from ~08:00 to ~14:30 UK on the Friday before a gameweek,
+one post per manager quote, each labelled with its fixture and timestamped —
+71 posts on 2026-09-11, 20 with concrete availability ("Collins ... calf
+injury, won't be involved", "Maddison is available", "Caicedo will not be
+available"). Past weeks are enumerated through BBC's `search-results`
+container (`defaultPageNumber` paginates; live pages whose headline says
+"news conferences"; reaches back to at least early 2024), so for the first
+time press-conference team news is BACKTESTABLE. Stored verbatim in
+`acq_bbc_presser` / `acq_bbc_presser_page`; extraction into player-level
+availability observations (an LLM or rule pass over "won't be involved",
+"is available", "a doubt") is the modelling engine's job and the next
+hypothesis — it is exactly the "genuinely new information source" Round 8
+asked for.
+
+    python -m acquire backfill --source bbc_pressers   # enumerate + archive since 2023-07
+    python -m acquire pull --source bbc_pressers        # last three weeks
 
 ### Why FPL's own feed was the thing to build first
 
@@ -1902,14 +2137,51 @@ Run: `python -m pytest tests/ -q`
 * **League-rank / status-rank** columns are AM-only in OpenFPL and left NaN for
   player rows (matching the reference samples).
 
-## Web app (FPL Review-style planner)
+## Web app — FPLabs by KoalaaDev
 
-`app/` (FastAPI backend) + `web/` (React/Vite frontend) serve a local planner
-UI on **http://127.0.0.1:8410** with four tabs: Planner (pitch + drafts),
-Projections (per-GW model output table), Fixtures (FDR heatmap) and Solver
+`app/` (FastAPI backend) + `web/` (React/Vite frontend) serve the planner,
+branded **FPLabs by KoalaaDev**, on `$FPLABS_HOST:$FPLABS_PORT` (default
+`0.0.0.0:9999`; see `docs/DEPLOY.md` for the reverse proxy, TLS and Google
+sign-in setup) with six tabs: Planner (pitch + drafts), Projections (per-GW
+model output table), Fixtures (FDR heatmap), Prices, Mini League and Solver
 (chip-aware optimisation via `fpl_engine/optimise/chips.py` — a superset of
 `milp.py` adding WC/FH/BB/TC chips, target/avoid/ban constraints, club-level
 buy/sell rules and playstyle plans; `milp.py` itself stays untouched).
+
+It is built to be **exposed to the internet**, and four rules follow:
+
+* **Every saved document is per visitor.** Squad, drafts, transfer watch and
+  the remembered team id live in `data/app.sqlite` (`app/userdata.py`)
+  keyed by a signed HttpOnly session cookie (`app/auth.py`); anonymous
+  sessions last 30 days, Google sign-in migrates them onto the account.
+  There is **no default entry id** — `manager.DEFAULT_ENTRY` is CLI-only.
+  Never reintroduce a shared file under `data/web_cache/` for user state.
+* **Nothing expensive is a button.** `app/scheduler.py` pulls + reprojects
+  daily (`FPLABS_REFRESH_UTC`) and before each deadline; `/api/pull`,
+  `/api/projections/build` and `/api/refresh` are admin-only
+  (`FPLABS_ADMIN_EMAILS`). Solves are clamped (`services.SOLVE_BOUNDS`),
+  one per visitor, rate limited, and a job is readable only by its owner.
+* **Mutations must look like our own fetch.** `SameSite=Lax` cookie plus
+  `application/json` + `X-Requested-With: fetch` (`security.MutationGuard`);
+  `web/src/api.js` sends both. A new endpoint that changes state must go
+  through `send()` there or it will be refused with 403.
+* **Everything a visitor touches autosaves.** Tab, filters, solver knobs,
+  the active draft and the planner's gameweek live in `prefs.ui` (bounded,
+  debounced, `usePersisted()` in `web/src/store.jsx`); drafts, squad and the
+  transfer watch are their own documents. Nothing depends on a Save button.
+* **A gameweek in progress is locked.** `status.editable_gw` is the first
+  gameweek whose deadline has not passed (`services.first_open_gw`); while
+  matches are being played `next_gw` still names that gameweek for the
+  model, but every tab plans from `editable_gw` and the solver refuses an
+  earlier `solve_from`. Never key "can I change this?" off `next_gw`.
+* **Plans are a seam, not a product.** `app/plans.py` holds the Free/Pro
+  entitlements; `FPLABS_ENFORCE_PLANS` is off so everyone is Pro. See
+  `docs/MONETISATION.md` before gating anything.
+
+`web/src/brand.css` carries the premium finish and the phone layout (bottom
+tab bar, sheet modals, scaled pitch under 820px); `theme.css` stays the base.
+Tests: `tests/test_app_auth.py`, `tests/test_app_security.py`,
+`tests/test_scheduler.py`.
 
 Solver specifics worth knowing:
 
@@ -1957,7 +2229,8 @@ Solver specifics worth knowing:
 ```
 python -m app                      # serve the built site (needs app/static)
 cd web && npm install && npm run build   # rebuild frontend -> app/static
-cd web && npm run dev              # frontend dev server (proxies /api to 8410)
+cd web && npm run dev              # frontend dev server (proxies /api to 8410;
+                                   #   run the backend with FPLABS_PORT=8410)
 ```
 
 Projections are cached per (season, gw) in `data/web_cache/projections.json`

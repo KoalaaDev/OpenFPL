@@ -9,18 +9,19 @@ const SLOTS = [['GK', 2], ['DEF', 5], ['MID', 5], ['FWD', 3]]
 // my-team JSON with the browser's own session and copies it to the clipboard.
 // No cookie ever leaves the browser or reaches this app.
 const BOOKMARKLET = "javascript:(async()=>{try{" +
-  "if(location.hostname!=='fantasy.premierleague.com'){alert('OpenFPL: open fantasy.premierleague.com (logged in) first, then click this bookmark.');return}" +
+  "if(location.hostname!=='fantasy.premierleague.com'){alert('FPLabs: open fantasy.premierleague.com (logged in) first, then click this bookmark.');return}" +
   "const me=await(await fetch('/api/me/',{credentials:'same-origin'})).json();" +
   "const e=me&&me.player&&me.player.entry;" +
-  "if(!e){alert('OpenFPL: log in to fantasy.premierleague.com first, then click the bookmark again.');return}" +
+  "if(!e){alert('FPLabs: log in to fantasy.premierleague.com first, then click the bookmark again.');return}" +
   "const t=await(await fetch('/api/my-team/'+e+'/',{credentials:'same-origin'})).json();" +
   "const s=JSON.stringify({entry:e,my_team:t});" +
-  "try{await navigator.clipboard.writeText(s);alert('OpenFPL: squad copied to clipboard - paste it into the planner (set my team > Bookmarklet).')}" +
-  "catch(x){prompt('OpenFPL: copy this and paste it into the planner:',s)}" +
-  "}catch(x){alert('OpenFPL bookmark failed: '+x)}})();"
+  "try{await navigator.clipboard.writeText(s);alert('FPLabs: squad copied to clipboard - paste it into the planner (set my team > Bookmarklet).')}" +
+  "catch(x){prompt('FPLabs: copy this and paste it into the planner:',s)}" +
+  "}catch(x){alert('FPLabs bookmark failed: '+x)}})();"
 
 export default function MyTeamModal({ close }) {
-  const { entryId, setEntryId, entry, players, teams, byId, refreshEntry, setToast } = useStore()
+  const { entryId, setEntryId, entry, players, teams, byId, refreshEntry, setToast, status } = useStore()
+  const cookieAllowed = !!status?.cookie_import
   const [mode, setMode] = useState('bookmark')
   const [cookie, setCookie] = useState('')
   const [pasted, setPasted] = useState('')
@@ -128,8 +129,10 @@ export default function MyTeamModal({ close }) {
           <span style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
             <button className={`pill-btn ${mode === 'bookmark' ? 'accent' : ''}`}
               onClick={() => setMode('bookmark')}>Bookmarklet</button>
-            <button className={`pill-btn ${mode === 'import' ? 'accent' : ''}`}
-              onClick={() => setMode('import')}>Cookie</button>
+            {cookieAllowed && (
+              <button className={`pill-btn ${mode === 'import' ? 'accent' : ''}`}
+                onClick={() => setMode('import')}>Cookie</button>
+            )}
             <button className={`pill-btn ${mode === 'manual' ? 'accent' : ''}`}
               onClick={() => setMode('manual')}>Enter manually</button>
             <button style={{ color: 'var(--muted)', fontSize: 16, marginLeft: 4 }} onClick={close}>✕</button>
@@ -148,7 +151,7 @@ export default function MyTeamModal({ close }) {
               <li>Drag this button onto your browser's bookmarks bar (or <b>copy the code</b> and
                 create a bookmark with it as the URL):&nbsp;
                 <a ref={bmRef} className="bookmarklet" onClick={(e) => e.preventDefault()}
-                  title="drag me to the bookmarks bar">⚽ OpenFPL squad</a>
+                  title="drag me to the bookmarks bar">⚽ FPLabs squad</a>
                 &nbsp;<button className="pill-btn" onClick={copyCode}>⧉ copy code</button>
               </li>
               <li>Go to <b>fantasy.premierleague.com</b> (logged in) and click the bookmark — it

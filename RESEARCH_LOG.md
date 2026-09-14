@@ -826,3 +826,407 @@ roughly `(accuracy − 0.55)/0.45 × 89` points a season.
 * **Also run.** GW2 post-mortem on the repaired cache and completed results:
   predicted 895 vs actual 891 (100%), Spearman 0.698, model captain Bruno
   Fernandes = the week's top scorer (23).
+
+## E16. Level, not rank: a calibration audit and seven pre-registered arms
+
+* **Why this round exists.** Every metric the backtest reports is a *rank*
+  metric or an aggregate. A level error inside one component — clean sheets
+  15% too generous for everyone, assists 15% too mean — is invisible to
+  `spearman_played` within a position and shows up in top-30 only faintly,
+  yet it is exactly what decides a defender against a midfielder in an XI
+  and who wears the armband. Nobody had ever asked the engine "do your
+  component sums match what was scored?" on a replayed season. Two
+  operational fixes came first: Understat club data now covers every
+  backfill season (2022-23 on; it had only covered the live season and the
+  one before, so the shipped role features were NaN in any replay of
+  2024-25), and the engine now emits its per-component points (`c_*`
+  columns) so an audit is a join, not a reconstruction.
+* **The audit** (`research/audit_components.py`, three seasons replayed
+  point-in-time with the availability overlay off and the season-tagged
+  minutes model, exactly as the backtest does; one row per player-gameweek,
+  32k / 30k / 32k rows). Sum of expected points over sum of realised, all
+  players:
+
+  | component | 2023-24 | 2024-25 | 2025-26 |
+  |---|---|---|---|
+  | goals | 0.92 | 1.07 | 1.07 |
+  | **assists** | **0.82** | **0.91** | **0.87** |
+  | clean sheets | **1.18** | 1.01 | 0.95 |
+  | conceded | 0.86 | 1.06 | 1.08 |
+  | saves | 0.81 | 0.91 | 0.89 |
+  | bonus | 1.00 | 1.01 | 0.99 |
+  | appearance | 1.03 | 1.02 | 1.01 |
+  | DefCon | — | — | 0.94 |
+  | **total** | 1.02 | 1.02 | 0.99 |
+
+  and by position (total): DEF **1.12 / 1.06 / 0.98**, GK 1.09 / 1.00 / 0.99,
+  MID 0.97 / 1.01 / 1.00, FWD 0.95 / 1.00 / 1.00.
+* **Four things the audit settles.**
+  1. **Assists are under-predicted every season, by 9-18%.** Exposure
+     divided out (expected starters who did play 60+), the assist *rate* is
+     low at the level (log-calibration intercept −0.11, slope 0.86) while
+     the goal rate is fine (−0.03, 0.94). Cause, measured raw: FPL assists
+     per Opta xA are **DEF ~1.2, MID ~1.35, FWD ~2.1**, stable across four
+     seasons. The 50/50 xA/assists blend in `rates.py` mixes two units.
+  2. **Defenders convert below their xG, and increasingly so:** goals per xG
+     DEF 0.93 → 0.85 → 0.76 (2023-24 → 2025-26) against MID/FWD ≈ 1.0. That
+     is the DEF over-prediction in the xG-era seasons (DEF goals 1.22 /
+     1.19); in 2023-24 the same DEF over-prediction came from clean sheets
+     instead (1.22), a goal-glut season the 240-day team-model window under-
+     reacts to. Same symptom, different cause each year — the signature of
+     something a *static* correction gets wrong and an *adaptive* one can
+     follow.
+  3. **The "60+ under-prediction" in the live post-mortems is mostly the
+     minutes channel.** Conditioning on players who played 60+ selects the
+     surprise starters (e_min ≈ 0), whose components are near zero by
+     construction. Once exposure is divided out the goal channel is
+     calibrated. The post-mortem's component table should be read with
+     that in mind; it is not evidence of a rate bias.
+  4. **Conservation laws.** Σ P(start) per club-fixture is 11.0 in every
+     season (sd 0.6-0.8); Σ E[min] is 1015 / 997 / — against the law of 990
+     and **1057 in the first six gameweeks of 2023-24** (a model trained on
+     one season). The minutes model is calibrated by position to within
+     ±3% in all three seasons.
+* **Seven arms, all env-gated (`$FPL_XPTS_VARIANT`), shipped path bit-
+  identical; 74 paired gameweeks (2024-25 + 2025-26) against a fresh
+  baseline in `data/bt_base/`, minutes model shared across arms.**
+
+  | arm | hypothesis | spearman_played | top30 pts/pick | verdict |
+  |---|---|---|---|---|
+  | `nb_cs` | team goals are over-dispersed (var/mean 1.078), so P(GA=0) should be the gamma-Poisson zero, not exp(−λ) | **−0.0007 (p<0.001)** | +0.00 | **rejected** — CS is already over-called; more zero mass makes it worse, as the audit predicted |
+  | `bonus_gd` | the winning side collects more BPS: add expected goal margin to the league bonus regression | +0.0004 (p=0.33) | −0.02 | rejected; rmse significantly worse |
+  | `budget_min` | rescale each club's exposure to Σ E[min] = 990 | −0.0002 | +0.06 (p=0.11) | unproven — the 7% overshoot it corrects is a 2023-24 phenomenon; 1% in the test seasons |
+  | `online_calib` | one multiplier per component, shrunk ratio of season-to-date actual/predicted (8 gameweeks of prior on 1.0) | +0.0000 | **+0.035 (p=0.023)** | small, consistent in sign both seasons |
+  | `online_calib_pos` | the same per position × component | +0.0002 (p=0.51); 2025-26 alone −0.0007 (p=0.04) | **+0.071 (p=0.004)**; +0.105 / +0.036 | the largest points-per-pick gain in this file; rank flat |
+  | `xa_scaled` | xA rescaled into FPL-assist units by the league-wide ratio before the blend | +0.0002 (p=0.20) | **+0.037 (p=0.023)**; +0.032 / **+0.042 (p=0.03)** | level fix works; rank untouched |
+  | `xa_scaled_pos` | the same, per position | **+0.0004 (p=0.050)** | +0.030 (p=0.13) | rank +0.0004 (p=0.05); the per-position form buys rank, the league-wide form buys level |
+  | `xg_conv_pos` | goal rate = xG × per-position conversion (shrunk to 1) | **+0.0005 (p=0.001)** | **+0.043 (p=0.016)**; top-11 +0.06 (p=0.06) | best single arm: rank AND points, same sign both seasons |
+  | `xa_scaled_pos,xg_conv_pos` | both structural fixes together | **+0.0009 (p=0.002)** | +0.042 (p=0.078); prec@20 +0.004 | **SHIPPED** — rank +0.0014 (p=0.001) / +0.0004 in the two seasons; the xA half adds +0.0004 (p=0.039) on top of the xG half; rmse identical |
+  | `…,online_calib_pos` | the shipped pair plus per-position online multipliers | −0.0002 vs shipped (p=0.46) | +0.006 vs shipped (p=0.78) | **nothing left to correct** — the structural fix absorbs what the online arm was catching; online calibration stays a research tool |
+
+* **Falsified as a cause, recorded so it is not re-derived.** Midfielder
+  clean sheets are under-predicted 12% in both xG-era seasons. The natural
+  story — a midfielder is hooked when chasing and kept on when protecting a
+  lead, so "60+" and "clean sheet" are positively dependent and
+  P(60+)·P(CS) understates the joint — is *true* (team CS 0.18 when a
+  starting midfielder is hooked before 60, 0.25 when he lasts) and *too
+  small*: the implied E[60+ ∧ CS] / (P(60+)P(CS)) is 1.025 for MID, 1.02
+  for DEF/FWD, 1.00 for GK. A 2% effect cannot carry a 12% gap.
+* **What the two significant arms say together.** A cross-position level
+  correction buys points per pick without buying rank: `online_calib_pos`
+  moves the top-30 by +0.07 (≈ +1 point a gameweek over a fifteen) with
+  `spearman_played` flat pooled and slightly *worse* in 2025-26. That is the
+  expected shape — it re-weights DEF against MID/FWD, which reshuffles the
+  top of the board across positions without changing the order inside one.
+  It is also the first time in this file a change has cleared p < 0.01 on
+  top-30 in both seasons' direction. 
+
+  The structural arms say the same thing with fewer moving parts. Both
+  online forms are *adaptive corrections of a symptom*; the two rate arms fix
+  the *cause* at the estimator, need no in-season state, and clear the primary
+  rank metric where the online arms did not. **What ships is the pair of
+  per-position unit conversions in `rates.py`** (goal rate = xG × conversion,
+  xA rescaled into FPL-assist units before the blend, both point-in-time,
+  both shrunk toward 1), with `$FPL_XPTS_VARIANT=legacy_rates` restoring the
+  old estimator for any future A/B. The online calibration stays a research
+  arm: whether it still adds anything once the causes are fixed is the
+  `combo_online` row below.
+
+  This is also the first counter-example to E14's "no estimator headroom in
+  the attacking channel". E14 substituted a perfect *rate* for each player and
+  found nothing — but its oracle was a rate in the *same units the engine
+  already used*, so a level error common to every defender (or every forward's
+  assists) was invisible to it by construction. Headroom in the level of a
+  unit is not the same thing as headroom in the estimate of a player, and the
+  rank metrics cannot see the former inside a position. The audit is the tool
+  that can, and it should be re-run whenever a component's definition changes
+  (a scoring-rule change, a new xG provider).
+
+## E17. Press conferences, at last: a pre-deadline text feed that is archived
+
+* **The source, found by the owner.** BBC Sport runs a Friday "Premier
+  League news conferences" live blog: one post per manager quote, each
+  labelled with the fixture it concerns and timestamped, from ~08:00 to
+  ~14:30 UK — the day before the deadline. The page the owner pointed at
+  (2026-09-11) had 71 posts, 20 with concrete availability ("Collins ...
+  calf injury, won't be involved", "Maddison is available", "Caicedo will
+  not be available"). Past weeks are enumerable through BBC's search
+  container; six search terms and a long patience window found **83 pages
+  back to October 2023, 9,699 posts** — 21 / 32 / 25 / 5 Fridays across
+  2023-24 / 2024-25 / 2025-26 / 2026-27. Search is relevance-ordered and
+  does not surface every week; that is the ceiling of this discovery route
+  and it is stated rather than hidden. `acquire/sources/bbc_pressers.py`,
+  stored verbatim, never interpreted at acquisition. The same collector
+  family archives every match's lineups (formation, pitch slot, captain,
+  per-player stats) and live text (`acquire/sources/bbc.py`; 799 matches,
+  31,937 lineup rows, 86,145 posts).
+* **Stage 0 extractor** (`fpl_engine/pressers.py`): rules only, on purpose.
+  Fixture label → the two clubs → their FPL squads for that season; a
+  mention resolves on full name, web name or surname only when exactly one
+  player across both squads answers to it (ambiguity is skipped, never
+  guessed); the mention's sentence is classified by an ordered lexicon —
+  out > doubt > rested > available. In-match commentary gives an `injury`
+  class ("... because of an injury") for the player's next gameweek. Yield:
+  3,779 Premier-League-labelled posts → **1,384 player-level observations**
+  (out 481, available 533, doubt 311, rested 31) plus 2,770 commentary
+  injuries. It is noisy by design ("no doubt we will see him" reads as a
+  doubt); the gates measure what survives the noise.
+* **Gate 2 — information the replay engine does not have.** Joining each
+  observation to the replayed minutes model (availability overlay off, as
+  the backtest runs) over 2024-25 + 2025-26:
+
+  | class | n | model P(start) | actually started | 60+ |
+  |---|---|---|---|---|
+  | (no mention) | 57,454 | 0.252 | 0.256 | 0.239 |
+  | **out** | 280 | 0.273 | **0.175** | 0.168 |
+  | doubt | 160 | 0.400 | 0.381 | 0.350 |
+  | available | 219 | 0.333 | 0.388 | 0.374 |
+  | injury (commentary) | 2,070 | 0.611 | 0.597 | 0.563 |
+
+  Restricted to players the model rated likely starters (P(start) ≥ 0.6):
+  **"out" 0.830 → 0.491 started (n=55)**, "doubt" 0.847 → 0.717 (n=46),
+  "available" 0.838 → 0.814, commentary injury 0.828 → 0.803 (n=1,170).
+  So a manager's "out" halves a likely starter's real chance and the
+  replay engine cannot see it; a manager's "doubt" takes 13 points off;
+  commentary injuries and "available" carry almost nothing (the trailing
+  history and the overlay already know). Cross-fitted exposure factors
+  (realised 60+ over modelled, per class): out **0.69** (2024-25) / **0.48**
+  (2025-26), doubt 0.89 / 1.00, available 1.18 / 1.20.
+* **Gate 1 — timing against FPL's own status log** (2026-27 only, the one
+  season with a stored change log; n=29 statements, so a reading, not a
+  result): when the manager spoke, FPL had already flagged 59% of the
+  "out" players and 75% of the "doubt" ones; **by the deadline 65% and
+  100%**. A third of "out" statements were still unflagged at the deadline —
+  some will be extractor false positives, but the live overlay is
+  demonstrably not a superset of what the manager said.
+* **The decision test — first reading was against a STALE baseline, and it
+  was wrong.** `data/bt_base` had been replayed before the Round 17 rate
+  units shipped; a null arm (same features, retrained) reproduced the Round
+  17 `combo` numbers bit for bit, which located the error. Rule, now
+  standing: **re-run the baseline after any shipped change before comparing
+  an arm** (`data/bt_base` is the post-Round-17 replay; the old one is kept
+  as `bt_base_pre_r17`). Against the correct baseline, the arm that scaled
+  exposure by the statements (v1 extractor, factors fitted on the other
+  season), 74 paired gameweeks:
+
+  | arm | spearman | spearman_played | p@20 | top11 | top30 |
+  |---|---|---|---|---|---|
+  | pressers, pooled | +0.0006 (p=0.009) | **−0.0012 (p=0.015)** | −0.002 | −0.04 | −0.00 |
+  | 2024-25 alone | +0.0008 | **−0.0022 (p=0.018)** | −0.005 (p=0.044) | −0.09 | −0.02 |
+  | 2025-26 alone | +0.0003 | −0.0002 | +0.001 | +0.00 | +0.01 |
+
+  It improves the ranking of who plays at all and **significantly worsens
+  the ranking of those who do**: the extractor is right about half the time
+  when it calls a likely starter "out", and halving a real starter's
+  exposure costs more rank than zeroing an absent one gains. Sparse AND
+  imprecise is the worst combination for an overlay.
+* **Stage 0.5 — clause-level classification.** Reading the class from the
+  clause that names the player rather than the sentence ("Saka is suspended
+  but Odegaard returns") raised "out" precision on likely starters (started
+  0.49 → 0.41) at half the recall (55 → 27 such calls over two seasons).
+  Cross-fitted "out" factors 0.63 / 0.20. Precision, not recall, is the
+  binding constraint, and it is what a learned extractor is for.
+* **What ships: shown, not modelled.** The Friday page is archived and
+  extracted by the scheduled pre-deadline refresh and the statement appears
+  on the player card with its class and timestamp — the same treatment as
+  Polymarket and the Transfermarkt dossier — but `pressers.LIVE_FACTORS` are
+  all 1.0: nothing scales a projection until an extractor clears the
+  precision bar. That bar is now explicit: on likely starters called "out",
+  fewer than a quarter may go on to start (the rules pass is at 41-49%).
+  Every observation is stored, so precision accrues week by week against
+  realised starts and the bar can be checked without another replay.
+* **Stage 1 is scoped, not built.** A small learned extractor needs labels;
+  the honest route is LLM-labelled clauses distilled into a small encoder
+  (`research/presser_label.py` is the labelling scaffold; it needs an
+  `ANTHROPIC_API_KEY`, which this machine does not have, and `torch`, which
+  is not installed). With ~700-1,400 clauses a season it is a small job.
+  "Sentiment" is not the target; (player, status class) is.
+* **Also settled in passing.** In-match commentary injuries ("… because of
+  an injury", 2,770 observations) carry almost nothing for the next
+  gameweek: likely starters 0.828 modelled → 0.803 started. The trailing
+  history already knows who limped off.
+
+## E18. The BBC archive as model input: roles ship, the calendar is measured, a stale baseline is caught
+
+* **Three blocks, one methodological catch.** The Round-18 archive (every
+  match's lineups with formation slot and played position since 2022-23, and
+  every competition's fixtures) was turned into two optional minutes-model
+  blocks, `bbcrole` and `cal`, and replayed. The first comparison of any arm
+  came out implausibly strong — until a **null arm** (the baseline's own
+  features, simply retrained) reproduced Round 17's `combo` numbers bit for
+  bit. `data/bt_base` had been replayed BEFORE Round 17 shipped its rate
+  units, so every arm was being credited with that change. Standing rule:
+  re-run the baseline after any shipped change; the null arm is the check.
+  `bt_base` is now the post-Round-17 replay (`bt_base_pre_r17` kept).
+* **A second catch, in coverage.** The first role arm trained on seasons
+  that had no BBC rows at all (only 2024-25 onward had been archived) and
+  still "gained" — which the null arm explained. The 2022-23 and 2023-24
+  lineups were backfilled (all four seasons now 380/380) before the clean
+  runs below; a feature present at serve time and absent in training is the
+  birth-date lesson (E11c) again.
+* **BBC roles — SHIPPED.** Played position on one attacking axis (GK 0 …
+  Striker 4, with Wing Back, Defensive and Attacking Midfielder in between),
+  row in the formation graphic, and AM/DM flags, from strictly prior starts;
+  BBC player URNs resolve to `player.code` by accent-aware, token-overlap
+  name matching (99.7% of starter rows). Against the corrected baseline, 74
+  paired gameweeks:
+
+  | arm | spearman_played | rmse | p@20 | top30 |
+  |---|---|---|---|---|
+  | + BBC roles (on top of Understat lines) | **+0.0031 (p<0.001)**; +0.0041*** / +0.0020 (p=0.06) | **−0.0019 (p=0.001)** | +0.0068 (p=0.049) | +0.004 |
+  | BBC roles REPLACING Understat lines | **−0.0041 (p=0.004)** | +0.0046*** | −0.004 | −0.02 |
+
+  They add to Understat's line rather than substitute for it, so the
+  Understat dependency stays; the block is in `minutes_model.FEATURES`
+  (`BBC_ROLE_FEATURES`), NaN without the archive, and the scheduled refresh
+  pulls the last eight days of lineups so the live model sees last weekend's
+  roles. This is the largest `spearman_played` gain since the line features
+  themselves (+0.0047).
+* **All-competition calendar (`cal`).** Real rest days, matches in the
+  surrounding week and a European tie within four days, from BBC's collated
+  fixtures (women's and youth sides filtered by competition — BBC names
+  them exactly like the men's club). 2024-25: `spearman_played` +0.0026
+  (p=0.004), rmse −0.0016 (p=0.05); pooled on the pre-roles baseline
+  `spearman_played` +0.0014 (p=0.033), top-11 +0.11 (p=0.041) — it cleared
+  the bar against the model it was designed against. **Re-run on top of the
+  shipped roles (the standing rule), it does not**: `spearman_played` +0.0003
+  (p=0.63), top-11 +0.06 (p=0.18), rmse −0.0012 (p=0.024). The role block
+  absorbed most of what the calendar carried (a club's European midweek is
+  visible in who started the previous match and where). Not shipped; kept
+  env-gated (`$FPL_MINUTES_EXTRA=cal`) with its archive maintained, since an
+  rmse-only gain is the shape that becomes a rank gain when a bigger change
+  lands.
+* **Captaincy + slot competition (`bbcx`) — rejected.** The club captain
+  flag and the player's share of his own formation slot over the club's last
+  five matches (plus how many rivals held it), on top of the shipped roles:
+  `spearman_played` −0.0002 (p=0.71), top-11 −0.07, rmse ±0.0000, both
+  seasons flat. The shipped role and depth features already carry it.
+
+## E19. Absences, fatigue and the crowd's eye test: three owner hypotheses, gated
+
+All four tests below are against the post-Round-19 baseline (`data/bt_base`,
+whose per-player audits were regenerated first), so nothing is credited with
+an earlier shipped change.
+
+* **Does a starter's absence spill onto his team-mates? Yes, measurably.**
+  `research/absence_gate.py`, three replayed seasons, 88,548 single-fixture
+  player-gameweeks. When a REGULAR starter (>=4 of the club's last 5 starts)
+  plays no minutes, the highest-P(start) depth player at his position starts
+  **73% of the time against the model's 61%**, plays **+11 minutes** and
+  scores **+0.31 points** over his projection (goalkeepers +0.51 starts,
+  +44 minutes, +1.44 points). Restricted to SUSPENSIONS — derivable from the
+  card log before the deadline, so knowable in a replay — the next man in
+  line is +0.05 starts, +6 minutes, +0.19 points, and the club's other
+  regulars gain +0.25 points (p=0.049), i.e. shots and set pieces move too.
+  The live availability overlay zeroes the absent man and redistributes
+  nothing; this is the size of what it leaves on the table per instance.
+* **As a minutes-model block (`absent`) — measured, not shipped.**
+  `xpts/absence_features.py`: `sus_self`, `pos_regulars_out`,
+  `team_regulars_out` from the card log (second yellow 1, straight red 3,
+  5/10/15 yellows by matchday 19/32/38 -> 1/2/3; 697 bans over five seasons)
+  and the fixture calendar (`team_match` for replayed seasons, `fixture` for
+  the live one — the first run read `fixture` only, which holds the live
+  season, and was a null arm). 74 paired gameweeks:
+
+  | arm | spearman | spearman_played | p@20 | top30 | captain | rmse |
+  |---|---|---|---|---|---|---|
+  | + absent | **+0.0024 (p<0.0001)** | −0.0003 (p=0.67) | −0.0007 | +0.008 | −0.28 (p=0.16) | **−0.0035 (p=0.0003)** |
+
+  The who-plays-at-all metrics improve and every decision metric sits
+  still, in both seasons — the availability signature (E11c, Transfermarkt
+  injury history) for the fourth time. Suspensions are ~5 players a
+  gameweek, and a per-instance +0.2 points on five men cannot move a rank
+  over 600. The zeroing half (`sus_self`) is what the live overlay already
+  does; the spillover half is real but too sparse to prove here. Kept
+  env-gated (`$FPL_MINUTES_EXTRA=absent`), tested
+  (`tests/test_absence_features.py`). It becomes provable only when injuries
+  are dated point-in-time for a replayed season — the availability change
+  log accruing in `data/collected/` is that dataset, roughly a season out.
+* **Does a missing starter weaken the club? Barely, and the market prices
+  it.** Team goals demeaned by team-season: with a regular suspended the
+  club scores −0.10 goals (p=0.12) and allows +0.09 xGA (p=0.07), n=323; with
+  any regular absent −0.08 goals for (p=0.06) while BOTH xG and xGA rise
+  (+0.18/+0.20, p<0.0001 — a season-timing artefact: depleted squads meet in
+  more open matches, both ways). About 7% of a club's attack at most, not
+  resolvable, second-order for player points (E13), and the odds blend
+  already moves live fixture rates on team news. No arm built.
+* **Fatigue as a PERFORMANCE effect — rejected at the gate.**
+  `research/fatigue_gate.py`, 26,721 outfield starters who lasted 60+,
+  within player-season. Own days since last appearance: xGI/90 coefficient
+  **0.0000** (p=0.95), points/90 −0.013/day (p=0.11, wrong sign for fatigue).
+  More own minutes in the previous 7 days -> slightly MORE output (+0.008
+  xGI/90 per 90 minutes, p=0.04): selection, not rest. The one process
+  effect is after a European tie within four days, xGI/90 −0.024 (p<0.0001)
+  — while points/90 (+0.16, p=0.02) and BPS/90 (+0.57) go the other way. A
+  rate scaler needs a consistent sign and there is none. Rest still enters
+  through the minutes model (`days_rest`, `team_matches_14d`, and the
+  all-competition `cal` block, measured in E18).
+* **BBC crowd ratings ("the eye test in numbers") — rejected at the gate.**
+  Collected after all: the averages are server-rendered into the match
+  page's `__INITIAL_DATA__` as a `playerRater` block (2024-25 onward; 753
+  matches, 22,782 rated player-matches; `acquire backfill --source
+  bbc_ratings`). `research/rating_gate.py`, forward in time both ways:
+  points beyond the projection **+0.01% / −0.00% RMSE** (nothing — a
+  post-match rating is an outcome, and outcomes are already in the rates,
+  the standing rule); starts beyond P(start) **−0.23% / −0.34% log-loss**,
+  and in the 0.3-0.7 band the worst-rated quartile starts 46% against the
+  best quartile's 57% (model 50-52%). A real whisper on rotation, below the
+  1-2% log-loss changes that have never moved a decision here (E11c).
+  Archive maintained by the scheduled pull; no arm.
+
+## E20. Absences with injuries, referees, set plays, redistribution: four owner asks, one control that mattered
+
+Everything against `data/bt_base` (post-Round-19), 74 paired gameweeks.
+Three new archives: Transfermarkt squads + 9,003 dated injury spells
+(re-crawled; the first run was rolled back by a lock while another writer
+held the file), BBC `match-stats` for every archived match (1,559; Opta xG
+split into open play / set play exists from mid-December 2024 only) and the
+match officials parsed out of the 1,559 lineup payloads already on disk.
+
+* **The ban derivation was wrong past the first match.** Checked against
+  what happened over 697 derived rows: after a red the player was out for
+  90% of first matches but PLAYED 54% of second and 62% of third ones (FPL's
+  log does not separate a second yellow from a straight red, and most reds
+  are one-match bans); five-yellow bans were 98.5% right. Every red is now
+  one match: 344 bans, 94% precise. Imposing the old set as hard zeros
+  (`absent_zero`, sus only) cost `spearman` −0.0047*** and `spearman_played`
+  −0.0041*** — a half-right zero is worse than no information.
+* **Redistribution alone is worth nothing.** `spill` vs `absent_zero` on the
+  identical absence set (the rate-side spillover: the absent man's expected
+  xG+xA handed to club-mates in proportion, f=1): every metric flat (top-11
+  +0.06, p=0.18; the rest ±0.000). With Friday "out" statements added to the
+  absence set the imposed arm is significantly worse in both seasons
+  (`spearman_played` −0.0058***): those calls are right about half the time.
+* **Referee card rate — rejected.** Prior decayed yellows per match, shrunk
+  (k0=15), relative to the league; factors spread sd 0.05. Flat everywhere
+  (`spearman_played` +0.0001, p=0.70; top-30 +0.006). A yellow is one point
+  on a component worth a tenth of a point.
+* **Set-play split — rejected.** The opponent's prior set-play share of xGA
+  (BBC/Opta, shrunk k0=8) reshaping xG by the position's set-play share
+  (mean-preserving). Fully informed in 2025-26: `spearman_played` −0.0003
+  (p=0.63), top-30 +0.002. The fixture channel is second order (E13) and a
+  per-player share would not change that.
+* **Learned absence block, bans + injuries — the headline that needs its
+  control.** `$FPL_MINUTES_EXTRA=absent`, `$FPL_ABSENCE_KINDS=sus,inj`:
+  ~3,500 known player-fixture absences a season (0.6% of them played), i.e.
+  35x the suspension-only arm. Against the baseline: `spearman_played`
+  **+0.0082***** (both seasons), top-30 **+0.156***** pts/pick, top-11
+  +0.155 (p=0.014), rmse −0.045***. The largest paired gain this project has
+  measured — and most of it is not the spillover. The CONTROL (`absent_self`:
+  the same absence data, the player's own flag only, no team-mate features)
+  scores `spearman_played` +0.0063***, top-30 +0.148***, top-11 +0.18**.
+  That is the value of AVAILABILITY to a replay that is denied it, and it
+  reproduces E11c's valuation (+0.0085 / +0.134) — the live model already
+  earns it through FPL's status overlay. **Spillover features alone** (full
+  block − control): `spearman_played` +0.0019 (p=0.018 pooled; p=0.14 and
+  0.07 by season), rmse −0.0021**, **prec@20 −0.0095 (p=0.005, worse)**,
+  top-11 −0.03, top-30 +0.008. A small rank gain that neither season carries
+  alone and a significant hit-rate loss: **not shipped**. Kept env-gated with
+  the three-kind loader (`xpts/absence.py`), tests in
+  `tests/test_round20_context.py`.
+* **Standing rule from this entry.** A replay runs with the availability
+  overlay OFF, so any feature that re-supplies "he is out" is credited with
+  the whole availability channel. Always run the own-flag control and ship
+  only the increment over it. The injury boundary is E11c's (spell began a
+  day before kickoff and had not ended), which is knowable at the deadline
+  in kind but not always in extent.

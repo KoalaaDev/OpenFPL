@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { api, pollJob } from '../api'
-import { useStore } from '../store'
+import { useStore, usePersisted } from '../store'
 import RadarLoader from '../components/RadarLoader'
 import SolverOutput from '../components/SolverOutput'
 import { CHIP_NAME, CHIP_SHORT, chipAvailability, chipNote, fmt1, money,
@@ -14,26 +14,26 @@ export default function Solver({ goPlanner }) {
   const { status, entryId, entry, players, teams, byId, setDrafts,
           setActiveDraftId, setToast, refreshProjections } = useStore()
 
-  const [horizon, setHorizon] = useState(5)
-  const [solveFrom, setSolveFrom] = useState(null)
-  const [ftValue, setFtValue] = useState(1.5)
-  const [decay, setDecay] = useState(0.85)
-  const [nPlans, setNPlans] = useState(3)
-  const [advanced, setAdvanced] = useState(false)
-  const [hitCost, setHitCost] = useState(4)
-  const [benchWeight, setBenchWeight] = useState(0.1)
-  const [maxTransfers, setMaxTransfers] = useState(3)
-  const [timeLimit, setTimeLimit] = useState(60)
-  const [keepPerPos, setKeepPerPos] = useState(30)
-  const [ftOverride, setFtOverride] = useState('')
-  const [useEntry, setUseEntry] = useState(true)
+  const [horizon, setHorizon] = usePersisted('solver.horizon', 5)
+  const [solveFrom, setSolveFrom] = usePersisted('solver.from', null)
+  const [ftValue, setFtValue] = usePersisted('solver.ftValue', 1.5)
+  const [decay, setDecay] = usePersisted('solver.decay', 0.85)
+  const [nPlans, setNPlans] = usePersisted('solver.nPlans', 3)
+  const [advanced, setAdvanced] = usePersisted('solver.advanced', false)
+  const [hitCost, setHitCost] = usePersisted('solver.hitCost', 4)
+  const [benchWeight, setBenchWeight] = usePersisted('solver.benchWeight', 0.1)
+  const [maxTransfers, setMaxTransfers] = usePersisted('solver.maxTransfers', 3)
+  const [timeLimit, setTimeLimit] = usePersisted('solver.timeLimit', 60)
+  const [keepPerPos, setKeepPerPos] = usePersisted('solver.keepPerPos', 30)
+  const [ftOverride, setFtOverride] = usePersisted('solver.ftOverride', '')
+  const [useEntry, setUseEntry] = usePersisted('solver.useEntry', true)
 
-  const [chips, setChips] = useState({})       // name -> {enabled, force}
-  const [locked, setLocked] = useState([])
-  const [avoid, setAvoid] = useState([])
-  const [banned, setBanned] = useState([])
-  const [sellTeams, setSellTeams] = useState([])
-  const [minFt, setMinFt] = useState([])       // [{gw, n}]
+  const [chips, setChips] = usePersisted('solver.chips', {})       // name -> {enabled, force}
+  const [locked, setLocked] = usePersisted('solver.locked', [])
+  const [avoid, setAvoid] = usePersisted('solver.avoid', [])
+  const [banned, setBanned] = usePersisted('solver.banned', [])
+  const [sellTeams, setSellTeams] = usePersisted('solver.sellTeams', [])
+  const [minFt, setMinFt] = usePersisted('solver.minFt', [])       // [{gw, n}]
 
   const [running, setRunning] = useState(false)
   const [job, setJob] = useState(null)
@@ -41,7 +41,9 @@ export default function Solver({ goPlanner }) {
   const [showOut, setShowOut] = useState(false)
   const logRef = useRef(null)
 
-  const from = solveFrom || status?.next_gw || 1
+  // never earlier than the first open deadline: a gameweek in progress is locked
+  const openGw = status?.editable_gw ?? status?.next_gw ?? 1
+  const from = Math.max(solveFrom || 0, openGw)
   const gws = useMemo(() =>
     (status?.scheduled_gws || []).filter((g) => g >= from).slice(0, horizon),
     [status, from, horizon])

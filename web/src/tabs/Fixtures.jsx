@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react'
-import { useStore } from '../store'
+import { useStore, usePersisted } from '../store'
 import { badgeUrl, fdrColor } from '../util'
 
 const MODES = [
@@ -27,12 +27,12 @@ const cellDiff = (fs, mode) => {
 
 export default function Fixtures() {
   const { fixtures, teams, status } = useStore()
-  const [span, setSpan] = useState(10)
-  const [mode, setMode] = useState('diff')
+  const [span, setSpan] = usePersisted('fix.span', 10)
+  const [mode, setMode] = usePersisted('fix.mode', 'diff')
   // sort: key = 'team' | 'avg' | <gw number>; dir 1 = ascending (easiest first)
-  const [sort, setSort] = useState({ key: 'avg', dir: 1 })
+  const [sort, setSort] = usePersisted('fix.sort', { key: 'avg', dir: 1 })
 
-  const from = status?.next_gw || 1
+  const from = status?.editable_gw || status?.next_gw || 1
   const gws = useMemo(() => {
     let scheduled = status?.scheduled_gws || []
     if (!scheduled.length && fixtures?.grid) {

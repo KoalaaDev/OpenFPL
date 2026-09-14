@@ -147,7 +147,7 @@ def _services(monkeypatch, mine):
                         lambda: {"events": [{"id": 2, "deadline_time": DEADLINE}]})
     monkeypatch.setattr(services.manager, "current_squad",
                         lambda eid, **kw: dict(PUBLIC))
-    monkeypatch.setattr(services, "load_my_team", lambda: mine)
+    monkeypatch.setattr(services, "load_my_team", lambda principal: mine)
     return services
 
 
@@ -162,7 +162,7 @@ def _import(saved_at, **kw):
 
 def test_an_import_taken_after_the_deadline_beats_the_frozen_public_picks(monkeypatch):
     s = _services(monkeypatch, _import(GW2_DEADLINE_EPOCH + 3600))
-    st = s.squad_state(883566)
+    st = s.squad_state(883566, "anon:test")
     assert st["source"] == "bookmarklet"
     assert st["squad"] == [{"element": 2}]
     assert st["active_chip"] == "wildcard"
@@ -171,11 +171,11 @@ def test_an_import_taken_after_the_deadline_beats_the_frozen_public_picks(monkey
 
 def test_an_import_taken_before_the_deadline_loses_to_the_public_picks(monkeypatch):
     s = _services(monkeypatch, _import(GW2_DEADLINE_EPOCH - 3600))
-    st = s.squad_state(883566)
+    st = s.squad_state(883566, "anon:test")
     assert st["source"] == "public" and st["squad"] == [{"element": 1}]
     assert st["active_chip"] is None
 
 
 def test_a_hand_entered_squad_never_overrides_the_real_one(monkeypatch):
     s = _services(monkeypatch, _import(GW2_DEADLINE_EPOCH + 3600, source="manual"))
-    assert s.squad_state(883566)["source"] == "public"
+    assert s.squad_state(883566, "anon:test")["source"] == "public"

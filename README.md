@@ -106,6 +106,20 @@ FPL-sourced columns of `data/samples.csv`; and the predictor reproduces
 engineering principles (point-in-time discipline, single scoring source, etc.),
 and run `python -m pytest tests/ -q`.
 
+## Web app: FPLabs by KoalaaDev
+
+`app/` + `web/` serve a planner UI (projections, fixture heatmap, price
+movers, mini-league analysis, a chip-aware transfer solver) on top of the
+pipeline. It is built for public hosting: per-visitor saved state, optional
+Google sign-in, an automatic daily/pre-deadline model refresh, rate limiting
+and a mobile layout. See [docs/DEPLOY.md](docs/DEPLOY.md) to run it and
+[docs/MONETISATION.md](docs/MONETISATION.md) for the free/paid design.
+
+```
+cd web && npm install && npm run build
+python -m app            # http://localhost:9999
+```
+
 ## Head-to-head evaluation with state-of-the-art commercial method
 
 | Method | RMSE<sub>Zeros*</sub> | RMSE<sub>Blanks*</sub> | RMSE<sub>Tickers*</sub> | RMSE<sub>Haulers*</sub> |

@@ -230,3 +230,8 @@ models/xpts/*.bt*.json
 
 # backtest A/B arms (experiment output, not the canonical reports)
 data/bt_*/
+
+# FPLabs accounts + per-user documents (never commit people's data)
+data/app.sqlite
+data/app.sqlite-wal
+data/app.sqlite-shm

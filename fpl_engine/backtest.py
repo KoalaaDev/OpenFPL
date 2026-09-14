@@ -126,6 +126,77 @@ def _actuals(conn, season: str) -> pd.DataFrame:
         conn, params=(season,))
 
 
+ONLINE_CALIB_COMPS = ("goals", "assists", "cs", "conceded", "saves", "bonus",
+                      "cards", "appearance")
+ONLINE_CALIB_PRIOR_GWS = 8.0        # gameweeks of weight on "no correction"
+ONLINE_CALIB_CLIP = (0.7, 1.4)
+
+
+def _actual_components(conn, season: str, rules: dict) -> pd.DataFrame:
+    """Realised points per component per player-gameweek (players only)."""
+    rows = pd.read_sql_query(
+        "SELECT pg.gw, pg.player_id, pg.minutes, pg.goals_scored, pg.assists, "
+        "pg.clean_sheets, pg.goals_conceded, pg.saves, pg.bonus, pg.yellow_cards, "
+        "pg.red_cards, pg.defcon, p.position FROM player_gw pg JOIN player p "
+        "ON p.season=pg.season AND p.player_id=pg.player_id WHERE pg.season=? "
+        "AND p.position IN ('GK','DEF','MID','FWD')", conn, params=(season,))
+    for c in ONLINE_CALIB_COMPS:
+        rows[f"a_{c}"] = [xpts_engine._realised(c, r, r["position"], rules) or 0.0
+                          for r in rows.to_dict("records")]
+    return rows
+
+
+class OnlineCalibration:
+    """Round 17: point-in-time level recalibration of each component.
+
+    After every completed gameweek the sum of what the engine expected for a
+    component is compared with the sum that was actually scored, and the
+    multiplier for the next gameweek is the shrunk ratio
+
+        m_c = (sum actual_c + n0 * mean_pred_c) / (sum pred_c + n0 * mean_pred_c)
+
+    i.e. weight n/(n+n0) on the season so far and n0 gameweeks' worth on
+    "no correction". Only gameweeks that have finished before the next
+    deadline contribute, so nothing looks ahead. ``by_position`` keeps a
+    separate ratio per position (the audit found DEF over- and FWD
+    under-predicted at the same time, which one multiplier cannot fix).
+    """
+
+    def __init__(self, by_position: bool = False):
+        self.by_position = by_position
+        self.pred: dict[str, float] = {}
+        self.act: dict[str, float] = {}
+        self.n = 0
+
+    def multipliers(self) -> dict[str, float]:
+        out = {}
+        for k, p in self.pred.items():
+            a = self.act.get(k, 0.0)
+            if self.n == 0 or p == 0:
+                continue
+            mean_p = p / self.n
+            m = (a + ONLINE_CALIB_PRIOR_GWS * mean_p) / (p + ONLINE_CALIB_PRIOR_GWS * mean_p)
+            out[k] = float(np.clip(m, *ONLINE_CALIB_CLIP))
+        return out
+
+    def observe(self, pred: pd.DataFrame, actual_gw: pd.DataFrame) -> None:
+        j = pred.merge(actual_gw, on="player_id", how="left")
+        keys = ["position"] if self.by_position else []
+        for c in ONLINE_CALIB_COMPS:
+            pc, ac = f"c_{c}", f"a_{c}"
+            if pc not in j:
+                continue
+            if keys:
+                for pos, d in j.groupby("position"):
+                    k = f"{pos}:{c}"
+                    self.pred[k] = self.pred.get(k, 0.0) + float(d[pc].sum())
+                    self.act[k] = self.act.get(k, 0.0) + float(d[ac].fillna(0).sum())
+            else:
+                self.pred[c] = self.pred.get(c, 0.0) + float(j[pc].sum())
+                self.act[c] = self.act.get(c, 0.0) + float(j[ac].fillna(0).sum())
+        self.n += 1
+
+
 def _openfpl_gw(conn, season: str, gw: int, bundle) -> pd.DataFrame | None:
     """OpenFPL predictions with player ids, no availability multiplier."""
     try:
@@ -194,15 +265,31 @@ def run(conn, season: str = "2025-26", *, gws: list[int] | None = None,
     preds_store: dict[tuple[str, int], pd.DataFrame] = {}
     cum: dict[int, list] = {}
     trail: dict[int, list] = {}
+    var = xpts_engine.variants()
+    online = None
+    act_comp = None
+    if "online_calib" in var or "online_calib_pos" in var:
+        online = OnlineCalibration(by_position="online_calib_pos" in var)
+        act_comp = _actual_components(conn, season, rules)
+    calib_log: dict[int, dict] = {}
 
     for g in gws:
         as_of = xpts_engine.first_kickoff(conn, season, g)
         act_g = actual[actual["gw"] == g][["player_id", "pts", "mins"]]
         progress.step(f"GW{g}…")
 
+        mult = online.multipliers() if online else None
+        if mult:
+            calib_log[g] = mult
         x = xpts_engine.xpts_predict_gw(conn, season, g, as_of=as_of,
                                         use_availability=False,
-                                        minutes_bundle=(clf, meta), rules=rules)
+                                        minutes_bundle=(clf, meta), rules=rules,
+                                        calib=mult)
+        if online is not None and not x.empty:
+            # DGW actuals are summed per player before they are compared
+            ag = act_comp[act_comp["gw"] == g]
+            ag = ag.groupby("player_id")[[f"a_{c}" for c in ONLINE_CALIB_COMPS]].sum().reset_index()
+            online.observe(x, ag)
         if not x.empty:
             p = x[["player_id", "prediction"]]
             preds_store[("xpts", g)] = p
@@ -276,7 +363,8 @@ def run(conn, season: str = "2025-26", *, gws: list[int] | None = None,
                          for k in arr[0]}
         summary[name]["gws"] = len(arr)
     report = {"season": season, "gws": gws, "summary": summary,
-              "blend": blend_info,
+              "blend": blend_info, "variants": sorted(var),
+              "online_calib": {str(g): m for g, m in calib_log.items()} or None,
               "minutes_holdout_accuracy": meta.get("holdout_accuracy")}
     out_dir = out_dir or config.DATA_DIR
     os.makedirs(out_dir, exist_ok=True)

@@ -29,7 +29,12 @@ def pull(conn, *, season: str | None = None, use_cache: bool = False,
         summary["backfill"] = vaastav.ingest_seasons(conn, use_cache=use_cache)
     summary["birth_dates"] = backfill_birth_dates(conn)
     if with_understat and understat.available():
-        summary["understat"] = _pull_understat(conn, season, use_cache=use_cache)
+        # every backfilled season, not just the one before: the shipped role
+        # features are NaN in any replay of a season whose club stats are
+        # missing (Round 17), and the extra seasons are one cached request each
+        summary["understat"] = _pull_understat(
+            conn, season, use_cache=use_cache,
+            history_seasons=max(1, len(config.BACKFILL_SEASONS)))
     else:
         summary["understat"] = "skipped/unavailable (FPL-only degradation)"
     summary["odds"] = _pull_odds(conn, season)

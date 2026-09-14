@@ -86,7 +86,11 @@ CREATE TABLE IF NOT EXISTS acq_sync_state (
 
 
 def connect(db_path: str | None = None):
-    return _db.connect(db_path)
+    conn = _db.connect(db_path)
+    # two collectors may run at once (a season backfill holds write locks
+    # for a whole day's fixtures); wait rather than fail on "database is locked"
+    conn.execute("PRAGMA busy_timeout=120000")
+    return conn
 
 
 def init(conn) -> None:

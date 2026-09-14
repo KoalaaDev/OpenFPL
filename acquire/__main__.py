@@ -14,9 +14,9 @@ import argparse
 import sys
 
 from . import actions, storage, validate
-from .sources import fpl_availability, fpl_managers
+from .sources import bbc, bbc_pressers, fpl_availability, fpl_managers
 
-SOURCES = {"fpl": fpl_availability}
+SOURCES = {"fpl": fpl_availability, "bbc": bbc, "bbc_pressers": bbc_pressers}
 
 
 def _conn(args):
@@ -41,6 +41,54 @@ def cmd_pull(args):
 
 
 def cmd_backfill(args):
+    if args.source == "bbc_pressers":
+        with storage.connect(args.db) as conn:
+            storage.init(conn)
+            res = bbc_pressers.backfill(conn)
+        print(f"  bbc_pressers: {res}")
+        return 0
+    if args.source == "bbc_stats":
+        if not args.season:
+            print("  --season is required (e.g. 2024-25)")
+            return 2
+        with storage.connect(args.db) as conn:
+            storage.init(conn)
+            res = bbc.backfill_stats(conn, args.season)
+        print(f"  bbc_stats {args.season}: {res}")
+        return 0
+    if args.source == "bbc_officials":
+        with storage.connect(args.db) as conn:
+            storage.init(conn)
+            res = bbc.backfill_officials_from_raw(conn)
+        print(f"  bbc_officials: {res}")
+        return 0
+    if args.source == "bbc_ratings":
+        if not args.season:
+            print("  --season is required (e.g. 2024-25)")
+            return 2
+        with storage.connect(args.db) as conn:
+            storage.init(conn)
+            res = bbc.backfill_ratings(conn, args.season)
+        print(f"  bbc_ratings {args.season}: {res}")
+        return 0
+    if args.source == "bbc_calendar":
+        if not args.season:
+            print("  --season is required (e.g. 2024-25)")
+            return 2
+        with storage.connect(args.db) as conn:
+            storage.init(conn)
+            res = bbc.backfill_calendar(conn, args.season)
+        print(f"  bbc_calendar {args.season}: {res}")
+        return 0
+    if args.source == "bbc":
+        if not args.season:
+            print("  --season is required for the BBC backfill (e.g. 2024-25)")
+            return 2
+        with storage.connect(args.db) as conn:
+            storage.init(conn)
+            res = bbc.backfill(conn, args.season)
+        print(f"  bbc {args.season}: {res}")
+        return 0
     with storage.connect(args.db) as conn:
         storage.init(conn)
         fpl_availability.register(conn)

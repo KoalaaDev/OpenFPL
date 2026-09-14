@@ -177,6 +177,16 @@ def horizon_projections(conn, season: str, gws: list[int], *, bundle=None,
                 for pid, xv in xmap.items():
                     ep_by_gw[g].setdefault(pid, xpts_w * xv)
 
+    # Round 18: what the manager said on Friday (BBC press conferences),
+    # applied as an exposure factor on top of FPL's own status. Live path
+    # only — the backtest never reaches this function.
+    try:
+        from .. import pressers as _pressers
+        presser = _pressers.live_overlay(
+            conn, season, gws, lambda g: features.gw_as_of(conn, season, g))
+    except Exception:      # noqa: BLE001
+        presser = {}
+
     rows = []
     for pid, a in attrs.items():
         if a["position"] not in ("GK", "DEF", "MID", "FWD"):
@@ -196,6 +206,9 @@ def horizon_projections(conn, season: str, gws: list[int], *, bundle=None,
                 vals[g] = 0.0
                 continue
             v = v * factor
+            pr = presser.get(g, {}).get(pid)
+            if pr:
+                v = v * pr["factor"]
             if prior is not None and prior_w > 0:
                 v = (1.0 - prior_w) * v + prior_w * prior
             vals[g] = v
@@ -209,6 +222,8 @@ def horizon_projections(conn, season: str, gws: list[int], *, bundle=None,
                                       prof["xmins"] if prof else None),
             "prior_w": prior_w if prior is not None else 0.0,
             "ep_total": total,
+            # the coming gameweek's manager statement, for the player card
+            "presser": (presser.get(gws[0], {}).get(pid) if gws else None),
         }
         for g in gws:
             row[f"ep_gw{g}"] = vals[g]

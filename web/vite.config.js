@@ -5,7 +5,9 @@ export default defineConfig({
   plugins: [react()],
   build: {
     outDir: '../app/static',
-    emptyOutDir: true,
+    // keep previous hashed bundles: a browser holding a cached index.html
+    // still asks for the old script, and deleting it made the page blank
+    emptyOutDir: false,
   },
   server: {
     proxy: {

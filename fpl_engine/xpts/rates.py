@@ -21,6 +21,11 @@ rules pay for: xG, xA, saves, yellow cards — plus two structured extras:
   toward zero by seasons where the rule did not exist. Era data is scarce,
   so the residual uses a smaller shrinkage constant than the base stats.
 
+Units (Round 17): xG is converted into realised-goal units with a per-position
+conversion ratio and xA into FPL-assist units with a per-position ratio, both
+measured from the same point-in-time history; ``$FPL_XPTS_VARIANT=legacy_rates``
+restores the pre-Round-17 estimator for a paired comparison.
+
 Shrinkage: rate = (Σ w·stat + k·prior_pos) / (Σ w·mins/90 + k) — a player with
 little recent playing time regresses to his position's league rate instead of
 producing wild small-sample estimates. Priors are computed from the data at
@@ -62,9 +67,15 @@ def fit(conn, season: str, as_of: str, *, rules: dict | None = None) -> pd.DataF
         "pg.own_goals, pg.penalties_saved, pg.penalties_missed, "
         "pg.yellow_cards, pg.red_cards, pg.saves, pg.bonus, pg.xg, pg.xa, pg.defcon, "
         "(SELECT position FROM player p WHERE p.season=pg.season "
-        " AND p.player_id=pg.player_id) position "
+        " AND p.player_id=pg.player_id) position, "
+        "(SELECT tm.goals_for - tm.goals_against FROM team_match tm "
+        " WHERE tm.season=pg.season AND tm.team_id=pg.team_id "
+        " AND tm.fixture_id=pg.fixture_id) margin "
         "FROM player_gw pg WHERE pg.kickoff_utc < ? AND pg.minutes > 0",
         conn, params=(as_of,))
+    import os as _os
+    use_gd = "bonus_gd" in {v.strip() for v in
+                            _os.environ.get("FPL_XPTS_VARIANT", "").split(",")}
     players = pd.read_sql_query(
         "SELECT player_id, code player_code, position FROM player "
         "WHERE season=?", conn, params=(season,))
@@ -125,28 +136,83 @@ def fit(conn, season: str, as_of: str, *, rules: dict | None = None) -> pd.DataF
     # deflected passes all count), so pure xA systematically lowballs the
     # assist rate (GW1 2026-27: league xA 15.4 vs 24 FPL assists). Blend the
     # stable estimator with the realised FPL-definition rate 50/50.
-    hist["xa"] = np.where(hist["xa"].notna(),
-                          0.5 * hist["xa"].fillna(0) + 0.5 * hist["assists"].fillna(0),
-                          hist["assists"].fillna(0))
+    _var = {v.strip() for v in _os.environ.get("FPL_XPTS_VARIANT", "").split(",")}
+    legacy = "legacy_rates" in _var       # the pre-Round-17 estimator, for A/Bs
+    if not legacy:
+        # Round 17 (shipped): goals per xG differ by position and the gap is
+        # persistent (defenders convert 0.76-0.93 of their xG across seasons,
+        # midfielders and forwards ~1.0), so the goal rate is xG in
+        # REALISED-goal units, per position, from the same decay-weighted
+        # point-in-time history, shrunk toward 1. Paired over 74 gameweeks
+        # with the xA fix below: spearman_played +0.0009 (p=0.002), top-30
+        # +0.04 pts/pick, rmse unchanged.
+        hx = hist[hist["xg"].notna() & hist["position"].notna()]
+        num = (hx["w"] * hx["goals_scored"].fillna(0)).groupby(hx["position"]).sum()
+        den = (hx["w"] * hx["xg"].fillna(0)).groupby(hx["position"]).sum()
+        k0 = 60.0                                 # ~60 weighted xG of prior at 1.0
+        conv = ((num + k0) / (den + k0)).to_dict()
+        hist["xg"] = np.where(hist["xg"].notna(),
+                              hist["xg"].fillna(0) * hist["position"].map(conv).fillna(1.0),
+                              hist["xg"])
+    if not legacy:
+        # Round 17 (shipped): FPL assists per Opta xA by position (DEF ~1.2,
+        # MID ~1.35, FWD ~2.1 — stable across four seasons), applied before
+        # the 50/50 blend so both halves are in FPL-assist units. The audit
+        # had assists under-predicted 9-18% in every replayed season.
+        hx = hist[hist["xa"].notna() & hist["position"].notna()]
+        num = (hx["w"] * hx["assists"].fillna(0)).groupby(hx["position"]).sum()
+        den = (hx["w"] * hx["xa"].fillna(0)).groupby(hx["position"]).sum()
+        k0 = 30.0
+        ratio = ((num + k0) / (den + k0)).to_dict()
+        has = hist["xa"].notna()
+        hist["xa"] = np.where(has,
+                              0.5 * hist["xa"].fillna(0) * hist["position"].map(ratio).fillna(1.0)
+                              + 0.5 * hist["assists"].fillna(0),
+                              hist["assists"].fillna(0))
+    elif "xa_scaled" in _var:          # research arm: one league-wide ratio
+        # research arm: put xA in FPL-assist units first. The league-wide,
+        # decay-weighted ratio of FPL assists to Opta xA is measured from the
+        # same history (point-in-time), so the blend no longer mixes two
+        # different units 50/50.
+        has = hist["xa"].notna()
+        num = (hist.loc[has, "w"] * hist.loc[has, "assists"].fillna(0)).sum()
+        den = (hist.loc[has, "w"] * hist.loc[has, "xa"].fillna(0)).sum()
+        ratio = float(num / den) if den > 0 else 1.0
+        hist["xa"] = np.where(has,
+                              0.5 * hist["xa"].fillna(0) * ratio
+                              + 0.5 * hist["assists"].fillna(0),
+                              hist["assists"].fillna(0))
+    else:
+        hist["xa"] = np.where(hist["xa"].notna(),
+                              0.5 * hist["xa"].fillna(0) + 0.5 * hist["assists"].fillna(0),
+                              hist["assists"].fillna(0))
 
     # league bonus structure: per-position weighted least squares on the
     # events the engine models; each player keeps only his deviation
     hb = hist.dropna(subset=["position"])
     bonus_coef: dict[str, list[float]] = {}
     for pos, d in hb.groupby("position"):
-        X = np.c_[d["goals_scored"].fillna(0), d["assists"].fillna(0),
-                  d["clean_sheets"].fillna(0), np.ones(len(d))]
+        cols = [d["goals_scored"].fillna(0).to_numpy(float),
+                d["assists"].fillna(0).to_numpy(float),
+                d["clean_sheets"].fillna(0).to_numpy(float)]
+        if use_gd:   # research arm: the winning side collects more BPS
+            cols.append(d["margin"].fillna(0).to_numpy(float))
+        X = np.column_stack(cols + [np.ones(len(d))])
         y = d["bonus"].fillna(0).to_numpy(float)
         sw = np.sqrt(d["w"].to_numpy(float))
         coef, *_ = np.linalg.lstsq(X * sw[:, None], y * sw, rcond=None)
         bonus_coef[pos] = [float(v) for v in coef]
-    for name, i in (("g", 0), ("a", 1), ("cs", 2), ("c0", 3)):
+    names = ((("g", 0), ("a", 1), ("cs", 2), ("gd", 3), ("c0", 4)) if use_gd
+             else (("g", 0), ("a", 1), ("cs", 2), ("c0", 3)))
+    for name, i in names:
         hist[f"_bc_{name}"] = hist["position"].map(
             {p: c[i] for p, c in bonus_coef.items()}).fillna(0.0)
+    gd_term = (hist["_bc_gd"] * hist["margin"].fillna(0)) if use_gd else 0.0
     hist["bonus_resid"] = (hist["bonus"].fillna(0)
                            - hist["_bc_g"] * hist["goals_scored"].fillna(0)
                            - hist["_bc_a"] * hist["assists"].fillna(0)
                            - hist["_bc_cs"] * hist["clean_sheets"].fillna(0)
+                           - gd_term
                            - hist["_bc_c0"])
 
     gates = {"residual": hist["in_era"], "defcon_cross": hist["has_dc"]}

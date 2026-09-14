@@ -23,21 +23,23 @@ from fpl_engine.http import get_text
 from fpl_engine.optimise import chips, project
 from fpl_engine.pipeline import next_gw, resolve_blend
 
-from . import jobs
+from . import jobs, userdata
 
 WEB_CACHE = os.path.join(config.DATA_DIR, "web_cache")
 PROJ_PATH = os.path.join(WEB_CACHE, "projections.json")
-DRAFTS_PATH = os.path.join(WEB_CACHE, "drafts.json")
 HISTORY_PATH = os.path.join(WEB_CACHE, "projection_history.json")
 HISTORY_KEEP = 40            # snapshots kept (one per build, >=1h apart)
-MYTEAM_PATH = os.path.join(WEB_CACHE, "my_team.json")
-TRANSFER_WATCH_PATH = os.path.join(WEB_CACHE, "transfer_watch.json")
+# the single-user files the planner kept before accounts existed; adopted
+# into the first admin account that signs in, then left alone
+LEGACY_DRAFTS_PATH = os.path.join(WEB_CACHE, "drafts.json")
+LEGACY_MYTEAM_PATH = os.path.join(WEB_CACHE, "my_team.json")
+LEGACY_WATCH_PATH = os.path.join(WEB_CACHE, "transfer_watch.json")
 
 FPL_BASE = "https://fantasy.premierleague.com/api"
 _TTL = 600.0
 # bumped whenever the API contract changes; the frontend compares it with
 # its own build so a stale `python -m app` process is flagged, not puzzling
-API_VERSION = "2026-09-03.1"
+API_VERSION = "2026-09-11.1"
 
 _mem: dict[str, tuple[float, object]] = {}
 _bundle = None
@@ -188,25 +190,43 @@ def _model_start_probs(season: str | None = None) -> dict[int, float]:
     hit = _mem.get("_start_probs")
     if hit and hit[0] == season and time.time() - hit[1] < 900:
         return hit[2]
-    out: dict[int, float] = {}
+    # Never block a page on this: building the minutes frame over four
+    # seasons takes tens of seconds cold. Serve what we have (the last
+    # value, or nothing) and refresh it on a background thread; the startup
+    # hook warms it before the first visitor.
+    if not _start_probs_lock.locked():
+        threading.Thread(target=_compute_start_probs, args=(season,),
+                         daemon=True, name="start-probs").start()
+    return hit[2] if hit and hit[0] == season else {}
+
+
+_start_probs_lock = threading.Lock()
+
+
+def _compute_start_probs(season: str) -> None:
+    if not _start_probs_lock.acquire(blocking=False):
+        return
     try:
-        from fpl_engine.xpts import engine as _eng, minutes_model as _mm
-        from fpl_engine.pipeline import next_gw
-        conn = db.connect()
+        out: dict[int, float] = {}
         try:
-            gw = next_gw(conn, season)
-            as_of = _eng.first_kickoff(conn, season, gw)
-            clf, meta = _mm.ensure(conn)
-            mins = _mm.predict_gw(conn, season, as_of, clf, meta, gw=gw)
-            if "p_start" in mins:
-                out = {int(r.player_id): float(r.p_start)
-                       for r in mins.itertuples()}
-        finally:
-            conn.close()
-    except Exception:  # noqa: BLE001 - the page must render regardless
-        out = {}
-    _mem["_start_probs"] = (season, time.time(), out)
-    return out
+            from fpl_engine.xpts import engine as _eng, minutes_model as _mm
+            from fpl_engine.pipeline import next_gw
+            conn = db.connect()
+            try:
+                gw = next_gw(conn, season)
+                as_of = _eng.first_kickoff(conn, season, gw)
+                clf, meta = _mm.ensure(conn)
+                mins = _mm.predict_gw(conn, season, as_of, clf, meta, gw=gw)
+                if "p_start" in mins:
+                    out = {int(r.player_id): float(r.p_start)
+                           for r in mins.itertuples()}
+            finally:
+                conn.close()
+        except Exception:  # noqa: BLE001 - the page must render regardless
+            out = {}
+        _mem["_start_probs"] = (season, time.time(), out)
+    finally:
+        _start_probs_lock.release()
 
 
 def players_payload() -> dict:
@@ -534,12 +554,12 @@ def fixtures_payload() -> dict:
             "odds_status": {**_odds_status(odds), "market_quotes": len(quotes)}}
 
 
-def entry_payload(entry_id: int) -> dict:
+def entry_payload(entry_id: int, principal: str) -> dict:
     try:
         info = manager.fetch_entry(entry_id)
     except Exception:
         return {"entry_id": entry_id, "exists": False}
-    state = squad_state(entry_id)
+    state = squad_state(entry_id, principal)
     out = {"entry_id": entry_id, "exists": True,
            "team_name": info.get("name"),
            "player_name": f"{info.get('player_first_name', '')} "
@@ -678,7 +698,7 @@ def _transfer_rumours() -> dict[str, dict]:
     return out
 
 
-def load_transfer_watch() -> dict:
+def load_transfer_watch(principal: str) -> dict:
     """Players you believe are on the way out, and where to.
 
     FPL reclassifies a player only once a transfer COMPLETES — until then he is
@@ -691,21 +711,15 @@ def load_transfer_watch() -> dict:
 
     Shape: {"players": {"<player_id>": {"to_team": int|None, "note": str}}}
     """
-    if os.path.exists(TRANSFER_WATCH_PATH):
-        try:
-            with open(TRANSFER_WATCH_PATH, encoding="utf-8") as f:
-                doc = json.load(f)
-            if isinstance(doc, dict) and isinstance(doc.get("players"), dict):
-                return doc
-        except (OSError, ValueError):
-            pass
+    doc = userdata.get_doc(principal, "transfer_watch")
+    if isinstance(doc, dict) and isinstance(doc.get("players"), dict):
+        return doc
     return {"players": {}}
 
 
-def save_transfer_watch(doc: dict) -> dict:
-    os.makedirs(WEB_CACHE, exist_ok=True)
+def save_transfer_watch(doc: dict, principal: str) -> dict:
     clean = {}
-    for pid, v in (doc.get("players") or {}).items():
+    for pid, v in list((doc.get("players") or {}).items())[:200]:
         try:
             key = str(int(pid))
         except (TypeError, ValueError):
@@ -716,14 +730,11 @@ def save_transfer_watch(doc: dict) -> dict:
             "note": str((v or {}).get("note") or "")[:200],
         }
     out = {"players": clean, "saved_at": time.time()}
-    tmp = TRANSFER_WATCH_PATH + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as f:
-        json.dump(out, f)
-    os.replace(tmp, TRANSFER_WATCH_PATH)
+    userdata.set_doc(principal, "transfer_watch", out)
     return out
 
 
-def transfer_watch_payload() -> dict:
+def transfer_watch_payload(principal: str) -> dict:
     """The watch, plus what each move would do to the player's projection.
 
     `alt` is his own rates against the destination's fixtures. It answers "is
@@ -732,7 +743,7 @@ def transfer_watch_payload() -> dict:
     at his current club, and what happens to it behind a different squad is not
     something this data can tell you.
     """
-    watch = load_transfer_watch()
+    watch = load_transfer_watch(principal)
     players = watch.get("players") or {}
     rumours = _transfer_rumours()
     if not players:
@@ -765,40 +776,65 @@ def transfer_watch_payload() -> dict:
     return {"players": players, "alt": alt, "rumours": rumours}
 
 
-def load_my_team() -> dict | None:
-    if os.path.exists(MYTEAM_PATH):
-        with open(MYTEAM_PATH, encoding="utf-8") as f:
-            return json.load(f)
-    return None
+def load_my_team(principal: str) -> dict | None:
+    doc = userdata.get_doc(principal, "my_team")
+    return doc if isinstance(doc, dict) and doc.get("squad") else None
 
 
-def save_my_team(doc: dict | None) -> dict | None:
-    os.makedirs(WEB_CACHE, exist_ok=True)
+def _clean_squad(squad) -> list[dict]:
+    """A squad document arrives from the client; only its shape is trusted."""
+    if not isinstance(squad, list) or len(squad) != 15:
+        raise ValueError(f"a squad needs 15 players, got "
+                         f"{len(squad) if isinstance(squad, list) else 'none'}")
+    out = []
+    for p in squad:
+        if not isinstance(p, dict):
+            raise ValueError("bad squad entry")
+        try:
+            out.append({
+                "element": int(p["element"]),
+                "selling_price": round(float(p.get("selling_price") or 0.0), 1),
+                "purchase_price": round(float(p.get("purchase_price") or 0.0), 1),
+                "is_captain": bool(p.get("is_captain")),
+                "is_vice": bool(p.get("is_vice")),
+                "multiplier": int(p.get("multiplier", 1) or 0),
+            })
+        except (KeyError, TypeError, ValueError) as exc:
+            raise ValueError(f"bad squad entry: {exc}") from None
+    if len({p["element"] for p in out}) != 15:
+        raise ValueError("a squad cannot list the same player twice")
+    return out
+
+
+def save_my_team(doc: dict | None, principal: str) -> dict | None:
     if doc is None:
-        if os.path.exists(MYTEAM_PATH):
-            os.remove(MYTEAM_PATH)
+        userdata.delete_doc(principal, "my_team")
         return None
-    doc = {"entry_id": doc.get("entry_id"),
-           "squad": doc["squad"],                 # [{element, selling_price, ...}]
+    entry_id = doc.get("entry_id")
+    try:
+        entry_id = int(entry_id) if entry_id not in (None, "") else None
+    except (TypeError, ValueError):
+        entry_id = None
+    doc = {"entry_id": entry_id,
+           "squad": _clean_squad(doc["squad"]),   # [{element, selling_price, ...}]
            "bank": float(doc.get("bank") or 0.0),
-           "free_transfers": int(doc.get("free_transfers") or 1),
+           "free_transfers": max(0, min(5, int(doc.get("free_transfers") or 1))),
            "unlimited_transfers": bool(doc.get("unlimited_transfers")),
-           "team_value": doc.get("team_value"),
+           "team_value": (float(doc["team_value"])
+                          if doc.get("team_value") not in (None, "") else None),
            # the authenticated import is the only place a chip ACTIVE for the
            # coming deadline is visible — the public history only lists chips
            # whose gameweek has already been played
-           "chips": doc.get("chips") or [],
-           "active_chip": doc.get("active_chip"),
-           "source": doc.get("source", "manual"),
+           "chips": [c for c in (doc.get("chips") or []) if isinstance(c, dict)][:8],
+           "active_chip": (str(doc["active_chip"])[:20]
+                           if doc.get("active_chip") else None),
+           "source": str(doc.get("source", "manual"))[:20],
            "saved_at": time.time()}
-    tmp = MYTEAM_PATH + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as f:
-        json.dump(doc, f)
-    os.replace(tmp, MYTEAM_PATH)
+    userdata.set_doc(principal, "my_team", doc)
     return doc
 
 
-def import_my_team_with_cookie(entry_id: int, cookie: str) -> dict:
+def import_my_team_with_cookie(entry_id: int, cookie: str, principal: str) -> dict:
     """Fetch the authenticated my-team endpoint with the user's own FPL
     browser session cookie (never stored — only the resulting squad is)."""
     import urllib.request
@@ -810,10 +846,11 @@ def import_my_team_with_cookie(entry_id: int, cookie: str) -> dict:
         data = json.loads(r.read().decode())
     if "picks" not in data:
         raise ValueError("response has no picks — cookie rejected?")
-    return _save_my_team_json(entry_id, data, "fpl-login")
+    return _save_my_team_json(entry_id, data, "fpl-login", principal)
 
 
-def import_my_team_from_payload(payload, entry_id: int | None = None) -> dict:
+def import_my_team_from_payload(payload, entry_id: int | None = None,
+                                principal: str = "") -> dict:
     """Squad from what the OpenFPL bookmarklet copies to the clipboard —
     ``{"entry": id, "my_team": <my-team response>}`` — or a raw my-team
     response pasted by hand. No cookie ever touches this app."""
@@ -827,10 +864,12 @@ def import_my_team_from_payload(payload, entry_id: int | None = None) -> dict:
         raise ValueError("that isn't FPL my-team data — click the bookmark on "
                          "fantasy.premierleague.com while logged in, then paste "
                          "exactly what it copied")
-    return _save_my_team_json(int(eid) if eid else None, data, "bookmarklet")
+    return _save_my_team_json(int(eid) if eid else None, data, "bookmarklet",
+                              principal)
 
 
-def _save_my_team_json(entry_id: int | None, data: dict, source: str) -> dict:
+def _save_my_team_json(entry_id: int | None, data: dict, source: str,
+                       principal: str) -> dict:
     """Normalise an FPL my-team response into the saved-squad document."""
     squad = [{
         "element": p["element"],
@@ -856,7 +895,7 @@ def _save_my_team_json(entry_id: int | None, data: dict, source: str) -> dict:
         "unlimited_transfers": unlimited,
         "team_value": (tr.get("value") or 0) / 10.0 or None,
         "chips": chip_rows, "active_chip": active,
-        "source": source})
+        "source": source}, principal)
 
 
 def _deadlines() -> dict[int, float]:
@@ -872,6 +911,37 @@ def _deadlines() -> dict[int, float]:
         except (ValueError, TypeError):
             continue
     return out
+
+
+def first_open_gw(events: list[dict], now: float | None = None) -> int | None:
+    """The first gameweek whose deadline has not passed — the one a manager
+    can still change. Pure, so it is testable; `events` is the bootstrap's
+    events list (id, deadline_time)."""
+    now = time.time() if now is None else now
+    best = None
+    for e in events or []:
+        t = e.get("deadline_time")
+        if not t:
+            continue
+        try:
+            dl = calendar.timegm(time.strptime(t, "%Y-%m-%dT%H:%M:%SZ"))
+        except (ValueError, TypeError):
+            continue
+        if dl > now and (best is None or int(e["id"]) < best):
+            best = int(e["id"])
+    return best
+
+
+def editable_gw(fallback: int | None = None) -> int | None:
+    """Live: the first gameweek still open at its deadline. While a gameweek
+    is in progress (deadline passed, matches not finished) the model's
+    `next_gw` is that gameweek, but nothing a manager does can touch it any
+    more — every change applies from the NEXT deadline."""
+    try:
+        g = first_open_gw(bootstrap().get("events", []) or [])
+    except Exception:  # noqa: BLE001 - offline
+        g = None
+    return g if g is not None else fallback
 
 
 def _my_team_is_fresher(mine: dict, picks_gw: int | None) -> bool:
@@ -904,7 +974,7 @@ def _from_my_team(entry_id: int, mine: dict, **over) -> dict:
     return state
 
 
-def squad_state(entry_id: int) -> dict | None:
+def squad_state(entry_id: int, principal: str) -> dict | None:
     """Current squad for an entry.
 
     Public picks when they are the freshest thing available (post-deadline,
@@ -917,7 +987,7 @@ def squad_state(entry_id: int) -> dict | None:
         state = manager.current_squad(entry_id)
     except Exception:
         state = None
-    mine = load_my_team()
+    mine = load_my_team(principal)
     mine = mine if mine and (mine.get("entry_id") in (None, entry_id)) else None
     if state is not None:
         if mine and _my_team_is_fresher(mine, state.get("gw")):
@@ -1017,6 +1087,11 @@ def build_projections(job_id: str | None, gws: list[int], *,
                         "available": float(r.available), "ep": {}})
                     rec["price"] = float(r.price)
                     rec["available"] = float(r.available)
+                    pr = getattr(r, "presser", None)
+                    if isinstance(pr, dict):
+                        rec.setdefault("presser", {})[str(g)] = {
+                            "cls": pr.get("cls"), "phrase": pr.get("phrase"),
+                            "when": pr.get("when"), "factor": pr.get("factor")}
                     xm = getattr(r, "xmins", None)
                     xm = None if xm is None or pd.isna(xm) else float(xm)
                     # per gameweek, not one scalar: this loop runs once per gw,
@@ -1137,12 +1212,55 @@ def _apply_chip_state(state: dict, chip_gws: dict[str, list[int]],
     return dropped
 
 
-def run_solve(job_id: str, params: dict) -> dict:
+SOLVE_BOUNDS = {
+    # knob: (lo, hi, default) — anything outside is clamped, never rejected,
+    # because every one of these is a CPU knob on a public server
+    "horizon": (1, 8, 5),
+    "time_limit": (5, 120, 60),
+    "keep_per_position": (8, 60, 30),
+    "max_transfers": (1, 5, 3),
+    "n_plans": (1, 3, 1),
+}
+
+
+def clamp_solve_params(params: dict) -> dict:
+    """Bound every numeric solve parameter a client can send."""
+    p = dict(params or {})
+    for k, (lo, hi, default) in SOLVE_BOUNDS.items():
+        try:
+            v = int(p.get(k) if p.get(k) is not None else default)
+        except (TypeError, ValueError):
+            v = default
+        p[k] = max(lo, min(hi, v))
+    for k, lo, hi, default in (("decay", 0.5, 1.0, 0.85),
+                               ("hit_cost", 0.0, 12.0, 4.0),
+                               ("bench_weight", 0.0, 1.0, 0.1),
+                               ("ft_value", 0.0, 6.0, 1.5),
+                               ("budget", 50.0, 200.0, 100.0)):
+        try:
+            v = float(p.get(k) if p.get(k) is not None else default)
+        except (TypeError, ValueError):
+            v = default
+        p[k] = max(lo, min(hi, v))
+    for k in ("locked", "avoid", "banned_teams", "sell_teams"):
+        vals = p.get(k) or []
+        p[k] = [int(x) for x in vals if str(x).lstrip("-").isdigit()][:60]
+    if p.get("playstyles") is not None:
+        p["playstyles"] = [str(x) for x in p["playstyles"]][:3]
+    return p
+
+
+def run_solve(job_id: str, params: dict, principal: str = "") -> dict:
     season = config.CURRENT_SEASON
+    params = clamp_solve_params(params)
     conn = db.connect(config.DB_PATH)
     try:
         start = next_gw(conn, season)
-        solve_from = int(params.get("solve_from") or start)
+        # a gameweek whose deadline has passed cannot be planned for, even
+        # though its matches are still being played: start from the first
+        # open deadline, and never let a client ask for an earlier one
+        start = max(start, editable_gw(start) or start)
+        solve_from = max(int(params.get("solve_from") or start), start)
         horizon = int(params.get("horizon") or 5)
         scheduled = [r["gw"] for r in conn.execute(
             "SELECT DISTINCT gw FROM fixture WHERE season=? AND gw>=? AND gw "
@@ -1166,7 +1284,7 @@ def run_solve(job_id: str, params: dict) -> dict:
     initial, bank, fts = None, float(params.get("budget") or 100.0), 1
     entry_state = None
     if entry_id:
-        entry_state = squad_state(int(entry_id))
+        entry_state = squad_state(int(entry_id), principal)
         if entry_state is not None:
             initial = {p["element"]: p["selling_price"]
                        for p in entry_state["squad"]}
@@ -1366,21 +1484,84 @@ def league_payload(league_id: int, gw: int | None = None,
 # drafts
 # --------------------------------------------------------------------------
 
-def load_drafts() -> dict:
-    if os.path.exists(DRAFTS_PATH):
-        with open(DRAFTS_PATH, encoding="utf-8") as f:
-            return json.load(f)
+MAX_DRAFTS = 50
+
+
+def load_drafts(principal: str) -> dict:
+    doc = userdata.get_doc(principal, "drafts")
+    if isinstance(doc, dict) and isinstance(doc.get("drafts"), list):
+        return doc
     return {"drafts": [], "updated_at": None}
 
 
-def save_drafts(doc: dict) -> dict:
-    os.makedirs(WEB_CACHE, exist_ok=True)
-    doc = {"drafts": doc.get("drafts") or [], "updated_at": time.time()}
-    tmp = DRAFTS_PATH + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as f:
-        json.dump(doc, f)
-    os.replace(tmp, DRAFTS_PATH)
+def save_drafts(doc: dict, principal: str, max_drafts: int = MAX_DRAFTS) -> dict:
+    drafts = doc.get("drafts") or []
+    if not isinstance(drafts, list):
+        raise ValueError("drafts must be a list")
+    drafts = [d for d in drafts if isinstance(d, dict)][:max_drafts]
+    doc = {"drafts": drafts, "updated_at": time.time()}
+    userdata.set_doc(principal, "drafts", doc)
     return doc
+
+
+def load_prefs(principal: str) -> dict:
+    doc = userdata.get_doc(principal, "prefs")
+    return doc if isinstance(doc, dict) else {}
+
+
+def save_prefs(doc: dict, principal: str) -> dict:
+    """Only the keys the UI is allowed to remember, typed."""
+    prev = load_prefs(principal)
+    out = dict(prev)
+    if "entry_id" in doc:
+        v = doc.get("entry_id")
+        try:
+            out["entry_id"] = int(v) if v not in (None, "", 0) else None
+        except (TypeError, ValueError):
+            out["entry_id"] = None
+    if "league_id" in doc:
+        v = doc.get("league_id")
+        try:
+            out["league_id"] = int(v) if v not in (None, "", 0) else None
+        except (TypeError, ValueError):
+            out["league_id"] = None
+    if "ui" in doc and isinstance(doc.get("ui"), dict):
+        # every control the visitor touches (tab, filters, solver knobs,
+        # active draft, planner gameweek) — bounded so a client cannot use it
+        # as free storage
+        blob = json.dumps(doc["ui"])
+        if len(blob) <= 16_000:
+            out["ui"] = doc["ui"]
+    out["updated_at"] = time.time()
+    userdata.set_doc(principal, "prefs", out)
+    return out
+
+
+def adopt_legacy(principal: str) -> list[str]:
+    """Hand the pre-accounts single-user files to an account, once.
+
+    Only kinds the account does not already hold are adopted, and each file
+    is renamed afterwards so it is never adopted twice.
+    """
+    adopted: list[str] = []
+    for kind, path in (("drafts", LEGACY_DRAFTS_PATH),
+                       ("my_team", LEGACY_MYTEAM_PATH),
+                       ("transfer_watch", LEGACY_WATCH_PATH)):
+        if not os.path.exists(path):
+            continue
+        try:
+            with open(path, encoding="utf-8") as f:
+                doc = json.load(f)
+        except (OSError, ValueError):
+            continue
+        if userdata.get_doc(principal, kind) is None and isinstance(doc, dict):
+            userdata.set_doc(principal, kind, doc)
+            adopted.append(kind)
+        try:
+            os.replace(path, path + ".adopted")
+        except OSError:
+            pass
+    return adopted
 
 
 def status_payload() -> dict:
@@ -1407,13 +1588,32 @@ def status_payload() -> dict:
         except Exception:
             pass
     cache = _load_proj_cache()
+    from . import auth, plans, scheduler
+    open_gw = editable_gw(gw)
+    try:
+        deadlines = {int(e["id"]): e.get("deadline_time")
+                     for e in bootstrap().get("events", []) or []}
+    except Exception:  # noqa: BLE001
+        deadlines = {}
     return {"season": season, "next_gw": gw, "scheduled_gws": scheduled,
+            # the first gameweek a manager can still change; while a gameweek
+            # is in progress this is the one AFTER `next_gw`
+            "editable_gw": open_gw,
+            "gw_in_progress": bool(open_gw and gw and open_gw > gw),
+            "deadlines": {str(k): v for k, v in deadlines.items()},
             "api_version": API_VERSION,
             "db_ready": bool(n_players),
             "projected_gws": sorted(int(g) for g in cache.get("gws", {})),
             "proj_updated_at": cache.get("updated_at"),
-            "default_entry": manager.DEFAULT_ENTRY,
-            "jobs_running": [j["kind"] for j in jobs.running()]}
+            # a public planner has no default manager: the visitor's own
+            # team id comes from their session, never from the server
+            "default_entry": None,
+            "jobs_running": [j["kind"] for j in jobs.running()],
+            "auto_refresh": {"enabled": scheduler.enabled(), **scheduler.state()},
+            "google_login": auth.google_enabled(),
+            "cookie_import": os.environ.get("FPLABS_ALLOW_COOKIE_IMPORT") == "1",
+            "plans_enforced": plans.enforced(),
+            "brand": {"name": "FPLabs", "by": "KoalaaDev"}}
 
 
 # --------------------------------------------------------------------------

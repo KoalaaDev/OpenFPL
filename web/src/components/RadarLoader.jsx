@@ -97,17 +97,12 @@ export default function RadarLoader({
   return (
     <div className={`radar-loader ${inline ? 'inline' : ''}`}
       role="status" aria-live="polite" aria-label={label}>
+      <div className="rl-scope" style={{ width: size, height: size }}>
+      {!reduced && (
+        <div className="rl-sweep" style={{ transform: `rotate(${sweep}deg)` }} />
+      )}
       <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size} aria-hidden="true">
         <defs>
-          <linearGradient id={`rl-sweep-${uid}`} x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" stopColor="var(--accent)" stopOpacity="0" />
-            <stop offset="100%" stopColor="var(--accent)" stopOpacity="0.5" />
-          </linearGradient>
-          {/* the rings are hexagons but the wedge is a circular sector, so it
-              bled past the grid on the flats; clip it to the outer hexagon */}
-          <clipPath id={`rl-clip-${uid}`}>
-            <polygon points={ring(1)} />
-          </clipPath>
         </defs>
 
         {RINGS.map((f) => (
@@ -121,21 +116,18 @@ export default function RadarLoader({
             stroke="var(--line)" strokeWidth="1" opacity="0.4" />
         })}
 
-        {/* The sweep, as a computed wedge rather than an SVG arc: the arc's
-            large-arc/sweep flags took the long way round and the tail bulged
-            outside the chart. Sampling the edge is unambiguous. */}
+        {/* The beam only. The scope sweep itself is the conic disc rendered
+            beneath this SVG (see .rl-sweep): a smooth ANGULAR fade around a
+            circle, which is what a radar trail is. Every SVG attempt at it —
+            a gradient sector, then stacked slices clipped to the hexagon —
+            had straight edges, and a bright line with a straight-edged
+            translucent wedge behind it reads as a flag on a pole. */}
         {!reduced && (
-          <g clipPath={`url(#rl-clip-${uid})`}
-            style={{ transform: `rotate(${sweep}deg)`, transformOrigin: 'center' }}>
-            <polygon
-              points={[`${c},${c}`].concat(
-                Array.from({ length: 9 }, (_, k) => {
-                  const a = (-Math.PI / 3) * (k / 8)      // 0 -> -60 degrees
-                  return `${c + Math.cos(a) * R},${c + Math.sin(a) * R}`
-                })).join(' ')}
-              fill={`url(#rl-sweep-${uid})`} />
+          <g style={{ transform: `rotate(${sweep}deg)`, transformOrigin: 'center' }}>
             <line x1={c} y1={c} x2={c + R} y2={c}
-              stroke="var(--accent)" strokeWidth="1.4" opacity="0.9" />
+              stroke="var(--accent)" strokeWidth="1.5" opacity="0.9" strokeLinecap="round" />
+            <circle cx={c + R} cy={c} r="3" fill="var(--accent)" opacity="0.6" />
+            <circle cx={c} cy={c} r="2.2" fill="var(--accent)" opacity="0.9" />
           </g>
         )}
 
@@ -158,6 +150,7 @@ export default function RadarLoader({
           )
         })}
       </svg>
+      </div>
       {label ? <div className="rl-label">{label}</div> : null}
       {sub ? <div className="rl-sub">{sub}</div> : null}
     </div>
@@ -169,7 +162,7 @@ export default function RadarLoader({
 export function BootLoader({ sub }) {
   return (
     <div className="boot-loader">
-      <RadarLoader size={168} label="OpenFPL" sub={sub || 'Loading squad, fixtures and projections…'} />
+      <RadarLoader size={168} label="FPLabs" sub={sub || 'Loading squad, fixtures and projections…'} />
     </div>
   )
 }

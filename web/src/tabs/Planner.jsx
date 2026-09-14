@@ -16,7 +16,7 @@ const DEFAULT_HORIZON = 8    // gameweeks in a new draft
 
 export default function Planner() {
   const { drafts, setDrafts, activeDraftId, setActiveDraftId, proj, byId, players,
-          entry, status, setToast, refreshProjections } = useStore()
+          entry, status, setToast, refreshProjections, isAdmin, editableGw } = useStore()
   const draft = drafts.find((d) => d.id === activeDraftId) || drafts[0] || null
   const [gwIdx, setGwIdx] = useState(0)
   const [sel, setSel] = useState(null)          // {pid, mode: 'swap'}
@@ -35,18 +35,20 @@ export default function Planner() {
   // correctly disabled and the whole tab looks broken.
   const firstLiveGw = useMemo(() => {
     const gws = draft?.gws || []
-    const next = status?.next_gw
+    const next = editableGw
     let i = next != null ? gws.findIndex((g) => g.gw >= next) : -1
     if (i < 0) i = gws.findIndex((g) => gwHasProj(proj, g.gw))
     return i < 0 ? 0 : i
-  }, [draft?.id, draft?.gws, proj, status?.next_gw])
+  }, [draft?.id, draft?.gws, proj, editableGw])
   useEffect(() => { setGwIdx(firstLiveGw) }, [draft?.id, firstLiveGw])
   // These are NOT the same thing and conflating them told the user that GW2-5
   // had "already been played" when the projection cache was simply empty
   // (a data pull clears it). Played is decided by the calendar; missing
   // projections are a job you can run.
-  const planIsPast = plan && status?.next_gw != null
-    ? plan.gw < status.next_gw : false
+  // locked once its deadline has passed — a gameweek in progress cannot be
+  // changed, whatever the model still projects for it
+  const planIsPast = plan && editableGw != null
+    ? plan.gw < editableGw : false
   const planUnprojected = plan ? !gwHasProj(proj, plan.gw) : false
   const posOf = (pid) => byId.get(pid)?.position || 'MID'
 
@@ -182,7 +184,7 @@ export default function Planner() {
     // play out over longer than that, and the draft length is what caps how far
     // ahead the Planner can look at all.
     const horizon = (status?.scheduled_gws || [])
-      .filter((g) => g >= status.next_gw).slice(0, DEFAULT_HORIZON)
+      .filter((g) => g >= (editableGw ?? status.next_gw)).slice(0, DEFAULT_HORIZON)
     if (!horizon.length) {
       setToast({ kind: 'err', msg: 'No upcoming gameweeks known yet — run a data pull (⟳ Data, top right) first.' })
       return
@@ -279,20 +281,23 @@ export default function Planner() {
         <div>
           {planIsPast && (
             <div className="past-gw-note">
-              GW{plan.gw} has already been played, so there are no projections for
-              it — every point shown reads 0.0. Pick a later gameweek to plan.
+              {status?.gw_in_progress && plan.gw === status?.next_gw
+                ? <>GW{plan.gw} is in progress — its deadline has passed, so this gameweek is locked. Changes apply from <b>GW{editableGw}</b>.</>
+                : <>GW{plan.gw} has already been played and is locked. Plan from GW{editableGw}.</>}
             </div>
           )}
           {!planIsPast && planUnprojected && (
             <div className="past-gw-note build">
               <span>
                 No projections for GW{plan.gw} yet, so every point reads <b>0.0</b>.
-                A data pull clears the cache.
+                {isAdmin ? ' A data pull clears the cache.' : ' The lab projects the next six gameweeks on every automatic refresh — a longer draft fills in as the season moves.'}
               </span>
-              <button className="pill-btn accent" disabled={building}
-                onClick={buildHorizon}>
-                {building ? <span className="spinner" /> : '⚙'} Build projections
-              </button>
+              {isAdmin && (
+                <button className="pill-btn accent" disabled={building}
+                  onClick={buildHorizon}>
+                  {building ? <span className="spinner" /> : '⚙'} Build projections
+                </button>
+              )}
             </div>
           )}
           {plan && (
@@ -364,7 +369,7 @@ export default function Planner() {
 const ALL_CHIPS = ['bench_boost', 'triple_captain', 'wildcard', 'freehit']
 
 function GwBar({ draft, gwIdx, setGwIdx, evs, deltas, plan, nMoves, updateDraft, undo, canUndo }) {
-  const { proj, status, entry } = useStore()
+  const { proj, status, entry, editableGw } = useStore()
   const avail = chipAvailability(entry?.chips, draft.gws.map((p) => p.gw))
   const total = evs.reduce((a, b) => a + b, 0)
   const dTotal = deltas ? deltas.reduce((a, b) => a + b, 0) : null
@@ -384,7 +389,7 @@ function GwBar({ draft, gwIdx, setGwIdx, evs, deltas, plan, nMoves, updateDraft,
 
   const planned = new Set(draft.gws.map((p) => p.gw))
   const nextUnplanned = (status?.scheduled_gws || [])
-    .filter((g) => g >= (status?.next_gw ?? 1) && !planned.has(g))[0] ?? null
+    .filter((g) => g >= (editableGw ?? 1) && !planned.has(g))[0] ?? null
 
   const Delta = ({ v }) => (v == null || Math.abs(v) < 0.05 ? null : (
     <span className={`dv ${v > 0 ? 'up' : 'down'}`}>{v > 0 ? '+' : ''}{fmt1(v)}</span>
@@ -395,7 +400,7 @@ function GwBar({ draft, gwIdx, setGwIdx, evs, deltas, plan, nMoves, updateDraft,
       <div className="pager">
         {draft.gws.map((p, i) => {
           // played is the calendar; unprojected is a job you can run
-          const past = status?.next_gw != null && p.gw < status.next_gw
+          const past = editableGw != null && p.gw < editableGw
           const noProj = !past && !gwHasProj(proj, p.gw)
           return (
             <button key={p.gw}

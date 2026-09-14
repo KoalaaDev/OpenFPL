@@ -151,7 +151,7 @@ export default function ModelAssist({
   }
 
   const chip = plan.chip
-  const nextGw = status?.next_gw
+  const nextGw = status?.editable_gw ?? status?.next_gw
   const isPast = nextGw != null && plan.gw < nextGw
 
   return (

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { api } from '../api'
-import { useStore } from '../store'
+import { useStore, usePersisted } from '../store'
 import Flag from '../components/Flag'
 import PlayerModal from '../components/PlayerModal'
 import { badgeUrl } from '../util'
@@ -33,7 +33,7 @@ export default function Prices() {
   const [data, setData] = useState(null)
   const [err, setErr] = useState(null)
   const [modalPid, setModalPid] = useState(null)
-  const [side, setSide] = useState('risers')
+  const [side, setSide] = usePersisted('prices.side', 'risers')
 
   useEffect(() => {
     api.prices(40).then(setData).catch((e) => setErr(e.message))

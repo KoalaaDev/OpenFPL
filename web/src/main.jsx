@@ -4,6 +4,7 @@ import App from './App'
 import { StoreProvider } from './store'
 import './theme.css'
 import './solver.css'
+import './brand.css'
 
 createRoot(document.getElementById('root')).render(
   <React.StrictMode>

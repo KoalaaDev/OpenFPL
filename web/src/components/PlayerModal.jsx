@@ -10,7 +10,7 @@ import { availPct, badgeUrl, epColor, epOf, fdrColor, fmt1, money, photoUrl } fr
    rates (xG-based once the season has data, else last-season history). */
 export default function PlayerModal({ pid, draft, plan, actions, close }) {
   const { byId, teams, proj, projHistory, players, watch,
-          setTransferWatch, context } = useStore()
+          setTransferWatch, context, status } = useStore()
   const fixOf = useFixtureLookup()
   const [fdrMode, setFdrMode] = useState('diff_att')
   const p = byId.get(pid)
@@ -22,6 +22,9 @@ export default function PlayerModal({ pid, draft, plan, actions, close }) {
   // engine xmins (from the projection run) already folds availability in;
   // the app-layer history estimate does not, so scale only the latter
   const engineXm = proj?.players?.[String(pid)]?.xmins
+  // Round 18: the coming gameweek's press-conference statement, if any
+  const presserByGw = proj?.players?.[String(pid)]?.presser || null
+  const presser = presserByGw ? (presserByGw[String(status?.next_gw)] || Object.values(presserByGw)[0]) : null
   const xminsBase = engineXm != null ? engineXm / Math.max(0.01, ava / 100) : (p?.xmins ?? 0)
 
   const rows = useMemo(() => gws.map((gw) => {
@@ -121,6 +124,13 @@ export default function PlayerModal({ pid, draft, plan, actions, close }) {
                 <span style={{ color: 'var(--muted)', marginLeft: 6 }}>{p.news}</span>
               )}
             </div>
+            {presser && (
+              <div className="pm-presser" title="From the manager's Friday press conference (BBC Sport). Applied to the projection as a conservative exposure factor.">
+                <span className={`presser-tag ${presser.cls}`}>{presser.cls}</span>
+                <span className="presser-quote">manager: “{presser.phrase}”</span>
+                <span className="presser-when">{presser.when ? new Date(presser.when).toLocaleString(undefined, { weekday: 'short', hour: '2-digit', minute: '2-digit' }) : ''}</span>
+              </div>
+            )}
           </div>
           <button className="close" onClick={close}>✕</button>
         </div>

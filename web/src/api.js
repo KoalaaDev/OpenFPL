@@ -1,80 +1,70 @@
 // must match app/services.py API_VERSION — mismatch means the running
 // `python -m app` predates this build and needs a restart
-export const API_VERSION = '2026-09-03.1'
+export const API_VERSION = '2026-09-11.1'
 
 const j = async (r) => {
   if (!r.ok) {
     let msg = `${r.status}`
     try { msg = (await r.json()).detail || msg } catch { /* ignore */ }
+    if (r.status === 429) msg = 'Too many requests — give it a moment.'
+    if (r.status === 402) msg = `${msg} (Pro)`
     throw new Error(msg)
   }
   return r.json()
 }
 
+// Every state-changing call carries the two things a cross-site form cannot:
+// a JSON content type and a custom header. The backend refuses mutations
+// without them, which (with SameSite cookies) is the whole CSRF defence.
+const send = (url, method, body) =>
+  fetch(url, {
+    method,
+    credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'fetch' },
+    body: JSON.stringify(body ?? {}),
+  }).then(j)
+
+const get = (url) => fetch(url, { credentials: 'same-origin' }).then(j)
+
 export const api = {
-  status: () => fetch('/api/status').then(j),
-  players: () => fetch('/api/players').then(j),
-  fixtures: () => fetch('/api/fixtures').then(j),
-  prices: (limit = 30) => fetch(`/api/prices?limit=${limit}`).then(j),
-  context: () => fetch('/api/context').then(j),
-  projections: () => fetch('/api/projections').then(j),
-  projectionHistory: () => fetch('/api/projections/history').then(j),
-  buildProjections: (gws, force = false) =>
-    fetch('/api/projections/build', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ gws, force }),
-    }).then(j),
-  pull: () => fetch('/api/pull', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).then(j),
-  entry: (id) => fetch(`/api/entry/${id}`).then(j),
+  // account
+  me: () => get('/api/auth/me'),
+  logout: () => send('/api/auth/logout', 'POST'),
+  deleteAccount: () => send('/api/auth/me', 'DELETE'),
+  loginUrl: (next = '/') => `/api/auth/google/start?next=${encodeURIComponent(next)}`,
+  prefs: () => get('/api/prefs'),
+  savePrefs: (doc) => send('/api/prefs', 'PUT', doc),
+
+  status: () => get('/api/status'),
+  players: () => get('/api/players'),
+  fixtures: () => get('/api/fixtures'),
+  prices: (limit = 30) => get(`/api/prices?limit=${limit}`),
+  context: () => get('/api/context'),
+  projections: () => get('/api/projections'),
+  projectionHistory: () => get('/api/projections/history'),
+  buildProjections: (gws, force = false) => send('/api/projections/build', 'POST', { gws, force }),
+  pull: () => send('/api/pull', 'POST', {}),
+  refresh: () => send('/api/refresh', 'POST', {}),
+  deadline: (force = false) => get(`/api/admin/deadline${force ? '?force=1' : ''}`),
+  entry: (id) => get(`/api/entry/${id}`),
   league: (id, { gw, limit } = {}) => {
     const q = new URLSearchParams()
     if (gw) q.set('gw', gw)
     if (limit) q.set('limit', limit)
     const qs = q.toString()
-    return fetch(`/api/league/${id}${qs ? `?${qs}` : ''}`).then(j)
+    return get(`/api/league/${id}${qs ? `?${qs}` : ''}`)
   },
-  solve: (params) =>
-    fetch('/api/solve', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(params),
-    }).then(j),
-  job: (id) => fetch(`/api/jobs/${id}`).then(j),
-  myTeam: () => fetch('/api/myteam').then(j),
-  saveMyTeam: (doc) =>
-    fetch('/api/myteam', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(doc),
-    }).then(j),
-  clearMyTeam: () => fetch('/api/myteam', { method: 'DELETE' }).then(j),
-  pasteMyTeam: (entry, payload) =>
-    fetch('/api/myteam/paste', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ entry, payload }),
-    }).then(j),
-  importMyTeam: (entry, cookie) =>
-    fetch('/api/myteam/import', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ entry, cookie }),
-    }).then(j),
-  transferWatch: () => fetch('/api/transferwatch').then(j),
-  saveTransferWatch: (doc) =>
-    fetch('/api/transferwatch', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(doc),
-    }).then(j),
-  drafts: () => fetch('/api/drafts').then(j),
-  saveDrafts: (doc) =>
-    fetch('/api/drafts', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(doc),
-    }).then(j),
+  solve: (params) => send('/api/solve', 'POST', params),
+  job: (id) => get(`/api/jobs/${id}`),
+  myTeam: () => get('/api/myteam'),
+  saveMyTeam: (doc) => send('/api/myteam', 'PUT', doc),
+  clearMyTeam: () => send('/api/myteam', 'DELETE'),
+  pasteMyTeam: (entry, payload) => send('/api/myteam/paste', 'POST', { entry, payload }),
+  importMyTeam: (entry, cookie) => send('/api/myteam/import', 'POST', { entry, cookie }),
+  transferWatch: () => get('/api/transferwatch'),
+  saveTransferWatch: (doc) => send('/api/transferwatch', 'PUT', doc),
+  drafts: () => get('/api/drafts'),
+  saveDrafts: (doc) => send('/api/drafts', 'PUT', doc),
 }
 
 export async function pollJob(id, onProgress, intervalMs = 1200) {

@@ -4,7 +4,7 @@ import { Donut, EOBars, LineChart, OverlapMatrix, Radar, StatTile, VIZ,
          VIZ_NEUTRAL } from '../charts'
 import Flag from '../components/Flag'
 import { Empty } from '../components/States'
-import { useStore } from '../store'
+import { useStore, usePersisted } from '../store'
 import { badgeUrl, bestXI, epOf, fmt1, formationRows, money, shirtUrl } from '../util'
 
 const POS_RANK = { GK: 0, DEF: 1, MID: 2, FWD: 3 }
@@ -16,10 +16,10 @@ const scale100 = (v, min, max) =>
 
 export default function MiniLeague() {
   const { byId, teams, proj, status, entryId, entry, setToast } = useStore()
-  const [leagueId, setLeagueId] = useState(() => localStorage.getItem('ofpl_league_id') || '')
+  const [leagueId, setLeagueId] = usePersisted('league.id', '')
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(false)
-  const [limit, setLimit] = useState(20)
+  const [limit, setLimit] = usePersisted('league.limit', 20)
   const [rivalId, setRivalId] = useState(null)
 
   const nextGw = status?.next_gw
@@ -29,15 +29,14 @@ export default function MiniLeague() {
     try {
       const d = await api.league(id, { limit: lim })
       setData(d)
-      localStorage.setItem('ofpl_league_id', String(id))
+      setLeagueId(String(id))
     } catch (e) {
       setToast({ kind: 'err', msg: `League fetch failed: ${e.message}` })
     } finally { setLoading(false) }
   }
 
   useEffect(() => {
-    const saved = localStorage.getItem('ofpl_league_id')
-    if (saved) load(parseInt(saved, 10))
+    if (leagueId) load(parseInt(leagueId, 10))
   }, [])  // eslint-disable-line react-hooks/exhaustive-deps
 
   const withPicks = useMemo(() =>

@@ -1,26 +1,27 @@
-/* OpenFPL Planner — dark theme in the spirit of FPL Review */
+/* FPLabs by KoalaaDev — base theme (brand.css layers the premium polish + mobile) */
 
 :root {
-  --bg: #26263a;
-  --bg-deep: #202032;
-  --panel: #2d2d44;
-  --panel-2: #34344e;
-  --panel-3: #3b3b58;
-  --line: #3d3d58;
-  --line-soft: #35354e;
-  --text: #eeeefa;
-  --muted: #9a9ab8;
-  --muted-2: #6f6f8e;
-  --accent: #fb2e5f;
-  --accent-soft: rgba(251, 46, 95, 0.12);
-  --gold: #ffb61b;
-  --green: #2fd680;
-  --red: #ff5063;
-  --blue-cell: #3d5fb8;
+  --bg: #0f1222;
+  --bg-deep: #0b0e1a;
+  --panel: #161a2e;
+  --panel-2: #1c2138;
+  --panel-3: #242a47;
+  --line: #2a3050;
+  --line-soft: #222842;
+  --text: #eef0ff;
+  --muted: #9aa2c8;
+  --muted-2: #6c7397;
+  --accent: #8b7bff;
+  --accent-2: #3ddc97;
+  --accent-soft: rgba(139, 123, 255, 0.14);
+  --gold: #f5c451;
+  --green: #3ddc97;
+  --red: #ff5c7a;
+  --blue-cell: #4a63d6;
   --mono: 'IBM Plex Mono', ui-monospace, monospace;
   --sans: 'Inter', system-ui, sans-serif;
-  --radius: 8px;
-  --shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+  --radius: 10px;
+  --shadow: 0 12px 34px rgba(0, 0, 0, 0.45);
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
