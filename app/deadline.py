@@ -46,6 +46,27 @@ def _names(conn, season: str) -> tuple[dict, dict]:
     return pl, tm
 
 
+def _market(conn, season: str, gw: int, tm: dict) -> dict:
+    """Which upcoming fixtures carry a market price, and from where. The
+    Odds API key was silently rejected (401) for the whole of 2026-27 to
+    GW4, so the live model ran on the team model alone; this row makes
+    that visible before it costs again."""
+    from fpl_engine.xpts import odds_model as _om
+    try:
+        fx = conn.execute("SELECT fixture_id, team_h, team_a FROM fixture WHERE season=? AND gw=?",
+                          (season, gw)).fetchall()
+        src: dict = {}
+        _om.fixture_odds_map(conn, season, [int(f["fixture_id"]) for f in fx], sources=src)
+        rows = [{"fixture": f"{tm.get(f['team_h'])} v {tm.get(f['team_a'])}",
+                 "source": src.get(int(f["fixture_id"]), "none")} for f in fx]
+        counts = {k: sum(1 for r in rows if r["source"] == k) for k in ("bookmaker", "polymarket", "none")}
+        return {"gw": gw, "counts": counts, "rows": rows,
+                "warning": ("no bookmaker odds for any fixture — check ODDS_API_KEY (a rejected key "
+                            "is skipped silently by the pull)") if counts["bookmaker"] == 0 else None}
+    except Exception as exc:  # noqa: BLE001
+        return {"gw": gw, "counts": {}, "rows": [], "warning": str(exc)}
+
+
 def _model_meta() -> dict:
     out = {}
     path = os.path.join(config.MODELS_DIR, "xpts", "minutes_meta.json")
@@ -208,6 +229,7 @@ def payload(force: bool = False) -> dict:
                         "proj_updated_at": status.get("proj_updated_at"),
                         "projected_gws": status.get("projected_gws")},
             "model": _model_meta(),
+            "market": _market(conn, season, gw, tm),
             "news": _news(conn, season, pl, tm),
             "pressers": _pressers(conn, season, gw, pl, tm),
             "lineups": _lineups(conn, season, gw, pl, tm, start_p),

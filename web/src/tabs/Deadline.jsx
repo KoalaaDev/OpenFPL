@@ -54,6 +54,8 @@ export default function Deadline() {
           <Kv k="role blocks" v={m.minutes ? `BBC ${m.minutes.blocks.bbc_role} · Understat ${m.minutes.blocks.understat_line}` : '—'} />
           <Kv k="xPts blend" v={m.blend ? `weight ${m.blend.xpts_weight} (fitted ${m.blend.fitted_on})` : 'pure OpenFPL'} />
           <Kv k="rates" v={m.rates} />
+          {d.market && <Kv k="market prices" v={`GW${d.market.gw}: bookmaker ${d.market.counts?.bookmaker ?? 0} · Polymarket ${d.market.counts?.polymarket ?? 0} · none ${d.market.counts?.none ?? 0}`} warn={!!d.market.warning} />}
+          {d.market?.warning && <Kv k="market warning" v={d.market.warning} warn />}
         </div>
       </div>
 

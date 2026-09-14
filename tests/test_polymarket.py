@@ -101,3 +101,28 @@ def test_quotes_never_land_in_the_table_the_model_reads():
     assert "INSERT" in src and "match_odds" not in src.split('"""', 2)[2], (
         "prediction-market prices must not be written into match_odds — "
         "odds_model reads every row there and the last one wins")
+
+
+def test_fixture_odds_map_falls_back_to_polymarket_with_the_model_total():
+    """No bookmaker row for the fixture -> the latest Polymarket 1X2 quote is
+    inverted, with the team model's total pinning the goal level (the live
+    path for the whole of 2026-27 to GW4, when the Odds API key was 401)."""
+    import sqlite3
+    from fpl_engine.xpts import odds_model as om
+    c = sqlite3.connect(":memory:")
+    c.row_factory = sqlite3.Row
+    c.executescript("""
+    CREATE TABLE match_odds (season TEXT, fixture_id INTEGER, lam_home REAL, lam_away REAL);
+    CREATE TABLE market_quote (season TEXT, fixture_id INTEGER, source TEXT, observed_utc TEXT,
+                               p_home REAL, p_draw REAL, p_away REAL);
+    INSERT INTO match_odds VALUES ('2026-27', 1, 1.9, 0.8);
+    INSERT INTO market_quote VALUES ('2026-27', 2, 'polymarket', '2026-09-12T10:00:00Z', 0.50, 0.25, 0.25);
+    INSERT INTO market_quote VALUES ('2026-27', 2, 'polymarket', '2026-09-14T10:00:00Z', 0.20, 0.25, 0.55);
+    """)
+    src = {}
+    out = om.fixture_odds_map(c, "2026-27", [1, 2, 3], model_totals={2: 2.8}, sources=src)
+    assert out[1] == (1.9, 0.8) and src[1] == "bookmaker"
+    lh, la = out[2]
+    assert src[2] == "polymarket" and la > lh          # the NEWEST quote favours the away side
+    assert abs((lh + la) - 2.8) < 0.5                  # level pinned near the model's total
+    assert 3 not in out and 3 not in src               # nothing priced anywhere

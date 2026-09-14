@@ -347,8 +347,9 @@ def xpts_predict_gw(conn, season: str, gw: int, *, as_of: str | None = None,
     # are blended into the team-model rates — the market prices team news and
     # motivation that trailing form cannot see.
     ow = odds_model.ODDS_WEIGHT if odds_weight is None else float(odds_weight)
+    _totals = {f["fixture_id"]: float(sum(tm.fixture(f["hcode"], f["acode"]))) for f in fixtures}
     omap = (odds_model.fixture_odds_map(
-                conn, season, [f["fixture_id"] for f in fixtures])
+                conn, season, [f["fixture_id"] for f in fixtures], model_totals=_totals)
             if ow > 0 else {})
     team_fixtures: dict[int, list[list]] = {}   # [lam_for, lam_against, p0_learned, fixture_id]
     for f in fixtures:

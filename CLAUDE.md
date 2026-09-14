@@ -2043,6 +2043,27 @@ remaining horizon dips are real: 21 days' rest at an international break
 takes Haaland to ~68, which is what the training data says about the match
 after a break.
 
+**5. The live model ran with no market price for any upcoming fixture.**
+Found by the owner on 2026-09-15 from the picks: the model "loved"
+Bournemouth into Liverpool, under-rated City against Sunderland, and
+mis-read promoted sides. `$ODDS_API_KEY` had been returning **401
+Unauthorized**, the pull records that as `odds_api: skipped (...)` and
+carries on, and `match_odds` held football-data rows for PLAYED gameweeks
+only — so `ODDS_WEIGHT` was 0.85 of nothing and every upcoming λ was the
+240-day team model alone, whose ridge and decay compress strength gaps
+(City 1.86-0.87 vs Sunderland where the market said 2.18-0.55). Two
+fixes. `odds_model.fixture_odds_map` now falls back to the latest
+**Polymarket** 1X2 quote (keyless, refreshed every pull, `market_quote`)
+for any fixture without a bookmaker row, with the team model's own total
+pinning the goal level (`model_totals`); blended at the same weight, so
+"shown, not modelled" becomes "modelled where the bookmaker is absent".
+And the admin Deadline desk shows market coverage per fixture with a
+warning when no bookmaker odds exist. Blending the market for GW5 moved
+City's defenders +0.6-0.8 and Brighton's/Bournemouth's −0.3-0.5 — the
+direction of every complaint. Renew the key; the fallback stays for the
+day it lapses again. **Not a model change** (the blend and weight are the
+backtested ones), so no replay.
+
 ### Where the forward-collected tests stand (2026-27 GW3)
 
 `python -m fpl_engine lineup-feed --gw N` scores the archived RotoWire

@@ -109,8 +109,23 @@ def implied_rates(p_home: float, p_draw: float, p_away: float,
     return round(lh, 4), round(la, 4)
 
 
-def fixture_odds_map(conn, season: str, fixture_ids: list[int]) -> dict[int, tuple[float, float]]:
-    """{fixture_id: (λ_home, λ_away)} for the fixtures that have stored odds."""
+def fixture_odds_map(conn, season: str, fixture_ids: list[int],
+                     model_totals: dict[int, float] | None = None,
+                     sources: dict[int, str] | None = None) -> dict[int, tuple[float, float]]:
+    """{fixture_id: (λ_home, λ_away)} for the fixtures that have a market price.
+
+    Bookmaker odds (`match_odds`: football-data for played matches, The Odds
+    API for upcoming ones) come first. Where a fixture has none — the live
+    path whenever the Odds API key is missing or rejected, which was the
+    case for the whole of 2026-27 to GW4 — the latest Polymarket 1X2 quote
+    (`market_quote`, keyless, refreshed on every pull) stands in. 1X2 alone
+    leaves the goal LEVEL loose, so ``model_totals`` (the team model's
+    λ_home+λ_away per fixture) pins it through the implied P(over 2.5): the
+    market supplies the split and the strength, the model the total. The
+    blend weight is unchanged (`ODDS_WEIGHT`), so a fixture with a Polymarket
+    quote is treated exactly like one with a bookmaker price. ``sources``,
+    if given, is filled with "bookmaker" / "polymarket" per fixture.
+    """
     if not fixture_ids:
         return {}
     qs = ",".join("?" * len(fixture_ids))
@@ -119,5 +134,34 @@ def fixture_odds_map(conn, season: str, fixture_ids: list[int]) -> dict[int, tup
         f"WHERE season=? AND fixture_id IN ({qs}) "
         f"AND lam_home IS NOT NULL AND lam_away IS NOT NULL",
         [season] + [int(f) for f in fixture_ids]).fetchall()
-    return {int(r["fixture_id"]): (float(r["lam_home"]), float(r["lam_away"]))
-            for r in rows}
+    out = {int(r["fixture_id"]): (float(r["lam_home"]), float(r["lam_away"]))
+           for r in rows}
+    if sources is not None:
+        sources.update({k: "bookmaker" for k in out})
+    missing = [int(f) for f in fixture_ids if int(f) not in out]
+    if not missing:
+        return out
+    try:
+        qm = ",".join("?" * len(missing))
+        quotes = conn.execute(
+            f"SELECT fixture_id, p_home, p_draw, p_away FROM market_quote "
+            f"WHERE season=? AND fixture_id IN ({qm}) AND p_home IS NOT NULL "
+            f"ORDER BY observed_utc", [season] + missing).fetchall()
+    except Exception:      # noqa: BLE001 - table absent on an old database
+        quotes = []
+    latest = {int(r["fixture_id"]): r for r in quotes}       # last row = newest
+    for fid, r in latest.items():
+        ph, pd_, pa = float(r["p_home"]), float(r["p_draw"]), float(r["p_away"])
+        tot = ph + pd_ + pa
+        if tot <= 0:
+            continue
+        ph, pd_, pa = ph / tot, pd_ / tot, pa / tot
+        p_over = None
+        if model_totals and fid in model_totals and model_totals[fid] > 0:
+            lam = float(model_totals[fid])
+            pm = _pois_pmf(lam)                                # Poisson total
+            p_over = max(0.0, 1.0 - (pm[0] + pm[1] + pm[2]))
+        out[fid] = implied_rates(ph, pd_, pa, p_over)
+        if sources is not None:
+            sources[fid] = "polymarket"
+    return out
