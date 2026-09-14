@@ -53,6 +53,14 @@ def _pull_odds(conn, season: str) -> dict | str:
     try:      # fresh fetch: the season CSV grows every week
         out["football_data"] = odds_ingest.ingest_football_data(
             conn, [season], use_cache=False)
+        # The backfill seasons too, from cache. Without them a fresh clone
+        # has odds for the live season only, so every backtest silently runs
+        # with the market blend at zero and looks exactly like a backtest
+        # where the market does not matter (E13, E16). One request each.
+        hist = [s for s in config.BACKFILL_SEASONS if s != season]
+        if hist:
+            out["football_data_backfill"] = odds_ingest.ingest_football_data(
+                conn, hist, use_cache=True)
     except Exception as e:  # noqa: BLE001 - odds must never break a pull
         out["football_data"] = f"skipped ({e})"
     if os.environ.get("ODDS_API_KEY"):

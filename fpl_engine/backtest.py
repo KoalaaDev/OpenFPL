@@ -48,7 +48,9 @@ BLEND_PATH = os.path.join(config.MODELS_DIR, "xpts", "blend.json")
 
 
 METRIC_KEYS = ("spearman", "spearman_played", "p_at_20", "top11", "top30",
-               "captain", "captain_best", "rmse")
+               "captain", "captain_best", "rmse",
+               "def_top5", "def_top10", "def_spearman_played")
+DEF_POSITIONS = ("GK", "DEF")   # the clean-sheet positions, scored together
 
 
 def compare(before: str, after: str, *, model: str = "xpts",
@@ -118,7 +120,7 @@ def _actuals(conn, season: str) -> pd.DataFrame:
     in the comparison.
     """
     return pd.read_sql_query(
-        "SELECT pg.gw, pg.player_id, SUM(pg.total_points) pts, "
+        "SELECT pg.gw, pg.player_id, p.position, SUM(pg.total_points) pts, "
         "SUM(pg.minutes) mins FROM player_gw pg JOIN player p "
         "ON p.season=pg.season AND p.player_id=pg.player_id "
         "WHERE pg.season=? AND p.position IN ('GK','DEF','MID','FWD') "
@@ -223,7 +225,19 @@ def _metrics(pred: pd.DataFrame, actual_gw: pd.DataFrame) -> dict | None:
     top_act = set(j.nlargest(20, "pts")["player_id"])
     cap_row = j.loc[j["prediction"].idxmax()]
     played = j[j["mins"] > 0] if "mins" in j else j.iloc[0:0]
+    # the clean-sheet positions on their own: a change to the defensive
+    # channel is invisible in board-wide points per pick (the DefCon result)
+    d = (j[j["position"].isin(DEF_POSITIONS)] if "position" in j
+         else j.iloc[0:0])
+    dp = d[d["mins"] > 0] if len(d) else d
     return {
+        "def_top5": (float(d.nlargest(5, "prediction")["pts"].mean())
+                     if len(d) >= 5 else float("nan")),
+        "def_top10": (float(d.nlargest(10, "prediction")["pts"].mean())
+                      if len(d) >= 10 else float("nan")),
+        "def_spearman_played": (float(spearmanr(dp["prediction"],
+                                                dp["pts"]).statistic)
+                                if len(dp) > 30 else float("nan")),
         "spearman": rho,
         "spearman_played": (float(spearmanr(played["prediction"],
                                             played["pts"]).statistic)
@@ -239,7 +253,11 @@ def _metrics(pred: pd.DataFrame, actual_gw: pd.DataFrame) -> dict | None:
 
 def run(conn, season: str = "2025-26", *, gws: list[int] | None = None,
         openfpl_every: int = 4, retrain_minutes: bool = False,
-        with_openfpl: bool = True, out_dir: str | None = None) -> dict:
+        with_openfpl: bool = True, out_dir: str | None = None,
+        xpts_kwargs: dict | None = None) -> dict:
+    """``xpts_kwargs`` are forwarded to ``xpts_predict_gw`` so a research
+    affordance (``defence_leak``, ``rate_scale``, ...) can be replayed as an
+    arm against the shipped engine on the same gameweeks; None = shipped."""
     train_seasons = [s for s in config.BACKFILL_SEASONS if s < season]
     # cached under the replayed season: a model that has never seen it must
     # never become the one that serves live predictions. An optional feature
@@ -275,7 +293,7 @@ def run(conn, season: str = "2025-26", *, gws: list[int] | None = None,
 
     for g in gws:
         as_of = xpts_engine.first_kickoff(conn, season, g)
-        act_g = actual[actual["gw"] == g][["player_id", "pts", "mins"]]
+        act_g = actual[actual["gw"] == g][["player_id", "position", "pts", "mins"]]
         progress.step(f"GW{g}…")
 
         mult = online.multipliers() if online else None
@@ -284,7 +302,7 @@ def run(conn, season: str = "2025-26", *, gws: list[int] | None = None,
         x = xpts_engine.xpts_predict_gw(conn, season, g, as_of=as_of,
                                         use_availability=False,
                                         minutes_bundle=(clf, meta), rules=rules,
-                                        calib=mult)
+                                        calib=mult, **(xpts_kwargs or {}))
         if online is not None and not x.empty:
             # DGW actuals are summed per player before they are compared
             ag = act_comp[act_comp["gw"] == g]
@@ -335,7 +353,8 @@ def run(conn, season: str = "2025-26", *, gws: list[int] | None = None,
                 jj = o.merge(x, on="player_id", how="outer").fillna(0)
                 jj["prediction"] = (1 - w) * jj["o"] + w * jj["x"]
                 m = _metrics(jj[["player_id", "prediction"]],
-                             actual[actual["gw"] == g][["player_id", "pts", "mins"]])
+                             actual[actual["gw"] == g][
+                                 ["player_id", "position", "pts", "mins"]])
                 if m:
                     vals.append(m[key])
             return float(np.nanmean(vals)) if vals else -1.0

@@ -67,8 +67,15 @@ class TeamModel:
         return math.exp(-lam_opp)
 
 
-def fit(conn, as_of: str, *, seasons: list[str] | None = None) -> TeamModel:
-    """Fit the model on all team_match rows strictly before ``as_of``."""
+def fit(conn, as_of: str, *, seasons: list[str] | None = None,
+        xg_blend_def: float | None = None) -> TeamModel:
+    """Fit the model on all team_match rows strictly before ``as_of``.
+
+    ``xg_blend_def`` (research only, RESEARCH_LOG E16) sets the xG blend for
+    the DEFENCE target separately: 0 fits each club's defence on the goals it
+    actually conceded, ignoring xGA. None (every shipped path) uses
+    ``XG_BLEND`` for both sides, as before.
+    """
     q = ("SELECT tm.season, tm.team_id, tm.opponent_id, tm.was_home, "
          "tm.kickoff_utc, tm.goals_for, tm.xg, t.code code, o.code opp_code "
          "FROM team_match tm "
@@ -95,6 +102,8 @@ def fit(conn, as_of: str, *, seasons: list[str] | None = None) -> TeamModel:
     goals = np.array([float(r["goals_for"] or 0) for r in rows])
     xg = np.array([float(r["xg"]) if r["xg"] is not None else np.nan for r in rows])
     y = np.where(np.isnan(xg), goals, (1 - XG_BLEND) * goals + XG_BLEND * xg)
+    bd = XG_BLEND if xg_blend_def is None else float(xg_blend_def)
+    y_def = np.where(np.isnan(xg), goals, (1 - bd) * goals + bd * xg)
     days = np.array([(ref - _parse_ts(r["kickoff_utc"])).days for r in rows],
                     dtype=float).clip(min=0)
     w = 0.5 ** (days / HALF_LIFE_DAYS)
@@ -120,7 +129,7 @@ def fit(conn, as_of: str, *, seasons: list[str] | None = None) -> TeamModel:
         att -= float(att @ cw)
         # Defence: goals conceded by j are the goals scored against j.
         lam = np.exp(mu + home_adv * home + att[team] - dfc[opp])
-        num = np.bincount(opp, weights=w * y, minlength=n)
+        num = np.bincount(opp, weights=w * y_def, minlength=n)
         base = np.bincount(opp, weights=w * lam, minlength=n) * np.exp(dfc)
         dfc = -np.log((num + k) / np.clip(base + k, 1e-9, None))
         dfc -= float(dfc @ cw)

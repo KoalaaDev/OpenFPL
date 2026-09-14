@@ -25,7 +25,7 @@ import numpy as np
 import pandas as pd
 
 from .. import scoring
-from . import (minutes_model, odds_model, rates as rates_mod,
+from . import (cs_model, leaky, minutes_model, odds_model, rates as rates_mod,
                set_pieces, team_model)
 
 ATTACK_SCALER_CAP = (0.55, 1.75)
@@ -207,7 +207,9 @@ def xpts_predict_gw(conn, season: str, gw: int, *, as_of: str | None = None,
                     rate_scale: dict | None = None,
                     rate_override: "pd.DataFrame | None" = None,
                     lambda_override: dict | None = None,
-                    calib: dict | None = None) -> pd.DataFrame:
+                    calib: dict | None = None,
+                    defence_leak: dict | None = None,
+                    tweaks: dict | None = None) -> pd.DataFrame:
     """Expected points per player for one gameweek (point-in-time at as_of).
 
     Returns player_id-indexed frame with the prediction and its components.
@@ -220,6 +222,26 @@ def xpts_predict_gw(conn, season: str, gw: int, *, as_of: str | None = None,
     All three are research affordances for asking "what would a better
     ESTIMATOR be worth", as distinct from the outcome oracle's "what would
     clairvoyance be worth", and none is ever set on a shipped path.
+
+    ``defence_leak`` (RESEARCH_LOG E16) scales ``lambda_against`` for a club's
+    DEFENSIVE components only -- clean sheet, conceded, saves -- by a factor
+    built from its own trailing scorelines (``xpts/leaky.py``); its opponent's
+    attack scaler is untouched. ``{"mode": "goals_def"}`` / ``"xga_def"`` instead
+    refit the team model's defence on realised goals alone / on xGA alone.
+    None on every shipped path.
+
+    ``tweaks`` (RESEARCH_LOG E17, defender hypotheses; None on every shipped
+    path) is a dict of structural variants: ``conceded_exposure="e_min"``
+    (conceded goals counted over E[minutes]/90 rather than P(plays)),
+    ``cs_dispersion=phi`` (P(no goals) from a negative binomial with that
+    dispersion instead of Poisson), ``def_attack_exp=e`` (a defender's xG/xA
+    scale with the fixture as scaler**e), ``venue_adj=a`` (a home side's
+    lambda_against x(1+a), an away side's x(1-a); the attack side is
+    untouched), ``cs_model={"kind": "logit"|"gbm", ...}`` (a learned P(no
+    goals) per fixture from ``xpts/cs_model.py`` replaces the Poisson zero in
+    the clean-sheet component), and ``rates={...}`` forwarded to
+    ``rates.fit`` (``bonus_defcon``, ``xa_blend``, ``k_by_pos``,
+    ``calibrate_by_pos``).
 
     ``minutes_override`` and ``oracle`` exist for the ORACLE DECOMPOSITION —
     "what would a perfect estimate of X be worth?" — and are None on every
@@ -240,7 +262,9 @@ def xpts_predict_gw(conn, season: str, gw: int, *, as_of: str | None = None,
     if not fixtures:
         return pd.DataFrame()
 
-    tm = team_model.fit(conn, as_of)
+    leak_cfg = defence_leak or {}
+    tm = team_model.fit(conn, as_of, xg_blend_def={
+        "goals_def": 0.0, "xga_def": 1.0}.get(leak_cfg.get("mode")))
     clf, meta = minutes_bundle or minutes_model.ensure(conn)
     if clf is None:
         raise RuntimeError("minutes model could not be trained — is player_gw "
@@ -248,8 +272,14 @@ def xpts_predict_gw(conn, season: str, gw: int, *, as_of: str | None = None,
     mins = (minutes_override if minutes_override is not None
             else minutes_model.predict_gw(conn, season, as_of, clf, meta, gw=gw,
                                           use_availability=use_availability))
-    rates = rates_mod.fit(conn, season, as_of, rules=rules)
+    tw = tweaks or {}
+    rates = rates_mod.fit(conn, season, as_of, rules=rules, **(tw.get("rates") or {}))
     bonus_coef = rates.attrs.get("bonus_coef", {})   # merge drops attrs
+    bonus_terms = rates.attrs.get("bonus_terms", ["g", "a", "cs", "c0"])
+    cs_phi = float(tw.get("cs_dispersion") or 0.0)
+    conc_emin = tw.get("conceded_exposure") == "e_min"
+    def_att_exp = tw.get("def_attack_exp")
+    venue_adj = float(tw.get("venue_adj") or 0.0)   # home lam_against x(1+a), away x(1-a)
     df = mins.merge(rates.drop(columns=["position"]), on="player_id", how="left")
     team_of = {r["player_id"]: r["team_id"] for r in conn.execute(
         "SELECT player_id, team_id FROM player WHERE season=?", (season,))}
@@ -320,8 +350,7 @@ def xpts_predict_gw(conn, season: str, gw: int, *, as_of: str | None = None,
     omap = (odds_model.fixture_odds_map(
                 conn, season, [f["fixture_id"] for f in fixtures])
             if ow > 0 else {})
-    team_fixtures: dict[int, list[tuple[float, float]]] = {}
-    team_meta: dict[int, list[tuple[int, int]]] = {}     # (fixture_id, opponent), same order
+    team_fixtures: dict[int, list[list]] = {}   # [lam_for, lam_against, p0_learned, fixture_id]
     for f in fixtures:
         lh, la = tm.fixture(f["hcode"], f["acode"])
         lo = (lambda_override or {}).get(f["fixture_id"])
@@ -331,11 +360,28 @@ def xpts_predict_gw(conn, season: str, gw: int, *, as_of: str | None = None,
         if od:
             lh = (1 - ow) * lh + ow * od[0]
             la = (1 - ow) * la + ow * od[1]
-        team_fixtures.setdefault(f["team_h"], []).append((lh, la))
-        team_fixtures.setdefault(f["team_a"], []).append((la, lh))
-        team_meta.setdefault(f["team_h"], []).append((f["fixture_id"], f["team_a"]))
-        team_meta.setdefault(f["team_a"], []).append((f["fixture_id"], f["team_h"]))
+        team_fixtures.setdefault(f["team_h"], []).append(
+            [lh, la * (1 + venue_adj), None, f["fixture_id"]])
+        team_fixtures.setdefault(f["team_a"], []).append(
+            [la, lh * (1 - venue_adj), None, f["fixture_id"]])
     league = max(1e-6, tm.league_rate)
+    # research (E18): a learned P(no goals conceded) per (club, fixture)
+    # replaces the Poisson zero for the clean-sheet component only
+    if tw.get("cs_model"):
+        cm = dict(tw["cs_model"])
+        train = cm.pop("train_seasons", None) or [
+            s_ for s_ in getattr(__import__("fpl_engine.config", fromlist=["x"]),
+                                 "BACKFILL_SEASONS") if s_ < season]
+        p0_map = cs_model.p_clean_sheet_map(conn, season, gw, as_of, train, **cm)
+        for _t, _fx in team_fixtures.items():
+            for _e in _fx:
+                _e[2] = p0_map.get((int(_t), int(_e[3])))
+    if leak_cfg and leak_cfg.get("mode") not in (None, "goals_def", "xga_def"):
+        leak = leaky.defence_leak_factors(conn, season, as_of, leak_cfg)
+        for _t, _fx in team_fixtures.items():
+            _f = leak.get(_t, 1.0)
+            for _e in _fx:
+                _e[1] = _e[1] * _f
 
     # Penalty duty enters as a CORRECTION toward today's published order, not
     # as a bonus: the player's trailing xG already contains the penalties he
@@ -420,13 +466,14 @@ def xpts_predict_gw(conn, season: str, gw: int, *, as_of: str | None = None,
             xg90 += 0.10
         total = 0.0
         e_goals = e_assists = e_cs = 0.0
+        lam_agg = 0.0
         comp = {k: 0.0 for k in ("goals", "assists", "cs", "conceded",
                                  "saves", "bonus", "cards", "defcon",
                                  "appearance", "residual")}
-        meta = team_meta.get(r.team_id, [])
-        for k_fx, (lam_for, lam_against) in enumerate(fx):
-            fid, _opp = meta[k_fx] if k_fx < len(meta) else (None, None)
+        for lam_for, lam_against, p0_learned, fid in fx:
             scaler = float(np.clip(lam_for / league, *ATTACK_SCALER_CAP))
+            if def_att_exp is not None and pos == "DEF":
+                scaler = scaler ** float(def_att_exp)
             g = xg90 * exposure * scaler
             if sp_map:
                 _sp = sp_map.get((fid, r.team_id))
@@ -435,18 +482,26 @@ def xpts_predict_gw(conn, season: str, gw: int, *, as_of: str | None = None,
                     g *= _si * _sp[0] + (1.0 - _si) * _sp[1]
             _rf = ref_map.get(fid, 1.0) if ref_map else 1.0
             a = (r.xa90 or 0.0) * exposure * scaler
-            cs = (r.p_full or 0.0) * p_zero_goals(lam_against, negbin_cs)
+            if cs_phi > 0:          # E17 tweak: negative binomial with a given phi
+                p0 = (1.0 + cs_phi * lam_against) ** (-1.0 / cs_phi)
+            else:                   # shipped Poisson zero (nb_cs arm: measured phi)
+                p0 = p_zero_goals(lam_against, negbin_cs)
+            if p0_learned is not None:
+                p0 = p0_learned
+            cs = (r.p_full or 0.0) * p0
             e_goals += g
             e_assists += a
             e_cs += cs
+            lam_agg += lam_against
             total += g * p_goal.get(pos, 4) + a * rules["assist"]
             comp["goals"] += g * p_goal.get(pos, 4)
             comp["assists"] += a * rules["assist"]
             total += cs * p_cs.get(pos, 0)
             comp["cs"] += cs * p_cs.get(pos, 0)
             if pos in ("GK", "DEF"):
-                _gc = gc_pts * _e_floor_div(lam_against * max(p_play, 0.0),
-                                            gc_per)
+                _gc = gc_pts * _e_floor_div(
+                    lam_against * max(exposure if conc_emin else p_play, 0.0),
+                    gc_per)
                 total += _gc
                 comp["conceded"] += _gc
             if pos == "GK":
@@ -457,11 +512,15 @@ def xpts_predict_gw(conn, season: str, gw: int, *, as_of: str | None = None,
                 total += _sv
                 comp["saves"] += _sv
             bc = bonus_coef.get(pos)
-            if bc and len(bc) == 5:   # bonus_gd arm: + expected goal margin
-                _b = (bc[0] * g + bc[1] * a + bc[2] * cs
-                      + bc[3] * (lam_for - lam_against) * p_play + bc[4] * p_play)
-            elif bc:   # E[bonus] from expected events + player deviation
-                _b = bc[0] * g + bc[1] * a + bc[2] * cs + bc[3] * p_play
+            if bc:   # E[bonus] from expected events + player deviation
+                _b = bc[0] * g + bc[1] * a + bc[2] * cs + bc[-1] * p_play
+                # research terms sit between cs and the intercept, named by
+                # rates.fit so two arms cannot be confused by their length
+                for _j, _term in enumerate(bonus_terms[3:-1], start=3):
+                    if _term == "gd":      # bonus_gd arm: expected goal margin
+                        _b += bc[_j] * (lam_for - lam_against) * p_play
+                    elif _term == "dc":    # E17 tweak: DefCon crossings
+                        _b += bc[_j] * (r.defcon_cross90 or 0.0) * exposure
                 total += _b
                 comp["bonus"] += _b
             total += (r.bonus_resid90 or 0.0) * exposure
@@ -495,8 +554,10 @@ def xpts_predict_gw(conn, season: str, gw: int, *, as_of: str | None = None,
             "e_min": round(r.e_min or 0.0, 1),
             "e_goals": round(e_goals, 3), "e_assists": round(e_assists, 3),
             "p_cs": round(e_cs, 3),
+            "lam_against": round(lam_agg, 4),
             "prediction": round(total, 3),
-            # the modelled points per component, for calibration audits
+            # the modelled points per component, so a post-mortem or a
+            # calibration audit can see WHICH part of a projection was wrong
             **{f"c_{k}": round(v, 4) for k, v in comp.items()},
         })
     return pd.DataFrame(rows)

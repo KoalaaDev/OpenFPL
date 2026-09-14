@@ -827,7 +827,363 @@ roughly `(accuracy − 0.55)/0.45 × 89` points a season.
   predicted 895 vs actual 891 (100%), Spearman 0.698, model captain Bruno
   Fernandes = the week's top scorer (23).
 
-## E16. Level, not rank: a calibration audit and seven pre-registered arms
+## E16. Leaky defences: are defenders on easy fixtures over-projected when their own club keeps conceding?
+
+* **Hypothesis (owner's, pre-registered before any number).** The engine
+  takes a defender on an easy fixture whenever his own numbers are good,
+  but a club that has *shown* it concedes should make that defender worse
+  than projected however good his stats are. Test it on the scoreline
+  record, not on xG.
+* **Where leakiness already enters.** P(CS) = P(60+) x exp(-lambda_against)
+  and E[conceded] is a Poisson floor-division on the same lambda, where
+  lambda_against is the market's implied goals for the opponent (85%)
+  blended with the team model's rate, whose defence rating is fitted on
+  realised goals against blended 50/50 with xGA over a 180-day half-life. So
+  the question is whether that lambda is CALIBRATED with respect to the
+  club's own record, not whether the record is used.
+* **Design.** 2024-25 + 2025-26, replayed point-in-time on the shipped
+  engine (no Understat, no OpenFPL arm; bit-identical elsewhere). Trailing
+  scoreline features per club, 10 matches, cross-season by `team.code`,
+  shrunk toward the league mean by 3 pseudo-matches: goals against (`ga`),
+  clean-sheet share, share conceding 2+ (`two_plus`, the scoreline tail),
+  goals against minus xGA (`ga_xga`, "concedes more than the chances").
+  `xpts/leaky.py`; `research/leaky_defence.py`.
+  Diagnostics on 7,069 GK/DEF single-fixture rows who played 60+:
+  D1 calibration of P(CS | 60+) by decile and inside leakiness terciles;
+  D2 logistic regression on realised CS with the engine's own logit as an
+  OFFSET (so a coefficient is what leakiness adds beyond lambda), standard
+  errors clustered by gameweek; D3 the decision view, the 10 highest-
+  projected GK/DEF each gameweek, projected vs realised, split leaky x easy.
+  Arms, each scaling lambda_against for the club's DEFENSIVE components
+  only (its opponent's attack untouched), paired over 74 gameweeks through
+  the standard backtest with new defender metrics (`def_top5`, `def_top10`,
+  `def_spearman_played`): `goals_def` (defence fitted on realised goals,
+  xGA ignored), `ga` at alpha 0.5 / 1.0 (lambda x (ga/league_ga)^alpha),
+  `tail` (lambda x (1 + two_plus - league)). Four arms, alpha 0.05/4.
+
+* **D1: the clean-sheet probability is calibrated, including by leakiness.**
+  Slope on the engine's own logit **0.997** (se 0.13), intercept -0.01.
+
+  | own-club tercile | n | trailing GA/match | predicted P(CS) | realised | gap |
+  |---|---|---|---|---|---|
+  | solid | 2,358 | 1.11 | 0.294 | 0.292 | -0.002 |
+  | mid | 2,363 | 1.46 | 0.250 | 0.264 | +0.014 |
+  | leaky | 2,348 | 1.91 | 0.207 | 0.190 | **-0.016** |
+
+  The leaky tercile keeps 1.6 percentage points fewer clean sheets than
+  projected, on a base of 20.7%: about 0.06 points per defender-gameweek at
+  4 points a clean sheet. Inside P(CS) quartiles the sign flips around
+  (leaky is -0.024 / +0.028 / -0.077 / +0.020 from the lowest quartile up),
+  so it is not a monotone bias.
+* **D2: nothing the record adds survives clustering.** Coefficients on a
+  standardised feature, offset = engine logit, SE clustered by gameweek:
+
+  | covariate | coef | z (naive) | z (clustered) |
+  |---|---|---|---|
+  | goals against | -0.049 | -1.64 | -0.86 |
+  | share conceding 2+ (the scoreline tail) | -0.060 | -2.03 | -1.12 |
+  | clean-sheet share | -0.009 | -0.32 | -0.18 |
+  | GA minus xGA | **+0.064** | +2.20 | +1.07 |
+  | GA x easy-fixture interaction | +0.168 | +2.70 | +1.38 |
+  | joint: GA / tail / GA-xGA | -0.096 / -0.073 / +0.167 | | -0.68 / -0.58 / +2.23 |
+
+  Two things worth keeping. The naive z-scores look like a finding and the
+  clustered ones do not: defenders of one club in one gameweek share a
+  scoreline, so 7,069 rows are a few hundred effective observations. And
+  the one term that is even borderline runs the OTHER way: a club that has
+  been conceding more than its xGA keeps *more* clean sheets than lambda
+  says, i.e. finishing luck against it reverts. "Time has shown it likes to
+  concede" is, at that margin, the trap rather than the signal. Where the
+  goals-against term is negative at all it is in HARD fixtures (main effect
+  -0.155, interaction +0.168, net ~0 on easy ones), the opposite location
+  to the hypothesis.
+* **D3: the engine rarely picks them, and when it does they score.** Of 740
+  top-10 GK/DEF picks over 74 gameweeks, **94 (12.7%)** were from a club
+  conceding above the league rate.
+
+  | picks | n | projected | realised | gap |
+  |---|---|---|---|---|
+  | solid club | 646 | 4.41 | 4.31 | -0.10 |
+  | leaky club | 94 | 4.18 | 4.26 | +0.08 |
+  | leaky club, easy fixture | 25 | 4.24 | 4.52 | +0.28 |
+  | solid club, easy fixture | 294 | 4.47 | 4.24 | -0.23 |
+
+  Paired per gameweek, leaky picks' error minus solid picks' error: +0.24,
+  p = 0.65 (43 gameweeks with both). The cell the hypothesis names,
+  leaky x easy, is 25 picks and over-performed. If anything is over-
+  projected in easy fixtures it is the SOLID clubs' defenders (-0.23 on
+  n = 294, 1.3 standard errors, noise).
+* **Arms (74 paired gameweeks vs the shipped engine).**
+
+  | arm | spearman_played | top30 | captain | rmse | def_top5 | def_top10 | def_spearman_played |
+  |---|---|---|---|---|---|---|---|
+  | goals_def (defence on realised goals) | -0.0001 | -0.008 | 0.00 | +0.0002* | +0.05 | -0.03 | -0.0004 |
+  | ga alpha 0.5 | -0.0018 | -0.028 | -0.24 | +0.0019 | -0.15 | -0.11 | -0.0006 |
+  | ga alpha 1.0 | **-0.0056** (p=0.010) | -0.049 | -0.28 | **+0.0075*** | -0.28 (p=0.055) | **-0.19** (p=0.049) | -0.0066 |
+  | tail (2+ conceded share) | -0.0021 | -0.024 | -0.20 | +0.0018 | -0.11 | -0.10 | -0.0022 |
+  | xga_def (post-hoc, defence on xGA alone) | +0.0002 | +0.018 | +0.04 | -0.0002 (p=0.024) | +0.04 | +0.02 | +0.0002 |
+
+  Every scoreline arm is flat to worse on every metric, in both seasons
+  separately, and the effect is monotone in the strength: alpha 1.0 costs
+  0.19 points per defender pick and 0.006 of rank quality among players who
+  played, both at the edge of significance and both the wrong sign. Fitting
+  the defence on realised goals instead of the goals/xGA blend changes
+  nothing (rmse +0.0002 is significant and negligible). The post-hoc xGA arm,
+  run after D2 to check the reverted sign, leans the way D2 said, positive on
+  every metric in the pooled set, but only rmse reaches p < 0.05 and the
+  points metrics are +0.02 per pick at p 0.13-0.19: the team model is 15%
+  of lambda, so the most it can move is small, and it is not shippable on
+  this evidence. Direction noted, not acted on.
+* **Verdict: rejected, on the metric that could see it.** The engine is
+  not over-projecting leaky clubs' defenders on easy fixtures. Their P(CS)
+  is calibrated to within 1.6 points, they are 13% of its defender picks,
+  those picks score as projected, and pushing lambda toward the scoreline
+  record costs points monotonically. The mechanism is the standing one:
+  lambda_against is 85% bookmaker, and the bookmaker has watched the same
+  scorelines. What the record adds beyond a market price is the part the
+  market has correctly discounted, luck.
+* **What the owner is seeing, then.** A defender on an easy fixture from a
+  club conceding 1.9 a match is projected with P(CS) around 0.19-0.21, i.e.
+  about 0.8 clean-sheet points, against 1.2 for a solid club's defender.
+  His own attacking and DefCon rates can legitimately outweigh that 0.4, and
+  D3 says when they do the pick pays. The recommendation to read is his
+  `p_cs` next to his `prediction`, which the projections table already
+  shows; the number is honest.
+* **Status.** Nothing ships to the engine. `defence_leak` stays as a research
+  hook (None on every shipped path, pinned by `tests/test_leaky.py`); the
+  defender metrics stay in the backtest harness because the DefCon result
+  showed a defensive change can hide inside board-wide points per pick.
+
+## E17. "The model struggles to pick defenders": where, by how much, and ten hypotheses
+
+* **Owner's observation.** The engine's defender picks feel weak. Ten
+  hypotheses requested, each backtested.
+* **Premise, measured first.** Rank quality among players who played and
+  points per pick of the engine's top-10 by position, 74 gameweeks, against
+  the naive baselines on the same rows:
+
+  | position | engine spearman_played | engine top-10 pts/pick (projected) | realised best-10 | ppg baseline | trail-4 baseline |
+  |---|---|---|---|---|---|
+  | DEF | 0.324 | 4.24 (4.31) | 9.27 | 0.21 / 3.0 | 0.20 / 3.3 |
+  | MID | 0.417 | 5.15 (5.32) | 11.09 | 0.34 / 3.9 | 0.34 / 4.2 |
+  | FWD | 0.477 | 4.41 (4.44) | 7.28 | 0.42 / 3.9 | 0.40 / 3.9 |
+  | GK | 0.140 | 3.49 (3.50) | 5.21 | 0.06 / 2.5 | 0.07 / 3.2 |
+
+  So the engine ranks defenders worse than midfielders and forwards, and
+  that is true of every predictor here: defenders are a harder position,
+  because a 4-point clean sheet is a coin toss decided by eleven other
+  people. Against the naive rules the engine's defender edge is the LARGEST
+  of any position (+0.11 to +0.12 Spearman, +0.9 to +1.2 points per pick),
+  and its top-10 projections are honest (4.31 projected, 4.24 realised).
+* **Where the defender error lives.** Modelled vs realised points per
+  component, DEF, from the engine's own `c_*` columns:
+
+  | component | near-certain starters (P(60+) > 0.85, n = 2,394): model / real / ratio | top-10 picks: model / real |
+  |---|---|---|
+  | goals | 0.302 / 0.246 / **0.81** | 0.516 / 0.349 |
+  | assists | 0.158 / 0.199 / **1.26** | 0.272 / 0.320 |
+  | clean sheet | 0.919 / 0.954 / 1.04 | 1.390 / 1.427 |
+  | conceded | -0.456 / -0.419 / 0.92 | -0.258 / -0.278 |
+  | bonus | 0.205 / 0.206 / 1.01 | 0.346 / 0.326 |
+  | DefCon | 0.263 / 0.281 / 1.07 | 0.321 / 0.311 |
+  | appearance | 1.841 / 1.854 / 1.01 | 1.873 / 1.828 |
+  | total | 3.076 / 3.134 / 1.02 | 4.308 / 4.235 |
+
+  Two calibration defects and one non-defect. Defenders score **19% fewer
+  goals than their xG says** and this is not a defender thing: midfielders
+  and forwards convert at 0.89 of their modelled xG too, and every position
+  is under-projected on assists (DEF 1.26, MID 1.07, FWD 1.30). Among the
+  top-10 defender picks the goals gap widens to a third, which is the
+  winner's curse on a noisy rate. Everything else is calibrated: P(60+) for
+  defenders to within 1.5 points in every band, clean sheets to 4%, bonus
+  and DefCon to within 7%. Share of the top-10 pick error variance: clean
+  sheet **39%**, goals 21%, bonus 16%, assists 8%, everything else under 5%.
+  Home clean sheets read 1.6 points high (0.285 vs 0.269) and away 1.8 low
+  (0.215 vs 0.233), n ~ 2,800 each.
+* **Pre-registered arms** (written before any ran; `research/defender_arms.py`;
+  10 arms against one baseline, alpha 0.05/10 = 0.005; judged on
+  `def_top5`, `def_top10`, `def_spearman_played` first and the board-wide
+  metrics second; the 2025-26 GW12 no-op check confirmed every arm moves
+  defender projections):
+
+  | arm | hypothesis | mechanism |
+  |---|---|---|
+  | H1 `xg_cal` | finishing calibration: xG90 and xA90 scaled by the position's point-in-time realised/expected ratio | `rates.calibrate_by_pos` |
+  | H2 `def_att_exp` | a defender's goals are set pieces, which scale less with the fixture | attack scaler ** 0.5 for DEF |
+  | H3 `conc_emin` | conceded goals count while on the pitch: Poisson mean on E[min]/90 not P(plays) | `conceded_exposure` |
+  | H4 `cs_nb` | team goals are overdispersed (var/mean 1.078): P(0) from a negative binomial | `cs_dispersion` 0.056 |
+  | H5 `bonus_dc` | DefCon actions earn BPS: crossings enter the bonus regression | `rates.bonus_defcon` |
+  | H6 `defcon_113` | the measured 13% DefCon shortfall, re-judged on defender metrics | `rate_scale` |
+  | H7 `odds_10` | market-only lambda for the clean-sheet channel | `odds_weight` 1.0 |
+  | H8 `venue` | the home/away clean-sheet gap in the calibration | home lambda x1.06, away x0.94 |
+  | H9 `def_k12` | defenders' attacking rates shrunk twice as hard | `rates.k_by_pos` DEF 12 |
+  | H10 `hl90` | recent defensive form: team-model half-life 90 days | `team_model.HALF_LIFE_DAYS` |
+* **Prior.** H1 is the one aimed at a measured defect with a mechanism the
+  engine lacks (a level calibration, the Understat lesson). H3, H4 and H5
+  are structurally more correct forms of components that are already
+  calibrated on average, so the E14 rule (a better estimator of a
+  calibrated quantity moves nothing) says null. H6, H7 and H10 re-test
+  standing rejections on the metric that could see them. H8 is generated
+  from the calibration table itself and is the one most at risk of being
+  noise. Results follow.
+* **Results, 74 paired gameweeks vs the shipped engine** (family alpha
+  0.005; `def_*` are GK+DEF pooled, the clean-sheet positions):
+
+  | arm | def_top5 | def_top10 | def_spearman_played | spearman_played | top30 | rmse |
+  |---|---|---|---|---|---|---|
+  | H1 xg_cal | -0.03 | -0.06 (p=0.12) | **+0.0009 (p=0.001)** | +0.0007 (p=0.036) | +0.00 | +0.0010 (p=0.017, worse) |
+  | H2 def_att_exp | +0.02 | **-0.11 (p=0.025)** | -0.0014 (p=0.060) | -0.0005 | +0.02 | -0.0004 |
+  | H3 conc_emin | -0.01 | -0.00 | **-0.0018 (p<0.001)** | **-0.0015 (p<0.001)** | +0.02 (p=0.048) | -0.0001 |
+  | H4 cs_nb | +0.02 | +0.01 | -0.0003 | **-0.0007 (p=0.001)** | +0.01 | -0.0001 |
+  | H5 bonus_dc | +0.10 (p=0.055) | -0.01 | -0.0005 | +0.0008 (p=0.040) | -0.04 (p=0.073) | -0.0013 (p=0.010) |
+  | H6 defcon_113 | 0.00 | +0.01 | -0.0006 | +0.0001 | -0.02 | -0.0002 |
+  | H7 odds_10 | +0.06 | -0.02 | +0.0003 | -0.0002 | +0.02 | +0.0005 |
+  | H8 venue | +0.10 (p=0.17) | +0.05 | -0.0013 | -0.0004 | +0.05 (p=0.051) | -0.0007 |
+  | H9 def_k12 | +0.02 | -0.04 | +0.0004 | +0.0001 | +0.02 | +0.0001 |
+  | H10 hl90 | +0.02 | -0.01 | -0.0005 (p=0.029) | +0.0000 | -0.01 | -0.0002 |
+
+  Per season, the two arms that looked alive pooled do not replicate:
+  H8 `venue` is def_top5 **+0.21 (p=0.016)** in 2024-25 and -0.01 in
+  2025-26, with def_spearman_played -0.0047 (p=0.049) in 2025-26; H1's
+  top11 is -0.11 (p=0.010) in 2024-25 and +0.17 (p=0.015) in 2025-26.
+  H6 is an exact zero in 2024-25 because DefCon counts only exist from
+  the 2025-26 rule era, which is the harness working, not a bug.
+* **Verdict: none of the ten survives.** Not one arm improves defender
+  points per pick at any conventional level, let alone the family alpha.
+  The two significant results are the wrong way: H3 and H4, the
+  structurally *more correct* forms of conceded exposure and clean-sheet
+  probability, both lower rank quality significantly. That is E14's rule
+  a fifth time: a component that is already calibrated on average is not
+  improved by a better formula for it, because the noise is in the
+  outcome, not the estimator. H1 earns a +0.0009 rank gain among
+  defenders who played at p=0.001, which is real, a tenth of the role
+  features' gain, and paid for with worse rmse and no points. Not shipped.
+* **What the diagnostic did establish, which is the actual answer to the
+  owner's observation.** The engine's defenders ARE worse picks than its
+  midfielders and forwards (4.2 against 5.2 and 4.4 points per pick), and
+  every predictor shares that ordering, because a defender's score is a
+  4-point clean sheet decided by his whole team plus rare attacking
+  returns. The engine's projections of them are honest (4.31 projected,
+  4.24 realised across 740 picks) and its edge over a points-per-game
+  rule is +1.2 points per defender pick, the largest of any position.
+  Clean-sheet luck is 39% of the pick error and E13 already priced perfect
+  clean-sheet knowledge at +2.35 points per pick: that is the ceiling,
+  and it is not knowable at the deadline. The two measured calibration
+  defects (goals 19% over xG, assists 26% under, in every position) are
+  level errors that do not reorder players, which is why correcting them
+  (H1) moves rank a hair and points not at all.
+* **Status.** All hooks stay as research affordances, None on every
+  shipped path (`tests/test_defender_hooks.py`). The `c_*` component
+  columns on the engine output ship, because a post-mortem should be able
+  to say which component missed. Diagnostic:
+  `python research/defenders.py diagnose --frame <frame.csv>`.
+
+## E18. A better clean-sheet engine: a learned P(clean sheet) against the Poisson zero
+
+* **Owner's request.** "We need a better clean sheet engine." E17 found
+  clean-sheet luck to be 39% of the defender pick error and E13 priced
+  perfect clean-sheet knowledge at +2.35 points per pick, so this is the
+  component where a better estimator would be worth the most if one exists.
+* **What "better" has to beat.** The shipped P(no goals conceded) is the
+  Poisson zero exp(-lambda_against), lambda being the bookmaker's implied
+  goals for the opponent (85%) blended with the team model (15%). E16
+  showed it calibrated (slope 0.997 on its own logit) and unimproved by any
+  scoreline feature. A better engine therefore has to be a different
+  functional form or a different information set, judged on the direct
+  question first: held-out log-loss of P(clean sheet) on team-matches,
+  740 a season, before any decision backtest.
+* **Design (pre-registered).** `xpts/cs_model.py`: one row per club and
+  fixture, features strictly point-in-time at the gameweek's first kickoff:
+  the market lambda, the model lambda and the engine's blend (log scale),
+  venue, the club's trailing 10-match xGA, goals against, clean-sheet share
+  and goals-against-minus-xGA, and the opponent's trailing xG, goals for,
+  blank share and goals-for-minus-xG (all shrunk by 3 pseudo-matches).
+  Trained on the seasons before the one scored (2022-23 + 2023-24 for
+  2024-25; those plus 2024-25 for 2025-26). Forms: a logistic regression
+  on lambdas + venue only (a market/model re-weighting), a logistic
+  regression on everything, a small gradient-boosted classifier, and an
+  offset logit with NO intercept (the engine's own logit as a fixed
+  offset, ridge-regularised coefficients on the trailing record). Decision
+  arms through the standard 74-gameweek harness for each form, judged on
+  the defender metrics; family alpha 0.05/4.
+* **Stage 1: held-out team-match log-loss (lower is better).**
+
+  | P(clean sheet) from | 2024-25 log-loss / Brier / mean p | 2025-26 log-loss / Brier / mean p |
+  |---|---|---|
+  | **Poisson zero, engine blend (shipped)** | **0.5193** / 0.1710 / 0.243 | 0.5293 / 0.1755 / 0.262 |
+  | Poisson zero, market lambda only | 0.5200 / 0.1712 / 0.244 | **0.5286** / 0.1753 / 0.264 |
+  | Poisson zero, team-model lambda only | 0.5194 / 0.1708 / 0.243 | 0.5379 / 0.1783 / 0.257 |
+  | logit: lambdas + venue | 0.5239 / 0.1725 / 0.209 | 0.5309 / 0.1760 / 0.232 |
+  | logit: full features | 0.5250 / 0.1731 / 0.210 | 0.5301 / 0.1759 / 0.234 |
+  | gradient boosting: full features | 0.5332 / 0.1748 / 0.210 | 0.5411 / 0.1813 / 0.241 |
+  | offset logit, no intercept: trailing record | 0.5194 / 0.1711 / 0.234 | 0.5284 / 0.1755 / 0.251 |
+  | offset logit, no intercept: record + lambdas | 0.5216 / 0.1720 / 0.236 | 0.5294 / 0.1757 / 0.255 |
+  | realised clean-sheet rate | 0.232 | 0.250 |
+
+  Every free-intercept model is WORSE than the Poisson zero, in both
+  seasons, and the mean-p column says why: the league clean-sheet rate
+  moves from season to season (0.272, 0.207, 0.234, 0.255 across the four
+  in the database), a fitted intercept inherits the training seasons' rate
+  and carries it into a season with a different one (0.210 predicted
+  against 0.232 realised), and the gradient-boosted model pays that price
+  and a variance price on top. The Poisson zero has no intercept to
+  inherit: its level comes from this week's lambda, which the market
+  re-prices every week. Removing the intercept (the offset form) removes
+  the loss and buys nothing: the trailing record on top of the engine's own
+  logit is worth +0.0001 log-loss in 2024-25 and -0.0009 in 2025-26, a tie.
+  Adding the lambdas as free features to that form makes it worse again.
+  The logit coefficients say the same thing as E16's regression: after the
+  blend, own xGA and opponent xG carry the only weight and goals-against-
+  minus-xGA enters with the sign of luck reverting.
+* **Stage 2: decision arms.** See the results block below.
+* **Stage 2 results, 74 paired gameweeks vs the shipped engine** (GK+DEF
+  metrics first; family alpha 0.0125):
+
+  | arm | def_top5 | def_top10 | def_spearman_played | spearman_played | top11 | rmse |
+  |---|---|---|---|---|---|---|
+  | logit: lambdas + venue | -0.04 | +0.01 | -0.0015 (p=0.043) | +0.0004 | +0.03 | +0.0013 (p=0.017, worse) |
+  | logit: full features | -0.02 | -0.02 | -0.0021 (p=0.14) | +0.0003 | +0.04 | +0.0015 (p=0.018, worse) |
+  | gradient boosting | -0.12 | -0.12 (p=0.21) | -0.0019 | +0.0004 | +0.10 (p=0.10) | +0.0019 |
+  | offset logit, no intercept | +0.08 (p=0.34) | -0.03 | -0.0009 | +0.0001 | +0.03 | +0.0002 |
+
+  Nothing reaches the family alpha in the right direction; the two forms
+  that reach p < 0.05 at all do so on rmse, and worse. Every defender
+  points metric is inside noise and flips sign between seasons (the offset
+  form is def_top5 +0.18 in 2024-25 and -0.02 in 2025-26). The decision
+  layer agrees with the team-match layer, which is the better-powered one.
+* **Verdict: the Poisson zero on the market-blended lambda IS the better
+  clean-sheet engine, and now it has been shown to be.** Four learned forms,
+  two seasons, 1,480 held-out team-matches and 74 paired gameweeks, and the
+  best of them ties. The reason is structural rather than a shortage of
+  features: P(no goals) is one number per fixture, the bookmaker re-prices
+  that number every week with more information than any trailing record
+  carries (E13's encompassing test, market coefficient 0.90 against the
+  model's 0.00), and the Poisson zero converts it without a fitted level.
+  The trailing record adds +0.0001 / -0.0009 log-loss on top of it, which is
+  the E16 regression's null again in a form that could not be more
+  generous to the features. The 39% of defender pick error that is
+  clean-sheet variance is variance, not estimator error.
+* **The one thing that is not closed.** All of this is a marginal P(no
+  goals) from a marginal lambda. A source that carries the joint scoreline
+  distribution directly, Polymarket's exact-score market (recorded in the
+  Polymarket section as the one thing it has that the bookmaker feed does
+  not), prices P(0 goals) without going through a Poisson at all. It is
+  live-only and un-backtestable here, so it is a forward-collection
+  question, not a modelling one.
+* **Status.** `xpts/cs_model.py` stays as a research module; the engine's
+  `cs_model` tweak is None on every shipped path (`tests/test_cs_model.py`
+  pins the hook off, the rows point-in-time, and the offset form's
+  reduction to the Poisson zero at zero coefficients). Stage 1 reproduces
+  with `python research/cs_engine.py`.
+
+## Numbering note
+
+Two sessions worked in parallel on 2026-09-14. The defender studies merged
+first as E16-E18 (below); this branch's Round 17-20 entries, written as
+E16-E20, are renumbered E19-E23 here. CLAUDE.md's Round 17-20 sections and
+the memory notes refer to the new numbers.
+
+## E19. Level, not rank: a calibration audit and seven pre-registered arms
 
 * **Why this round exists.** Every metric the backtest reports is a *rank*
   metric or an aggregate. A level error inside one component — clean sheets
@@ -942,7 +1298,7 @@ roughly `(accuracy − 0.55)/0.45 × 89` points a season.
   that can, and it should be re-run whenever a component's definition changes
   (a scoring-rule change, a new xG provider).
 
-## E17. Press conferences, at last: a pre-deadline text feed that is archived
+## E20. Press conferences, at last: a pre-deadline text feed that is archived
 
 * **The source, found by the owner.** BBC Sport runs a Friday "Premier
   League news conferences" live blog: one post per manager quote, each
@@ -1046,7 +1402,7 @@ roughly `(accuracy − 0.55)/0.45 × 89` points a season.
   gameweek: likely starters 0.828 modelled → 0.803 started. The trailing
   history already knows who limped off.
 
-## E18. The BBC archive as model input: roles ship, the calendar is measured, a stale baseline is caught
+## E21. The BBC archive as model input: roles ship, the calendar is measured, a stale baseline is caught
 
 * **Three blocks, one methodological catch.** The Round-18 archive (every
   match's lineups with formation slot and played position since 2022-23, and
@@ -1102,7 +1458,7 @@ roughly `(accuracy − 0.55)/0.45 × 89` points a season.
   `spearman_played` −0.0002 (p=0.71), top-11 −0.07, rmse ±0.0000, both
   seasons flat. The shipped role and depth features already carry it.
 
-## E19. Absences, fatigue and the crowd's eye test: three owner hypotheses, gated
+## E22. Absences, fatigue and the crowd's eye test: three owner hypotheses, gated
 
 All four tests below are against the post-Round-19 baseline (`data/bt_base`,
 whose per-player audits were regenerated first), so nothing is credited with
@@ -1160,7 +1516,7 @@ an earlier shipped change.
   — while points/90 (+0.16, p=0.02) and BPS/90 (+0.57) go the other way. A
   rate scaler needs a consistent sign and there is none. Rest still enters
   through the minutes model (`days_rest`, `team_matches_14d`, and the
-  all-competition `cal` block, measured in E18).
+  all-competition `cal` block, measured in E21).
 * **BBC crowd ratings ("the eye test in numbers") — rejected at the gate.**
   Collected after all: the averages are server-rendered into the match
   page's `__INITIAL_DATA__` as a `playerRater` block (2024-25 onward; 753
@@ -1174,7 +1530,7 @@ an earlier shipped change.
   1-2% log-loss changes that have never moved a decision here (E11c).
   Archive maintained by the scheduled pull; no arm.
 
-## E20. Absences with injuries, referees, set plays, redistribution: four owner asks, one control that mattered
+## E23. Absences with injuries, referees, set plays, redistribution: four owner asks, one control that mattered
 
 Everything against `data/bt_base` (post-Round-19), 74 paired gameweeks.
 Three new archives: Transfermarkt squads + 9,003 dated injury spells
