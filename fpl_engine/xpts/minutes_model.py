@@ -438,6 +438,31 @@ def _frame(conn, seasons: list[str], before: str | None = None,
     # fixture context: rotation is driven by the calendar, not only by form
     tm = df[["season", "team_id", "fixture_id", "kick"]].drop_duplicates(
         ["season", "team_id", "fixture_id"])
+    if target is not None:
+        # The calendar is known. On a live horizon the target gameweek can be
+        # weeks ahead, and with only PLAYED matches in this table every club
+        # looked as if it had not played for a month — 30 days' rest and no
+        # matches in 14, the season-opener regime, where the model rightly
+        # expects fringe players to start more and regulars less. That put a
+        # backup keeper on 20 expected minutes and Haaland on 65 from GW+2
+        # onward. Scheduled fixtures before the target's kickoff count for
+        # rest and congestion; a replay's target has every prior match played,
+        # so this adds nothing there and backtests are bit-identical.
+        _ts, _tg, _tas_of = target
+        _sched = pd.read_sql_query(
+            "SELECT fixture_id, kickoff_utc, team_h, team_a FROM fixture "
+            "WHERE season=? AND kickoff_utc IS NOT NULL AND kickoff_utc < ?",
+            conn, params=(_ts, _tas_of))
+        if len(_sched):
+            _long = pd.concat([
+                _sched.rename(columns={"team_h": "team_id"})[["fixture_id", "kickoff_utc", "team_id"]],
+                _sched.rename(columns={"team_a": "team_id"})[["fixture_id", "kickoff_utc", "team_id"]],
+            ], ignore_index=True)
+            _long["season"] = _ts
+            _long["kick"] = pd.to_datetime(_long["kickoff_utc"], utc=True, format="ISO8601")
+            _long["team_id"] = pd.to_numeric(_long["team_id"], errors="coerce")
+            tm = pd.concat([tm, _long[["season", "team_id", "fixture_id", "kick"]]],
+                           ignore_index=True).drop_duplicates(["season", "team_id", "fixture_id"])
     df = df.merge(_team_congestion(tm)[["season", "team_id", "fixture_id",
                                         "days_rest", "team_matches_14d"]],
                   on=["season", "team_id", "fixture_id"], how="left")

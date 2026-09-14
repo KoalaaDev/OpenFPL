@@ -307,3 +307,25 @@ def test_a_cache_that_does_not_reproduce_its_own_probe_is_rejected():
     assert not mm._probe_ok(probe, feats, good[0], good[1], _StubStart(0.5))
     # a cache written before the guard existed carries no probe: retrain
     assert not mm._probe_ok(None, feats, *good)
+
+
+def test_horizon_rest_counts_scheduled_matches_not_only_played_ones(conn):
+    """A live horizon two gameweeks out: the club's next match is scheduled
+    but unplayed. Rest and congestion for the target must come from the
+    calendar, or every far-horizon row reads as a month-long break — the
+    regime that put a backup keeper on 20 expected minutes (2026-09-15)."""
+    db.upsert(conn, "fixture", [
+        {"season": SEASON, "fixture_id": 7, "gw": 7, "kickoff_utc": "2025-10-10T14:00:00Z",
+         "team_h": 1, "team_a": 2},
+        {"season": SEASON, "fixture_id": 8, "gw": 8, "kickoff_utc": "2025-10-17T14:00:00Z",
+         "team_h": 2, "team_a": 1},
+    ])
+    conn.commit()
+    as_of = "2025-10-10T00:00:00Z"
+    df = mm._frame(conn, [SEASON], before=as_of, target=(SEASON, 7, as_of))
+    t = df[(df["_target"] == 1) & (df["player_id"] == 1)].iloc[0]
+    # last PLAYED match 2025-09-29 (the 10-13 row is after as_of and excluded);
+    # the SCHEDULED 10-06 match precedes the target and must count: 4 days'
+    # rest, not 11, and two matches in the previous fortnight, not one
+    assert t["days_rest"] == 4.0
+    assert t["team_matches_14d"] == 2.0

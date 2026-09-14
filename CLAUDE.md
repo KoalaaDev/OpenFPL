@@ -2028,6 +2028,21 @@ the fixture calendar, and the change-detection fingerprint includes the
 kickoff — without that, a settled side naming the same eleven for next week
 would have had **no** pre-deadline forecast on file for that gameweek.
 
+**4. Far-horizon minutes read every club as a month-long break.** Found by
+the owner on 2026-09-15 from the player card: a backup keeper's expected
+minutes ran 5 → 12 → 20 across the horizon while Haaland's ran 81 → 65.
+The minutes model's `days_rest` and `team_matches_14d` were built from
+PLAYED matches only, so for a gameweek two or more weeks out the club had
+"30 days' rest, no matches in 14" — the season-opener regime, where the
+model correctly expects fringe players to start more and regulars less.
+`_frame` now adds the season's SCHEDULED fixtures before the target's
+kickoff to the congestion table; a replay's target has every prior match
+played, so backtests are bit-identical
+(`test_horizon_rest_counts_scheduled_matches_not_only_played_ones`). The
+remaining horizon dips are real: 21 days' rest at an international break
+takes Haaland to ~68, which is what the training data says about the match
+after a break.
+
 ### Where the forward-collected tests stand (2026-27 GW3)
 
 `python -m fpl_engine lineup-feed --gw N` scores the archived RotoWire
