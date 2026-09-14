@@ -236,3 +236,105 @@ def defcon_factor_map(conn, season: str, fixtures: list, as_of: str) -> dict:
             for pos, b in betas.items():
                 out[(int(f["fixture_id"]), int(team), pos)] = float(np.clip(1.0 + b * (op - 50.0), 0.5, 1.8))
     return out
+
+
+# ---------------------------------------------------------------------------
+# Round 22b: the opponent's style reaches keepers (shot volume -> saves) and
+# midfielders (box touches allowed -> xG); forwards failed the gate
+# ---------------------------------------------------------------------------
+STYLE_STATS = {"saves": "shots_on", "att": "box_allowed"}     # kind -> club prior stat
+STYLE_POS = {"saves": ("GK",), "att": ("MID",)}
+
+
+def _club_priors(conn, as_of: str, cols: tuple) -> pd.DataFrame:
+    """Per (season, team_id): decayed prior of each stat (own, and what the
+    club ALLOWED - the other side's), strictly before as_of, shrunk (k0=5)
+    toward the club's own mean."""
+    st = pd.read_sql_query(
+        "SELECT event_urn, side, possession, shots, shots_on, touches_box, crosses FROM acq_bbc_match_stats", conn)
+    fm = fixture_map(conn)
+    if st.empty or fm.empty:
+        return pd.DataFrame()
+    d = st.merge(fm, on="event_urn")
+    d["team_id"] = np.where(d["side"] == "home", d["home_id"], d["away_id"])
+    other = d[["event_urn", "side", "shots", "shots_on", "touches_box", "crosses"]].copy()
+    other["side"] = np.where(other["side"] == "home", "away", "home")
+    other = other.rename(columns={"shots": "shots_allowed", "shots_on": "sot_allowed",
+                                  "touches_box": "box_allowed", "crosses": "crosses_allowed"})
+    d = d.merge(other, on=["event_urn", "side"])
+    cut = pd.Timestamp(as_of.replace("Z", "+00:00"))
+    d = d[d["kick"] < cut]
+    if d.empty:
+        return pd.DataFrame()
+    lam = np.log(2) / POSS_HALF_LIFE_DAYS
+    d = d.assign(w=np.exp(-lam * ((cut - d["kick"]) / pd.Timedelta(days=1)).clip(lower=0).astype(float)))
+    rows = []
+    for (season, tid), g in d.groupby(["season", "team_id"]):
+        r = {"season": str(season), "team_id": int(tid)}
+        for c in cols:
+            v = g[c].astype(float)
+            ok = v.notna()
+            if ok.sum() == 0:
+                r[c] = np.nan
+                continue
+            r[c] = float(((g.loc[ok, "w"] * v[ok]).sum() + POSS_K0 * v[ok].mean())
+                         / (g.loc[ok, "w"].sum() + POSS_K0))
+        rows.append(r)
+    return pd.DataFrame(rows)
+
+
+def style_factor_map(conn, season: str, fixtures: list, as_of: str) -> dict:
+    """(fixture_id, team_id, kind) -> multiplier. kind "saves": the OPPONENT's
+    prior shots on target relative to the league, times a slope fitted
+    within keeper on rows before as_of; kind "att": the opponent's prior box
+    touches allowed, likewise for midfielders' xG. Mean-preserving at the
+    league average; 1.0 wherever the archive is silent."""
+    try:
+        pri = _club_priors(conn, as_of, ("shots_on", "box_allowed"))
+    except Exception:      # noqa: BLE001
+        return {}
+    if pri.empty:
+        return {}
+    cur = pri[pri["season"] == season].set_index("team_id")
+    if cur.empty:
+        return {}
+    league = {c: float(cur[c].mean()) for c in ("shots_on", "box_allowed")}
+    cut = pd.Timestamp(as_of.replace("Z", "+00:00"))
+    pg = pd.read_sql_query(
+        "SELECT pg.season, pg.fixture_id, pg.player_id, pg.opponent_id, pg.minutes, pg.saves, pg.xg, "
+        "pg.kickoff_utc, p.position FROM player_gw pg JOIN player p ON p.season=pg.season AND "
+        "p.player_id=pg.player_id WHERE pg.minutes >= 60 AND p.position IN ('GK','MID')", conn)
+    pg["kick"] = pd.to_datetime(pg["kickoff_utc"], utc=True, errors="coerce")
+    pg = pg[pg["kick"] < cut]
+    # the regressor is the opponent's season-level club prior as of as_of: what the
+    # map applies at serve time, and cheap enough to refit every gameweek
+    pri_all = pri.rename(columns={"team_id": "opponent_id"})
+    pg = pg.merge(pri_all, on=["season", "opponent_id"], how="inner")
+    slopes = {}
+    for kind, stat in STYLE_STATS.items():
+        pos = STYLE_POS[kind][0]
+        g = pg[pg["position"] == pos].copy()
+        g["y"] = (g["saves"] if kind == "saves" else pd.to_numeric(g["xg"], errors="coerce")) / g["minutes"] * 90.0
+        g["x"] = np.log(g[stat].astype(float) / g.groupby("season")[stat].transform("mean"))
+        g = g.dropna(subset=["x", "y"])
+        if len(g) < 100:
+            continue
+        y = g["y"] - g.groupby(["season", "player_id"])["y"].transform("mean")
+        x = g["x"] - g.groupby(["season", "player_id"])["x"].transform("mean")
+        if x.std() == 0 or g["y"].mean() <= 0:
+            continue
+        slope = float((x * y).sum() / (x * x).sum()) / float(g["y"].mean())   # relative per log-unit
+        slopes[kind] = slope * len(g) / (len(g) + BETA_N0)
+    if not slopes:
+        return {}
+    out = {}
+    for f in fixtures:
+        for team, opp in ((f["team_h"], f["team_a"]), (f["team_a"], f["team_h"])):
+            if int(opp) not in cur.index:
+                continue
+            for kind, stat in STYLE_STATS.items():
+                if kind not in slopes or pd.isna(cur.loc[int(opp), stat]) or league[stat] <= 0:
+                    continue
+                rel = np.log(float(cur.loc[int(opp), stat]) / league[stat])
+                out[(int(f["fixture_id"]), int(team), kind)] = float(np.clip(1.0 + slopes[kind] * rel, 0.5, 1.8))
+    return out

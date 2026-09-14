@@ -135,3 +135,27 @@ def test_defcon_factor_scales_with_the_opponents_prior_possession():
     if betas:      # too few rows here to fit a slope reliably; the map is then empty
         assert m[(5, 1, "DEF")] > 1.0 > m[(5, 2, "DEF")]
     assert bc.defcon_factor_map(c, "2025-26", [{"fixture_id": 9, "team_h": 7, "team_a": 8}], "2025-09-19T00:00:00Z") == {} or True
+
+
+def test_style_factor_map_is_silent_without_the_archive_and_bounded_with_it():
+    c = _conn()
+    assert bc.style_factor_map(c, "2025-26", [{"fixture_id": 5, "team_h": 1, "team_a": 2}], "2025-09-19T00:00:00Z") == {}
+    c.executescript("""
+    ALTER TABLE acq_bbc_match_stats ADD COLUMN possession REAL;
+    ALTER TABLE acq_bbc_match_stats ADD COLUMN shots INTEGER;
+    ALTER TABLE acq_bbc_match_stats ADD COLUMN shots_on INTEGER;
+    ALTER TABLE acq_bbc_match_stats ADD COLUMN touches_box INTEGER;
+    ALTER TABLE acq_bbc_match_stats ADD COLUMN crosses INTEGER;
+    ALTER TABLE player_gw ADD COLUMN minutes REAL; ALTER TABLE player_gw ADD COLUMN saves REAL;
+    ALTER TABLE player_gw ADD COLUMN xg REAL; ALTER TABLE player_gw ADD COLUMN opponent_id INTEGER;
+    ALTER TABLE player_gw ADD COLUMN kickoff_utc TEXT; ALTER TABLE player_gw ADD COLUMN player_id INTEGER;
+    ALTER TABLE player ADD COLUMN position TEXT;
+    """)
+    for gw in (1, 2, 3, 4):
+        c.execute("INSERT INTO acq_bbc_match_stats (event_urn, team, side, xg_open, xg_set, possession, shots, shots_on, touches_box, crosses) VALUES (?,?,?,?,?,?,?,?,?,?)",
+                  (f"urn:ev:{gw}", "Arsenal", "home", 1.0, 0.5, 60, 18, 8, 30, 20))
+        c.execute("INSERT INTO acq_bbc_match_stats (event_urn, team, side, xg_open, xg_set, possession, shots, shots_on, touches_box, crosses) VALUES (?,?,?,?,?,?,?,?,?,?)",
+                  (f"urn:ev:{gw}", "Tottenham Hotspur", "away", 0.5, 0.2, 40, 6, 2, 10, 8))
+    m = bc.style_factor_map(c, "2025-26", [{"fixture_id": 5, "team_h": 1, "team_a": 2}], "2025-09-19T00:00:00Z")
+    # too few player rows to fit a slope -> no factors; never an exception
+    assert all(0.5 <= v <= 1.8 for v in m.values())

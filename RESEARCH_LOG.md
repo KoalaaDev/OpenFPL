@@ -1721,3 +1721,44 @@ is the first arm whose verdict is a sample-size wait rather than a null.
 The same construction (opponent style x component mechanism) applies to
 GK saves vs opponent shot volume and defenders' clearances vs crosses,
 untested.
+
+## E26. Opponent style for keepers, forwards and midfielders (E25 extended)
+
+The owner asked for the DefCon construction on keepers and forwards
+(2026-09-15). Gate (`research/style_gate.py`, within player-season, errors
+clustered by fixture, the strength control = the opponent's prior xG for
+keepers / xG against for attackers):
+
+* **Keepers**: the opponent's prior shots on target add saves with its xG
+  present (+0.21 saves/90 per SoT, p=0.044) and xG then loses significance;
+  top-quartile shot-volume opponents give +0.6 saves/90 over the bottom
+  quartile (about 0.2 points). The engine scales saves by lambda_against^0.6
+  only.
+* **Forwards**: nothing beyond the opponent's xGA — possession p=0.88,
+  shots allowed p=0.12, box touches allowed p=0.10 (n=1,217). Killed.
+* **Midfielders**: the box touches an opponent allows raise xG/90 beyond its
+  xGA (t=4.1, p<0.0001; shots allowed t=3.6) and carry to points/90
+  (p=0.004). Nothing in the engine reacts to it.
+
+**Arm `style`** (`bbc_context.style_factor_map`): the opponent's decayed
+prior shots on target (keepers' saves) and box touches allowed (midfielders'
+xG), relative to the league, times a slope fitted within player on rows
+before as_of (shrunk, n0=500); multipliers 0.65-1.28; forwards excluded.
+74 paired gameweeks, combined and ablated:
+
+| arm | spearman_played | top11 | top30 | captain | def_top5 | spearman |
+|---|---|---|---|---|---|---|
+| style (both) | +0.0009 (0.61) | **+0.17 (0.046)**; 25-26 +0.34** / 24-25 +0.01 | +0.02 | **+0.69 (0.048)**; 24-25 +0.97* / 25-26 +0.41 | +0.25 (0.028) | −0.0009*** |
+| keepers only | +0.0011 | +0.06 (0.45); 25-26 +0.22* / 24-25 −0.11 | +0.04 | +0.36 | +0.25 (0.028) | −0.0007** |
+| midfielders only | +0.0008 | **+0.17 (0.048)**; 25-26 +0.34** / 24-25 +0.01 | +0.01 | **+0.69 (0.048)** | +0.17 | −0.0009*** |
+
+The midfielder half carries the pair. Read with the standing rules: the
+bar is `spearman_played` or top-30 and neither moves; the top-11 gain
+lives in one season and the captain gain in the other, and captain points
+need ~2,000 gameweeks to resolve a 0.4-point edge (E1). Two p~0.048 results
+among eight metrics and three arms are what noise looks like. The
+`spearman` loss (−0.0009, p<0.001) is real but a reshuffle among fringe
+players. **Not shipped**; env-gated (`$FPL_XPTS_VARIANT=style`,
+`style_gk`, `style_mid`) and queued with `defcon_style` for re-test as
+2026-27 accrues. The mechanism for midfielders is measured and the arm is
+the right shape; the decision value is unresolved at n=74.

@@ -2385,7 +2385,16 @@ the paired test is 37 gameweeks: top-30 +0.106 pts/pick (p=0.077), top-11
 significant. Not shipped; env-gated; **re-run when 2026-27 adds
 gameweeks** — a sample-size wait, not a null (RESEARCH_LOG E25). The
 per-minute BBC momentum series is one request per match if a use appears;
-in-match flow has no pre-deadline use so far.
+in-match flow has no pre-deadline use so far. **Extended to keepers,
+forwards and midfielders (E26):** forwards fail the gate (nothing beyond
+the opponent's xGA); keepers' saves rise with the opponent's shot volume
+beyond its xG (p=0.044) and midfielders' xG with the box touches an
+opponent allows (p<0.0001). The `style` arm (`style_gk` / `style_mid`
+ablations) scores top-11 +0.17 pts/pick (p=0.046) and captain +0.69
+(p=0.048), carried by the midfielder half, with `spearman_played` and
+top-30 flat and each gain living in a different season. Not shipped:
+two borderline p-values on noisy metrics among many; queued for re-test
+with `defcon_style`.
 
 ## Two sessions on 2026-09-14: how the branches reconcile
 

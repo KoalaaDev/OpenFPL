@@ -55,6 +55,9 @@ def variants() -> set[str]:
                   club-mates in proportion ($FPL_SPILL_F, default 1.0)
       defcon_style the opponent's prior possession scales the DefCon
                   crossing rate (Round 22; slope fitted point-in-time)
+      style       the opponent's prior shots on target scale a keeper's
+                  saves and its box touches allowed a midfielder's xG
+                  (Round 22b; slopes fitted point-in-time)
     """
     import os
     return {v.strip() for v in os.environ.get("FPL_XPTS_VARIANT", "").split(",")
@@ -440,6 +443,16 @@ def xpts_predict_gw(conn, season: str, gw: int, *, as_of: str | None = None,
         # opponent's prior matches; slope fitted point-in-time
         from . import bbc_context as _bc2
         dc_map = _bc2.defcon_factor_map(conn, season, fixtures, as_of)
+    style_map: dict = {}
+    if "style" in var or "style_gk" in var or "style_mid" in var:
+        # Round 22b: the opponent's prior shot volume scales a keeper's saves
+        # and its box touches allowed scale a midfielder's xG (forwards failed
+        # the gate); slopes fitted point-in-time within player
+        from . import bbc_context as _bc3
+        style_map = _bc3.style_factor_map(conn, season, fixtures, as_of)
+        if "style" not in var:          # ablations: one half at a time
+            keep = "saves" if "style_gk" in var else "att"
+            style_map = {k: v for k, v in style_map.items() if k[2] == keep}
     if "spill" in var or "absent_zero" in var:
         from . import absence as _abs
         _out_ids = _abs.known_out_ids(conn, season, gw, as_of)
@@ -486,6 +499,8 @@ def xpts_predict_gw(conn, season: str, gw: int, *, as_of: str | None = None,
             if def_att_exp is not None and pos == "DEF":
                 scaler = scaler ** float(def_att_exp)
             g = xg90 * exposure * scaler
+            if style_map and pos == "MID":
+                g *= style_map.get((fid, r.team_id, "att"), 1.0)
             if sp_map:
                 _sp = sp_map.get((fid, r.team_id))
                 if _sp:
@@ -518,6 +533,8 @@ def xpts_predict_gw(conn, season: str, gw: int, *, as_of: str | None = None,
             if pos == "GK":
                 sv = float(np.clip((lam_against / league) ** SAVES_OPP_EXP,
                                    *SAVES_OPP_CAP))
+                if style_map:
+                    sv *= style_map.get((fid, r.team_id, "saves"), 1.0)
                 _sv = _e_floor_div((r.saves90 or 0.0) * exposure * sv,
                                    rules["saves_per_point"])
                 total += _sv
