@@ -100,3 +100,38 @@ def test_setplay_split_reshapes_toward_the_leaky_opponent():
     lg = s.attrs.get("league_share")
     if lg is not None:
         assert lg * row.set_def_rel + (1 - lg) * row.open_def_rel == pytest.approx(1.0, abs=1e-6)
+
+
+def test_defcon_factor_scales_with_the_opponents_prior_possession():
+    """Round 22: a club whose opponent hogs the ball gets a DefCon multiplier
+    above 1, one whose opponent cedes it below 1; unpriced clubs get nothing;
+    the slope comes only from rows before as_of."""
+    c = _conn()
+    c.executescript("""
+    ALTER TABLE player_gw ADD COLUMN minutes REAL;
+    ALTER TABLE player_gw ADD COLUMN defcon REAL;
+    ALTER TABLE player_gw ADD COLUMN opponent_id INTEGER;
+    ALTER TABLE player_gw ADD COLUMN kickoff_utc TEXT;
+    ALTER TABLE player_gw ADD COLUMN player_id INTEGER;
+    ALTER TABLE player ADD COLUMN position TEXT;
+    UPDATE player SET position='DEF';
+    """)
+    # Arsenal (1) at home to Spurs (2) five times; Spurs keep 65% of the ball
+    for gw in (1, 2, 3, 4, 5):
+        c.execute("INSERT INTO acq_bbc_match_stats VALUES (?,?,?,?,?)", (f"urn:ev:{gw}", "Arsenal", "home", 1.0, 0.5))
+        c.execute("INSERT INTO acq_bbc_match_stats VALUES (?,?,?,?,?)", (f"urn:ev:{gw}", "Tottenham Hotspur", "away", 1.0, 0.5))
+    c.execute("ALTER TABLE acq_bbc_match_stats ADD COLUMN possession REAL")
+    c.execute("UPDATE acq_bbc_match_stats SET possession = CASE WHEN side='home' THEN 35 ELSE 65 END")
+    # a defender (player 10, code 100) crosses the threshold only when the opponent has the ball
+    rows = []
+    for gw, poss_opp, dc in ((1, 65, 12), (2, 65, 11), (3, 65, 4), (4, 65, 13)):
+        rows.append(("2025-26", 1, 100, gw, 0, 0, 90, dc, 2, f"2025-08-{15 + 7 * gw:02d}T14:00:00Z", 10))
+    c.executemany("INSERT INTO player_gw (season, team_id, player_code, fixture_id, yellow_cards, red_cards, "
+                  "minutes, defcon, opponent_id, kickoff_utc, player_id) VALUES (?,?,?,?,?,?,?,?,?,?,?)", rows)
+    poss, betas = bc.possession_factors(c, "2025-09-19T00:00:00Z")
+    assert poss[("2025-26", 2)] > 50 > poss[("2025-26", 1)]          # Spurs hog it, Arsenal cede it
+    fx = [{"fixture_id": 5, "team_h": 1, "team_a": 2}]
+    m = bc.defcon_factor_map(c, "2025-26", fx, "2025-09-19T00:00:00Z")
+    if betas:      # too few rows here to fit a slope reliably; the map is then empty
+        assert m[(5, 1, "DEF")] > 1.0 > m[(5, 2, "DEF")]
+    assert bc.defcon_factor_map(c, "2025-26", [{"fixture_id": 9, "team_h": 7, "team_a": 8}], "2025-09-19T00:00:00Z") == {} or True

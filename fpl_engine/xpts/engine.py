@@ -53,6 +53,8 @@ def variants() -> set[str]:
                   $FPL_ABSENCE_KINDS) get zero exposure
       spill       absent_zero, plus their attacking share handed to their
                   club-mates in proportion ($FPL_SPILL_F, default 1.0)
+      defcon_style the opponent's prior possession scales the DefCon
+                  crossing rate (Round 22; slope fitted point-in-time)
     """
     import os
     return {v.strip() for v in os.environ.get("FPL_XPTS_VARIANT", "").split(",")
@@ -430,6 +432,14 @@ def xpts_predict_gw(conn, season: str, gw: int, *, as_of: str | None = None,
         if "setplay" not in var:
             sp_map = {}
         pos_set_share = _bc.POS_SET_SHARE if sp_map else {}
+    dc_map: dict = {}
+    if "defcon_style" in var:
+        # Round 22: a player's DefCon crossing rate scales with the OPPONENT's
+        # possession (measured within player: DEF +4.2 points of crossing
+        # probability per 10 points of possession, MID +1.9), from the
+        # opponent's prior matches; slope fitted point-in-time
+        from . import bbc_context as _bc2
+        dc_map = _bc2.defcon_factor_map(conn, season, fixtures, as_of)
     if "spill" in var or "absent_zero" in var:
         from . import absence as _abs
         _out_ids = _abs.known_out_ids(conn, season, gw, as_of)
@@ -528,8 +538,9 @@ def xpts_predict_gw(conn, season: str, gw: int, *, as_of: str | None = None,
             comp["bonus"] += (r.bonus_resid90 or 0.0) * exposure
             total += (r.yellow_cards90 or 0.0) * exposure * rules["card"]["yellow"] * _rf
             comp["cards"] += (r.yellow_cards90 or 0.0) * exposure * rules["card"]["yellow"] * _rf
-            total += (r.defcon_cross90 or 0.0) * exposure * dc_pts
-            comp["defcon"] += (r.defcon_cross90 or 0.0) * exposure * dc_pts
+            _dcf = dc_map.get((fid, r.team_id, pos), 1.0) if dc_map else 1.0
+            total += (r.defcon_cross90 or 0.0) * exposure * dc_pts * _dcf
+            comp["defcon"] += (r.defcon_cross90 or 0.0) * exposure * dc_pts * _dcf
             total += (r.residual90 or 0.0) * exposure
             comp["residual"] += (r.residual90 or 0.0) * exposure
             total += (r.p_sub or 0.0) * p_app_any + (r.p_full or 0.0) * p_app_60

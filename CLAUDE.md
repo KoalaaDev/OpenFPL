@@ -2370,6 +2370,23 @@ read; regenerate audits for the new baseline before the next residual
 gate). Serve-time absences come from FPL's
 change log (`absence.py` kind `fpl`) plus bans and Transfermarkt spells.
 
+### Round 22: opponent possession and the DefCon rate — real, unproven at n=37
+
+Team style moves nothing at the fixture level (E12; the market encompasses
+the team model) — but a COMPONENT whose mechanism depends on the opponent
+can still carry it. Within player, a defender clears the DefCon threshold
+16% of the time against opponents under 40% possession and 37% over 60%
+(+4.2 points per 10 points, p=5e-12; midfielders +1.9), and opponent
+possession is predictable (r=0.48). `defcon_style` scales the crossing
+rate by the opponent's prior possession with a slope fitted point-in-time
+within player (multipliers 0.82-1.19). DefCon exists from 2025-26 only, so
+the paired test is 37 gameweeks: top-30 +0.106 pts/pick (p=0.077), top-11
++0.135 (p=0.14), every decision metric leaning the right way, none
+significant. Not shipped; env-gated; **re-run when 2026-27 adds
+gameweeks** — a sample-size wait, not a null (RESEARCH_LOG E25). The
+per-minute BBC momentum series is one request per match if a use appears;
+in-match flow has no pre-deadline use so far.
+
 ## Two sessions on 2026-09-14: how the branches reconcile
 
 The defender studies (E16-E18) and this branch's Rounds 17-20 (RESEARCH_LOG

@@ -1672,3 +1672,52 @@ GW4-9, server restarted 2026-09-14 evening. Baseline rotated:
 `data/bt_base` = the `sel_core` replay, previous baseline in
 `data/bt_base_pre_r21` (audits there; regenerate for the new baseline before
 the next audit-based gate). Tests: `tests/test_selection_features.py`.
+
+## E25. Does the opponent's style reach a player? DefCon and possession
+
+The owner asked (2026-09-15) whether the timestamped in-match data (touches,
+attacks, possession over time) could make the model "understand each club's
+gameplay". What is held: per-team match totals for every archived match
+(possession, shots split, box touches, crosses, corners, tackles,
+clearances, distance, sprint share; Opta xG open/set from Dec 2024), per-
+player match stats and formation slots, the timestamped live text; not yet
+collected: BBC's per-minute momentum series; empty: Understat's shot log.
+Every team-STYLE feature tried so far (E12: pressing, deep completions,
+formation, manager; E9-round game state) moved nothing, because style
+reaches a player through the fixture rate and the market encompasses the
+team model there. The one place it can bite is a component whose mechanism
+depends on the opponent — and DefCon is the rate E14 found headroom in.
+
+**Gate (mechanism).** 7,711 player-matches with DefCon counts (2025-26,
+2026-27), 60+ minutes, within player-season: a defender's threshold
+crossing runs **16% against opponents under 40% possession to 37% over
+60%**, +4.2 points per 10 points of possession (p=5e-12; +0.42 actions/90);
+midfielders +1.9 per 10 (p=2e-4). Opponent possession is predictable from
+its own prior matches (r=0.48). The engine's DefCon term is a flat per-90
+rate x exposure with no opponent term.
+
+**Arm `defcon_style`** (`bbc_context.possession_factors`, engine variant):
+the opponent's decayed prior possession (k0=5 toward 50) times a per-
+position slope fitted WITHIN PLAYER on rows strictly before as_of (shrunk,
+n0=500) — point-in-time throughout; multipliers 0.82-1.19 on the crossing
+rate. DefCon exists only from 2025-26, so the paired test is **37
+gameweeks**, not 74 (2024-25 is bit-identical by construction):
+
+| metric | delta | p |
+|---|---|---|
+| spearman_played | +0.0009 | 0.73 |
+| top-30 pts/pick | **+0.106** | 0.077 |
+| top-11 pts/pick | +0.135 | 0.14 |
+| captain | +0.41 | 0.20 |
+| def_spearman_played | +0.0076 | 0.11 |
+| spearman | −0.0008 | 0.003 |
+
+Every decision metric leans the right way and none clears the bar at
+n=37; the top-30 gain is the size of a shipped change (Round 17's was
++0.04) with half the sample. **Not shipped**; kept env-gated
+(`$FPL_XPTS_VARIANT=defcon_style`, `tests/test_round20_context.py`) and
+re-tested when 2026-27 has accrued — every gameweek adds power, and this
+is the first arm whose verdict is a sample-size wait rather than a null.
+The same construction (opponent style x component mechanism) applies to
+GK saves vs opponent shot volume and defenders' clearances vs crosses,
+untested.

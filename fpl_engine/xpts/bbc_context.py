@@ -149,3 +149,90 @@ def factor_maps(conn, season: str, fixture_ids: list[int]) -> tuple[dict, dict]:
     except Exception:      # noqa: BLE001
         sp = {}
     return ref, sp
+
+
+# ---------------------------------------------------------------------------
+# Round 22: the opponent's possession scales a player's DefCon crossing rate
+# ---------------------------------------------------------------------------
+POSS_HALF_LIFE_DAYS = 240.0
+POSS_K0 = 5.0          # matches of shrinkage toward 50% possession
+BETA_N0 = 500.0        # rows of shrinkage on the fitted slope toward 0
+
+
+def possession_factors(conn, as_of: str) -> tuple[dict, dict]:
+    """({(season, team_id): the club's prior possession, decayed and shrunk
+    to 50, from matches strictly before ``as_of``}, {position: relative
+    change in a player's DefCon crossing rate per point of OPPONENT
+    possession, fitted within player on rows before ``as_of`` and shrunk
+    toward zero}). Both point-in-time; keyed by club so an unplayed fixture
+    (the live horizon) is priced from the `fixture` table's team ids."""
+    st = pd.read_sql_query(
+        "SELECT event_urn, side, possession FROM acq_bbc_match_stats WHERE possession IS NOT NULL", conn)
+    fm = fixture_map(conn)
+    if st.empty or fm.empty:
+        return {}, {}
+    d = st.merge(fm, on="event_urn")
+    d["team_id"] = np.where(d["side"] == "home", d["home_id"], d["away_id"])
+    cut = pd.Timestamp(as_of.replace("Z", "+00:00")) if as_of else None
+    if cut is not None:
+        d = d[d["kick"] < cut]
+    if d.empty:
+        return {}, {}
+    lam = np.log(2) / POSS_HALF_LIFE_DAYS
+    ref = cut if cut is not None else d["kick"].max()
+    d = d.assign(age=((ref - d["kick"]) / pd.Timedelta(days=1)).astype(float))
+    d["w"] = np.exp(-lam * d["age"].clip(lower=0))
+    g = d.groupby(["season", "team_id"])
+    prior = ((g.apply(lambda x: (x["w"] * x["possession"]).sum()) + POSS_K0 * 50.0)
+             / (g["w"].sum() + POSS_K0))
+    poss = {(str(k[0]), int(k[1])): float(v) for k, v in prior.items()}
+    # the slope, within player-season, on rows before as_of (DefCon era only)
+    pg = pd.read_sql_query(
+        "SELECT pg.season, pg.fixture_id, pg.player_id, pg.opponent_id, pg.minutes, pg.defcon, "
+        "pg.kickoff_utc, p.position FROM player_gw pg JOIN player p ON p.season=pg.season AND "
+        "p.player_id=pg.player_id WHERE pg.defcon IS NOT NULL AND pg.minutes >= 60 "
+        "AND p.position IN ('DEF','MID')", conn)
+    betas: dict = {}
+    if len(pg):
+        pg["kick"] = pd.to_datetime(pg["kickoff_utc"], utc=True, errors="coerce")
+        if cut is not None:
+            pg = pg[pg["kick"] < cut]
+        real = d[["season", "fixture_id", "team_id", "possession"]].rename(
+            columns={"team_id": "opponent_id", "possession": "opp_poss"})
+        pg = pg.merge(real, on=["season", "fixture_id", "opponent_id"])
+        thr = {"DEF": 10, "MID": 12}
+        pg["cross"] = (pg["defcon"] >= pg["position"].map(thr)).astype(float)
+        for pos, gg in pg.groupby("position"):
+            if len(gg) < 50:
+                continue
+            y = gg["cross"] - gg.groupby(["season", "player_id"])["cross"].transform("mean")
+            x = gg["opp_poss"] - gg.groupby(["season", "player_id"])["opp_poss"].transform("mean")
+            if x.std() == 0:
+                continue
+            slope = float((x * y).sum() / (x * x).sum())
+            base = float(gg["cross"].mean())
+            if base <= 0:
+                continue
+            betas[pos] = (slope / base) * len(gg) / (len(gg) + BETA_N0)
+    return poss, betas
+
+
+def defcon_factor_map(conn, season: str, fixtures: list, as_of: str) -> dict:
+    """(fixture_id, team_id, position) -> multiplier on the DefCon crossing
+    rate, 1 + beta_pos * (opponent prior possession - 50), clipped; built
+    from the gameweek's fixtures (dicts with fixture_id, team_h, team_a)."""
+    try:
+        poss, betas = possession_factors(conn, as_of)
+    except Exception:      # noqa: BLE001
+        return {}
+    if not poss or not betas:
+        return {}
+    out = {}
+    for f in fixtures:
+        for team, opp in ((f["team_h"], f["team_a"]), (f["team_a"], f["team_h"])):
+            op = poss.get((season, int(opp)))
+            if op is None:
+                continue
+            for pos, b in betas.items():
+                out[(int(f["fixture_id"]), int(team), pos)] = float(np.clip(1.0 + b * (op - 50.0), 0.5, 1.8))
+    return out
