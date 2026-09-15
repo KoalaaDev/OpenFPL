@@ -830,3 +830,4 @@
 {"chance_next": 1.0, "code": 487053, "news": null, "news_added": "2026-09-11T18:00:09.092110Z", "observed_utc": "2026-09-15T00:43:50.962615+00:00", "player_id": 506, "season": "2026-27", "status": "a", "web_name": "Udogie"}
 {"chance_next": 0.5, "code": 428580, "news": "Hand injury - 50% chance of playing", "news_added": "2026-09-15T09:00:07.851220Z", "observed_utc": "2026-09-15T09:30:27.798838+00:00", "player_id": 104, "season": "2026-27", "status": "d", "web_name": "Onyeka"}
 {"chance_next": 0.25, "code": 232653, "news": "Thigh injury - 25% chance of playing", "news_added": "2026-09-15T09:00:08.191022Z", "observed_utc": "2026-09-15T09:30:27.798838+00:00", "player_id": 456, "season": "2026-27", "status": "d", "web_name": "J.Ramsey"}
+{"chance_next": 1.0, "code": 463067, "news": null, "news_added": "2026-08-26T16:00:07.608056Z", "observed_utc": "2026-09-15T15:06:39.760309+00:00", "player_id": 125, "season": "2026-27", "status": "a", "web_name": "Georginio"}
