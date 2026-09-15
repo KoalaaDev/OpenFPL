@@ -1249,3 +1249,42 @@ The pre-registered accrual continues: removal precision needs ~10 gameweeks
 (~1-3 removals each), the TPR/FPR + calibration battery is powered after ~5.
 From GW4 the soft arm's LRs are fitted on scored gameweeks only (GW3 gives
 LR+ ≈ 18.7, far above the default 4 — the first refit will sharpen it).
+
+### E17, GW4 scored — the removal lands, the arms overreach
+
+Archive 2,420 rows; 902 pre-deadline predicted rows for GW4; 220/220 matched.
+The soft arm ran on LRs fitted forward-in-time on GW3 only (in-XI ×18.9,
+out ÷10.0) — the first refit, and the week's lesson.
+
+**The one removal was right.** The deadline snapshot again removed exactly
+one rank-5-30 player: Gakpo, rank 5, model P(start) 0.94 — and this time he
+did not start. Removal precision to date: **1/2**, each at model P(start)
+≥ 0.94, which is exactly the phantom-starter channel E16 priced. The feed
+also beat the model on false-starter rate at every band this week (0.118 vs
+0.137 overall; 0.080 vs 0.115 ranks 5-30; 0.20 vs 0.27 ranks 5-15).
+
+**And every feed arm still scored worse.**
+
+| GW4 | top11 | top30 | ll_start | note |
+|---|---|---|---|---|
+| baseline | 5.64 | 5.17 | 0.2492 | |
+| hard | 5.45 | 4.93 | 1.0896 | right about Gakpo, wrong about enough else |
+| soft (LR 18.9/10.0) | 5.09 | 4.60 | 0.3138 | **worse than baseline** |
+| oracle | **5.64** | 5.50 | 0 | perfect minutes tied baseline on top11 |
+
+Two reads. First, the oracle row: this was a week where perfect minutes
+was worth ZERO at the top of the board — baseline's top eleven were already
+the right eleven — so any feed-driven perturbation could only tie or lose.
+Such weeks exist (E16's per-gw oracle gains have wide spread) and they are
+why single gameweeks prove nothing in either direction. Second, the LR
+overfit: one gameweek of feed history said LR+ ≈ 19, GW4's realised quality
+was lower (TPR 0.88, FPR 0.059), and the overconfident update pushed start
+log-loss above baseline (oracle_share_ll −0.26 this week). The fix is
+already in the design — the LRs pool over all prior scored gameweeks, so
+the estimate stabilises as n grows — but the honest note is that with ONE
+prior gameweek the fitted soft arm was worse than the naive LR=4 default.
+
+**Accrual to date (2 gameweeks):** pooled TPR ≈ 0.89, FPR ≈ 0.054; removals
+2, precision 1/2; hard vs baseline top11 +0.18/−0.18, soft +0.09/−0.55;
+soft ll_start −12%/+26%. Nothing resolvable, exactly as pre-registered —
+the battery needs ~5 gameweeks for calibration and ~10 for removals.
