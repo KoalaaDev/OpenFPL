@@ -7,6 +7,7 @@ import MiniLeague from './tabs/MiniLeague'
 import Solver from './tabs/Solver'
 import Prices from './tabs/Prices'
 import Deadline from './tabs/Deadline'
+import Live from './tabs/Live'
 import MyTeamModal from './components/MyTeamModal'
 import AccountMenu from './components/AccountMenu'
 import { BrandMark, Wordmark } from './components/Brand'
@@ -30,8 +31,23 @@ export default function App() {
   const openTab = (t) => { setVisited((v) => (v[t] ? v : { ...v, [t]: true })); setTab(t) }
   const { booted, status, setStatus, entryId, setEntryId, entry, toast, setToast,
           refreshProjections, isAdmin } = useStore()
-  // the deadline desk is the operator's view; the tab exists only for admins
-  const tabs = isAdmin ? [...TABS, ['Deadline', '🛰']] : TABS
+  /* The Live desk is not a permanent tab: it appears 24 h before a deadline
+     and stays six hours past it, then goes away (`app/live.py` owns that
+     window, `status.live` reports it). A tab that is only there when there is
+     something to do reads as a signal; one that is always there is furniture. */
+  const live = status?.live
+  // admins keep it on screen outside the window so the desk can be checked
+  // (and fixed) on a Tuesday rather than an hour before a deadline
+  const liveOn = !!live && (live.phase !== 'idle' || isAdmin)
+  const tabs = [
+    ...(liveOn ? [['Live', '🔴']] : []),
+    ...TABS,
+    ...(isAdmin ? [['Deadline', '🛰']] : []),
+  ]
+  // a window that opens while you are sitting on the page still gets mounted
+  useEffect(() => {
+    if (liveOn) setVisited((v) => (v.Live ? v : { ...v, Live: true }))
+  }, [liveOn])
   const [refreshing, setRefreshing] = useState(false)
   const [teamModal, setTeamModal] = useState(false)
 
@@ -44,6 +60,10 @@ export default function App() {
     if (r === 'cancelled') setToast({ kind: 'info', msg: 'Sign-in cancelled.' })
     window.history.replaceState({}, '', window.location.pathname)
   }, [setToast])
+
+  useEffect(() => {
+    if (tab === 'Live' && !liveOn) setTab('Planner')
+  }, [tab, liveOn])                  // eslint-disable-line react-hooks/exhaustive-deps
 
   const doRefresh = async () => {
     if (refreshing) return
@@ -87,8 +107,13 @@ export default function App() {
         </div>
         <nav className="tabs">
           {tabs.map(([t]) => (
-            <button key={t} className={`tab ${tab === t ? 'active' : ''}`}
-              onClick={() => openTab(t)}>{t}</button>
+            <button key={t}
+              className={`tab ${tab === t ? 'active' : ''} ${t === 'Live' ? `live-tab ${live.phase}` : ''}`}
+              onClick={() => openTab(t)}>
+              {t === 'Live' && <i className="live-dot" aria-hidden="true" />}
+              {t === 'Live' && live.phase === 'closed' ? 'Live · over'
+                : t === 'Live' && live.phase === 'idle' ? 'Live · preview' : t}
+            </button>
           ))}
         </nav>
         <div className="right">
@@ -113,9 +138,10 @@ export default function App() {
       </header>
 
       <main className={`page ${tab === 'Mini League' ? 'wide' : ''}`}>
-        {!entryId && tab !== 'Fixtures' && tab !== 'Prices' && (
+        {!entryId && !['Fixtures', 'Prices', 'Live'].includes(tab) && (
           <Welcome setEntryId={setEntryId} openTeam={() => setTeamModal(true)} />
         )}
+        {visited.Live && liveOn && <Pane on={tab === 'Live'}><Live /></Pane>}
         {visited.Planner && <Pane on={tab === 'Planner'}><Planner /></Pane>}
         {visited.Projections && <Pane on={tab === 'Projections'}><Projections /></Pane>}
         {visited.Fixtures && <Pane on={tab === 'Fixtures'}><Fixtures /></Pane>}
