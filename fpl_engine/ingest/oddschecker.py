@@ -231,7 +231,7 @@ def _fixture_lookup(conn, season: str) -> dict:
         (season,))}
 
 
-def ingest(conn, season: str, *, client=None, max_fixtures: int = 20,
+def ingest(conn, season: str, *, client=None, max_fixtures: int = 40,
            pages: dict | None = None) -> dict:
     """Fetch the index and each upcoming fixture's page, derive, store.
     ``pages`` ({url: html}) injects fetched pages for tests."""
@@ -247,6 +247,11 @@ def ingest(conn, season: str, *, client=None, max_fixtures: int = 20,
         urls = parse_index(index or "")
     else:
         urls = [u for u in pages if u != INDEX_URL]
+    # The index lists the current round only; every match page names its
+    # sibling fixtures, which reach into the NEXT round (bookmakers price
+    # about two rounds ahead). Follow them, once, bounded by max_fixtures.
+    queue = list(urls)
+    seen_urls = set(urls)
     out = {"fixtures": 0, "props": 0, "unresolved": [], "errors": 0}
     now = datetime.now(timezone.utc).isoformat()
     archive = os.path.join(config.DATA_DIR, "collected", "oddschecker", f"{season}.csv")
@@ -257,7 +262,8 @@ def ingest(conn, season: str, *, client=None, max_fixtures: int = 20,
         if new_file:
             w.writerow(["observed_utc", "fixture_id", "home", "away", "kickoff_utc", "kind", "player",
                         "prob", "best_odds", "median_odds", "n_bookmakers", "site_prob"])
-        for url in urls[:max_fixtures]:
+        while queue and out["fixtures"] + out["errors"] < max_fixtures:
+            url = queue.pop(0)
             html = pages.get(url) if pages is not None else cl.get(url)
             if not html:
                 out["errors"] += 1
@@ -266,6 +272,11 @@ def ingest(conn, season: str, *, client=None, max_fixtures: int = 20,
             if not m or not m.get("home"):
                 out["errors"] += 1
                 continue
+            for sib in m.get("siblings") or []:
+                su = f"{BASE}/{sib.lstrip('/')}"
+                if sib and su not in seen_urls and (pages is None or su in pages):
+                    seen_urls.add(su)
+                    queue.append(su)
             try:
                 hn = _resolve(m["home"], fpl_names)
                 an = _resolve(m["away"], fpl_names)
