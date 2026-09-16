@@ -138,7 +138,17 @@ def _pressers(conn, season: str, gw: int, pl: dict, tm: dict) -> list[dict]:
 
 
 def _lineups(conn, season: str, gw: int, pl: dict, tm: dict, start_p: dict) -> dict:
-    """RotoWire's latest predicted XI per club against the model's P(start)."""
+    """RotoWire's latest predicted XI per club against the model's P(start).
+
+    `lineup_feed.resolve` wants the same frame the backtest gives it —
+    full_name, web_name and the club's short_name — and returns a TRIPLE
+    (resolved, unresolved, mismatched) keyed by (team, name). Feeding it the
+    trimmed frame this desk had built raised KeyError on the first line and
+    the bare `except` turned that into "0 resolved" for every club, which then
+    read as though the feed disagreed with the model about 175 players. An
+    entity-resolution failure must never be able to present itself as a
+    finding — so the note now says which it is.
+    """
     from fpl_engine import lineup_feed as lf
     try:
         archive = lf.load_archive(season)
@@ -147,35 +157,55 @@ def _lineups(conn, season: str, gw: int, pl: dict, tm: dict, start_p: dict) -> d
     if archive.empty:
         return {"clubs": [], "note": "no lineup archive yet"}
     forecasts = lf.pre_deadline_forecasts(archive, gw, pd.Timestamp.now(tz="UTC"))
-    players = pd.DataFrame([{"player_id": pid, "web_name": v["name"], "team_id": v["team_id"]}
-                            for pid, v in pl.items()])
+    if not forecasts:
+        return {"clubs": [], "gw": gw,
+                "note": f"no predicted XI archived for GW{gw} yet"}
+    players = pd.DataFrame([dict(r) for r in conn.execute(
+        "SELECT p.player_id, p.full_name, p.web_name, p.team_id, t.short_name "
+        "FROM player p JOIN team t ON t.team_id = p.team_id AND t.season = p.season "
+        "WHERE p.season = ?", (season,))])
+    if players.empty:
+        return {"clubs": [], "gw": gw, "note": "no players loaded"}
+    try:
+        resolved, unresolved, _ = lf.resolve(forecasts_names(forecasts), players)
+    except Exception as exc:  # noqa: BLE001
+        return {"clubs": [], "gw": gw, "note": f"could not resolve names: {exc}"}
+
     abbr_to_team = {v: k for k, v in tm.items()}
     clubs = []
     for abbr, (when, names) in sorted(forecasts.items()):
-        tid = abbr_to_team.get(abbr)
+        ids = {resolved[(abbr, n)] for n in names if (abbr, n) in resolved}
+        tid = abbr_to_team.get(lf.ABBR.get(abbr, abbr))
         squad = players[players["team_id"] == tid] if tid is not None else players.iloc[0:0]
-        try:
-            resolved = lf.resolve({abbr: names}, players if tid is None else squad)
-        except Exception:  # noqa: BLE001
-            resolved = {}
-        ids = set()
-        for v in resolved.values():
-            ids |= {int(x) for x in (v if isinstance(v, (set, list)) else [v]) if x is not None}
         rows = []
-        for _, s in squad.iterrows():
-            pid = int(s["player_id"])
+        for _, srow in squad.iterrows():
+            pid = int(srow["player_id"])
             ps = start_p.get(pid)
             in_xi = pid in ids
             if in_xi or (ps is not None and ps >= 0.3):
-                rows.append({"player_id": pid, "name": s["web_name"], "predicted": in_xi,
+                rows.append({"player_id": pid, "name": srow["web_name"],
+                             "predicted": in_xi,
                              "p_start": None if ps is None else round(float(ps), 2),
-                             "disagree": (in_xi and ps is not None and ps < 0.5)
-                                         or ((not in_xi) and ps is not None and ps >= 0.6)})
+                             # only meaningful once the club's XI actually
+                             # resolved: with nothing resolved every starter
+                             # looks omitted
+                             "disagree": len(ids) >= 8 and (
+                                 (in_xi and ps is not None and ps < 0.5)
+                                 or ((not in_xi) and ps is not None and ps >= 0.6))})
         rows.sort(key=lambda r: (not r["predicted"], -(r["p_start"] or 0)))
         clubs.append({"team": abbr, "observed": when, "n_named": len(names),
                       "n_resolved": len(ids), "rows": rows,
                       "disagreements": sum(1 for r in rows if r["disagree"])})
-    return {"clubs": clubs, "gw": gw, "note": None}
+    note = None
+    if unresolved:
+        note = (f"{len(unresolved)} named players could not be matched to an "
+                f"FPL id (e.g. {', '.join(n for _, n in unresolved[:3])})")
+    return {"clubs": clubs, "gw": gw, "note": note}
+
+
+def forecasts_names(forecasts: dict) -> dict:
+    """{team: (observed, names)} -> {team: names}, the shape `resolve` takes."""
+    return {t: names for t, (_when, names) in forecasts.items()}
 
 
 def _movers(gw: int, pl: dict, tm: dict) -> dict:

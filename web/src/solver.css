@@ -325,3 +325,32 @@
   border-radius: var(--r-md); background: var(--panel);
 }
 .so-reopen span { font-size: 12.5px; color: var(--muted); margin-right: auto; }
+
+/* ---- strategy picker ---------------------------------------------------- */
+.style-picker { display: flex; gap: 8px; flex-wrap: wrap; }
+.style-card {
+  flex: 1 1 160px; min-width: 150px; text-align: left;
+  padding: 10px 11px; border-radius: 9px;
+  background: var(--panel-2); border: 1px solid var(--line-soft);
+  color: var(--muted); transition: border-color 0.12s, background 0.12s;
+}
+.style-card:hover { border-color: var(--muted-2); }
+.style-card.on, .style-card.on:hover {
+  border-color: var(--accent); background: rgba(139, 123, 255, 0.10);
+  color: var(--text);
+}
+.style-card .sc-head {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12.5px; font-weight: 800; color: var(--text);
+}
+.style-card .sc-tick {
+  width: 15px; height: 15px; flex: none; border-radius: 4px;
+  border: 1px solid var(--line); display: grid; place-items: center;
+  font-size: 10px; color: #12122a;
+}
+.style-card.on .sc-tick { background: var(--accent); border-color: var(--accent); }
+.style-card .sc-note {
+  display: block; margin-top: 4px; font-size: 11px; line-height: 1.45;
+  color: var(--muted-2);
+}
+.plan-note.style { color: var(--muted); font-style: italic; }

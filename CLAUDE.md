@@ -2304,6 +2304,103 @@ tab bar, sheet modals, scaled pitch under 820px); `theme.css` stays the base.
 Tests: `tests/test_app_auth.py`, `tests/test_app_security.py`,
 `tests/test_scheduler.py`.
 
+### The 2026-09-16 UI round: four complaints, four fixes
+
+Feedback was that the planner felt cluttered and people "did not know what to
+press". The changes are structural, not cosmetic.
+
+* **The pitch is a pitch.** `components/Pitch.jsx` draws real markings (both
+  penalty areas, six-yard boxes, D arcs, centre circle and spot, corner arcs,
+  goals) over mown turf, with the keeper's goal at the top because the rows
+  run GK -> FWD down the page. It is one `preserveAspectRatio="none"` SVG, so
+  the circles are `<ellipse>` in the markup — that is what keeps them looking
+  round relative to whatever shape the panel is. `aria-hidden`, no pointer
+  events, so every click still lands on a player card.
+* **The right column is one column, read top to bottom.** Drafts first (with
+  **+ New draft** and **⑂ Branch from GW*n*** as labelled buttons — branching
+  already existed but was a bare `⑂` glyph), then Model assist, then
+  everything else folded into `components/Section.jsx`, whose open/closed
+  state persists per visitor. Four panels stacked open was ~1,400px of
+  controls with nothing saying which mattered.
+* **Model assist states its advice instead of offering a menu.** Four
+  identical buttons asked the reader to know which one applied to them. It is
+  now one card per action with what it would do and what it is worth
+  ("Your XI leaves 3.2 pts on the bench"), sorted so the one with points on
+  the table is first, and disabled actions say why.
+* **Projections spell out the venue.** Home/away was carried by letter case
+  alone (`ARS` vs `ars`), which nobody reads as a venue; it is now an explicit
+  `H`/`A` tag, green for home.
+
+### Playstyles: what a strategy is allowed to vary
+
+`PLAYSTYLES` used to differ only in horizon decay, FT value and whether hits
+were allowed, which is not what a manager means by "aggressive". Two more
+preferences, both applied to the PROJECTIONS (`optimise/style.py`) so the MILP
+never learns about playstyles:
+
+    ep' = ep + upside x explosive + price x price_points / len(gws)
+
+* **`upside`** weights the lumpy half of a projection — points that arrive as
+  goals, assists and the bonus they attract, carried through as `ex_gw{g}`
+  from the component engine's `c_*` columns (`optimise/project.py`; a
+  per-position share is the fallback when xPts is not in the blend). Two
+  players projected at 5.0 are not the same bet. Aggressive +0.15,
+  **Balanced 0.0**, Conservative -0.12.
+* **`price`** weights `price_model.points_value` — the Round 7 conversion, not
+  an invented exchange rate. `price_points` is the value of the whole hold, so
+  it is spread across the horizon rather than counted per gameweek; a test
+  pins that, because counting it per gameweek would multiply a 0.2-point
+  tie-breaker by the horizon until it started overturning the ranking.
+
+**This is a deliberate, bounded departure from "the price model stays out of
+the solver's objective" (Round 7), made at the owner's request.** What that
+rule was protecting against was *inventing* a £m-to-points rate; Round 7
+measured one (0.163 pts per £1m per gameweek, halved by FPL's sell-on rule).
+At that size it moves nothing a projection difference does not already decide
+— which is the point. Balanced keeps `upside = 0`, so the default objective is
+still exactly the one every backtest in this file was measured on, and neither
+knob is claimed to raise expected points: Rounds 13-14 showed no implementable
+rank tilt beats the mean. They are preferences, priced honestly, and the
+styles are named Aggressive / Balanced / **Conservative** (`patient` still
+resolves, via `PLAYSTYLE_ALIASES`).
+
+The strategy is now picked on screen rather than implied by a "how many plans"
+number; `status.playstyles` is the single source of truth so the UI cannot
+drift from the engine. `tests/test_playstyle_tilt.py`.
+
+### The Live desk (`app/live.py`, `/api/live`, `tabs/Live.jsx`)
+
+A public tab that exists only inside a window: it appears **24 h before a
+deadline**, updates every minute, and stays **6 h after** it marked over, then
+goes away. `live.window()` owns that schedule, `status.live` reports it and
+the shell renders the tab from that; admins keep it visible outside the window
+as a preview, so the desk can be checked on a Tuesday rather than an hour
+before a deadline. A tab that is only there when there is something to do
+reads as a signal; one that is always there is furniture.
+
+It shows a countdown, the gameweek's fixtures grouped by kick-off slot, FPL's
+own team-news change log, Friday's manager quotes, the predicted XIs beside
+the model's P(start), what the model changed its mind about since the previous
+build, price pressure at its measured points value, and the model's board.
+Everything is already archived by the pipeline and **nothing on it changes a
+projection**. Cached 60 s server-side — it is the one page everyone opens at
+the same moment. `tests/test_live_window.py` pins the four boundaries.
+
+The admin **Deadline** tab stopped duplicating those feeds and became what only
+an operator can act on: three health checks (scheduled refresh, projections,
+market coverage) that are green or not and say why, the serving model, market
+coverage per fixture, and the lineup-feed scorecard.
+
+**And surfacing the predicted XIs publicly found a live bug.** `_lineups` fed
+`lineup_feed.resolve` a frame with no `full_name`/`short_name` and then called
+`.values()` on its (resolved, unresolved, mismatched) triple; a bare `except`
+turned both errors into "0 of 11 resolved" for every club, which the panel
+rendered as **175 players the feed disagreed with the model about**. Fixed, it
+resolves 11/11 for nearly every club, reports the one name it cannot match,
+and finds **22** real disagreements. Disagreement is now only computed for a
+club whose XI actually resolved — *a resolution failure must never be able to
+present itself as a finding*. `tests/test_deadline_lineups.py`.
+
 Solver specifics worth knowing:
 
 * **Playstyles, not near-duplicates.** Asking for N plans returns one per

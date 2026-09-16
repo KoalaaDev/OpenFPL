@@ -1,6 +1,6 @@
 // must match app/services.py API_VERSION — mismatch means the running
 // `python -m app` predates this build and needs a restart
-export const API_VERSION = '2026-09-11.1'
+export const API_VERSION = '2026-09-16.1'
 
 const j = async (r) => {
   if (!r.ok) {
@@ -46,6 +46,7 @@ export const api = {
   pull: () => send('/api/pull', 'POST', {}),
   refresh: () => send('/api/refresh', 'POST', {}),
   deadline: (force = false) => get(`/api/admin/deadline${force ? '?force=1' : ''}`),
+  live: () => get('/api/live'),
   entry: (id) => get(`/api/entry/${id}`),
   league: (id, { gw, limit } = {}) => {
     const q = new URLSearchParams()
