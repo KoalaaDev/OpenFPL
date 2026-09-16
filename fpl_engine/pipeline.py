@@ -70,6 +70,15 @@ def _pull_odds(conn, season: str) -> dict | str:
             out["odds_api"] = f"skipped ({e})"
     else:
         out["odds_api"] = "skipped (ODDS_API_KEY not set)"
+    # Oddschecker: keyless bookmaker odds for the upcoming fixtures (1X2 from
+    # ~24 books, the correct-score distribution, anytime scorers). Found by
+    # the owner after the Odds API key died; one row per fixture in
+    # match_odds, so the engine blends it exactly like the Odds API's.
+    try:
+        from .ingest import oddschecker
+        out["oddschecker"] = oddschecker.ingest(conn, season)
+    except Exception as e:  # noqa: BLE001
+        out["oddschecker"] = f"skipped ({e})"
     # Prediction-market prices. Free and keyless, and they land in their own
     # table — they are shown next to the bookmaker's view, never fed to the
     # model, because every Polymarket EPL market is team level.

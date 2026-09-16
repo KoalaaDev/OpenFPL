@@ -88,6 +88,7 @@ stays the single source of truth):
 | `xpts/engine.py` | E[points] per player per gw: exposure x rates x fixture scalers, P(CS)=P(60+)*exp(-λ_opp), Poisson floor-division expectations for conceded/saves (GK saves scale sublinearly with opponent threat), E[bonus] from the league event coefficients applied to the player's own expected events; DGWs sum over fixtures |
 | `xpts/odds_model.py` | betting odds → implied Poisson goal rates: de-margin 1X2 (+ over/under 2.5) odds, invert to (λ_home, λ_away), blend into the team model's fixture rates with `ODDS_WEIGHT` (0.85; fitted by backtest sweep on 2024-25 + 2025-26 — improves active-player rank and captain picks, 0 disables) |
 | `ingest/odds.py` | two free odds sources into `match_odds`: football-data.co.uk CSVs (no key; historical + in-season, early-snapshot `Avg` columns preferred over closing for point-in-time honesty) and The Odds API upcoming fixtures (`$ODDS_API_KEY`, free tier — one call = 2 credits of 500/month). Team names resolve via explicit maps and fail loud |
+| `ingest/oddschecker.py` | **the live-season bookmaker source since 2026-09-16** (found by the owner when the Odds API key died): each match page embeds every populated market's odds per bookmaker (~24) and Oddschecker's own probabilities. 1X2 from the median price → `match_odds` (source `oddschecker`, blended at `ODDS_WEIGHT`); the **correct-score distribution** → P(over 2.5), P(clean sheet) each side, P(both score); **anytime goalscorer per player** → `market_prop`, the first market signal that reaches a player directly. Fetched through the system `curl` with a cookie jar (Cloudflare challenges Python's TLS fingerprint), one request a second, appended to `data/collected/oddschecker/`. Runs inside every `pull` |
 | `xpts/set_pieces.py` | penalty duty as a correction toward FPL's published order, not a flat bonus — zero when today's duty already matches the history, and zero in any replayed season |
 | `xpts/simulate.py` | correlated match simulator: draws the scoreline first, then hands out goals/assists/CS/saves/bonus conditional on it. For **joint risk** (floors, ceilings, P(haul), portfolio variance) — measured NOT to improve ranking, see below |
 | `backtest.py` | forward-in-time replay of a past season scoring xpts vs OpenFPL vs naive baselines. Metrics are decision-relevant: `spearman_played` (rank quality *among players who got on the pitch* — plain Spearman mostly measures who plays at all), `top11`/`top30` (mean ACTUAL points of the highest-predicted players — points per pick), precision@20, captain points, RMSE. Per-gameweek series are kept in the JSON so `compare-backtests` can paired-t-test a change; the blend weight is fitted on the first half of the season and evaluated on the second, then written to `models/xpts/blend.json` |
@@ -2071,9 +2072,14 @@ pinning the goal level (`model_totals`); blended at the same weight, so
 And the admin Deadline desk shows market coverage per fixture with a
 warning when no bookmaker odds exist. Blending the market for GW5 moved
 City's defenders +0.6-0.8 and Brighton's/Bournemouth's −0.3-0.5 — the
-direction of every complaint. Renew the key; the fallback stays for the
-day it lapses again. **Not a model change** (the blend and weight are the
-backtested ones), so no replay.
+direction of every complaint. The next day the owner found **Oddschecker**, which is keyless and
+carries the correct-score and anytime-scorer markets as well
+(`ingest/oddschecker.py`); it is now the live bookmaker source, the
+Polymarket fallback stays behind it, and the Odds API key is optional.
+**Not a model change** (the blend and weight are the backtested ones), so
+no replay. `market_prop` (clean sheets, both-to-score, anytime scorers per
+player) accrues forward from GW5 for a gate against the engine's own
+components — the E27 "player props" item, now free.
 
 ### Where the forward-collected tests stand (2026-27 GW3)
 

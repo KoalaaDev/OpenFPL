@@ -1807,3 +1807,34 @@ bookmaker props, predicted-lineup accuracy). Sorted against this log:
   3. **Player-prop odds** (anytime scorer, clean sheet) are the one market
      signal that reaches a player directly; forward logging needs a working
      Odds API key (currently 401). Queued.
+
+## E28. Oddschecker: keyless bookmaker odds, the exact-score market and player props
+
+Found by the owner (2026-09-16). Each Premier League match page embeds a
+`subeventmarkets` JSON with every populated market's decimal odds per
+bookmaker (~24) and Oddschecker's own implied probability per selection;
+three markets are populated server-side: Win Market, Correct Score (41
+scorelines) and Anytime Goalscorer (~44 players). `ingest/oddschecker.py`
+de-margins the median 1X2 price, turns the correct-score distribution into
+P(over 2.5) / P(clean sheet) per side / P(both score), inverts to Poisson
+rates through the shipped `implied_rates`, and writes `match_odds` (one row
+per fixture, source `oddschecker`) plus `market_prop` (clean sheets,
+both-to-score, anytime scorers per player); all rows are appended to
+`data/collected/oddschecker/<season>.csv`. Cloudflare challenges Python's
+TLS fingerprint (`requests` → 403, `cf-mitigated: challenge`) while the
+system `curl` with a cookie jar and a Referer is served, so the client
+shells out to curl, one request a second, and retries the first cookie-less
+hit. GW5 2026-27: all 10 fixtures priced, 441 anytime-scorer prices.
+
+What it changes: the live model blends BOOKMAKER prices for upcoming
+fixtures again (the E27 finding was that it had blended nothing all
+season), with the goal level pinned by the exact-score market rather than
+the team model's total. Not a model change — no replay. What it opens:
+`market_prop` is the first per-player market signal here; from GW5 the
+anytime-scorer probability accrues beside the engine's `e_goals`, and the
+gate is the usual one — does the market's P(scores) predict realised goals
+beyond the engine's expectation? — runnable after ~8 gameweeks. The
+correct-score P(clean sheet) answers CLAUDE.md's open question 1 (the
+exact-score market as a direct P(no goals)) once the same window has
+accrued, scored on log-loss next to `exp(-lambda)` in
+`research/cs_engine.py`.
