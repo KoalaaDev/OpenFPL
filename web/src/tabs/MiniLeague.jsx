@@ -368,12 +368,37 @@ export default function MiniLeague() {
 
       {!data && (
         <div className="panel">
-          <Empty mark="🏆" title="Analyse your mini league">
-            Enter a classic league id above for the full dashboard: standings with
-            projections, the Team DNA radar, effective ownership, captaincy,
-            hidden gems, threats, last gameweek&apos;s best XI, squad overlap and
-            season progression. The id is the number in the league&apos;s URL.
-          </Empty>
+          {/* FPL already lists every league a manager is in, so ask them to
+              pick one rather than dig a number out of a URL */}
+          {entry?.leagues?.length ? (
+            <div className="league-pick">
+              <h3>Pick a league</h3>
+              <p>Standings with projections, the Team DNA radar, effective
+                ownership, captaincy, hidden gems, threats, squad overlap and
+                season progression.</p>
+              <div className="lp-grid">
+                {entry.leagues.map((lg) => (
+                  <button key={lg.id} className={`lp-item ${lg.private ? 'private' : ''}`}
+                    disabled={loading} onClick={() => load(lg.id)}>
+                    <span className="lp-name">{lg.name}</span>
+                    <span className="lp-meta">
+                      <span>{lg.private ? 'private' : 'public'}</span>
+                      {lg.size ? <span>&nbsp;·&nbsp;{fmtCount(lg.size)} managers</span> : null}
+                      {/* the rank is its own unit, so it wraps whole */}
+                      {lg.rank ? <span>&nbsp;·&nbsp;you&apos;re {ordinal(lg.rank)}</span> : null}
+                    </span>
+                  </button>
+                ))}
+              </div>
+              <p className="lp-foot">Or enter any league id above.</p>
+            </div>
+          ) : (
+            <Empty mark="🏆" title="Analyse your mini league">
+              {entryId
+                ? 'Enter a classic league id above. It is the number in the league’s URL.'
+                : 'Load your team (top right) to pick from the leagues you are in, or enter a league id above.'}
+            </Empty>
+          )}
         </div>
       )}
 
@@ -832,4 +857,12 @@ const captainOf = (e, byId) => {
 const avgProj = (entries, projFor) => {
   const vs = entries.map(projFor).filter((v) => v != null)
   return vs.length ? vs.reduce((a, b) => a + b, 0) / vs.length : 0
+}
+
+const fmtCount = (n) => (n >= 1e6 ? `${(n / 1e6).toFixed(1)}m`
+  : n >= 1e3 ? `${Math.round(n / 1e3)}k` : String(n))
+function ordinal(n) {
+  const v = n % 100
+  const suf = (v >= 11 && v <= 13) ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' }[n % 10] || 'th')
+  return `${n.toLocaleString()}${suf}`
 }

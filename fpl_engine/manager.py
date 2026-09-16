@@ -134,10 +134,28 @@ def estimate_free_transfers(history: dict) -> int:
     hand out a phantom extra FT for the whole season (after a quiet GW1 it
     reports 2 when the true answer is 1), which makes the optimiser plan
     -4 hits believing they are free.
+
+    **A Wildcard or Free Hit gameweek PRESERVES the stock**, which is not the
+    same as leaving it alone: FPL's own example is "if you had 2 saved free
+    transfers before playing your Wildcard, you will still have 2 saved free
+    transfers in the following Gameweek" — two in, two out, so that week's
+    +1 does not accrue either. Debiting the chip week's transfers (there can
+    be a dozen) drove the stock to zero, and then the +1 put it back at 1, so
+    the error could land either side of the truth; on a quiet week after a
+    Wildcard it reported 3 against FPL's 2. The MILP has always modelled this
+    correctly (``optimise/chips.py``); only this estimator did not.
+
+    Bench Boost and Triple Captain do not touch transfers, so a gameweek
+    carrying one of those is counted normally.
     """
     events = history.get("current", []) or []
+    frozen = {int(c["event"]) for c in (history.get("chips") or [])
+              if c.get("event") is not None
+              and FPL_CHIP_NAMES.get(c.get("name")) in ("wildcard", "freehit")}
     ft = 0
     for ev in events:
+        if ev.get("event") in frozen:
+            continue                     # stock carries through untouched
         made = ev.get("event_transfers", 0) or 0
         ft = min(MAX_FREE_TRANSFERS, max(0, ft - made) + 1)
     return max(1, ft)

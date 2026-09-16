@@ -574,7 +574,33 @@ def entry_payload(entry_id: int, principal: str) -> dict:
                     "picks_gw": state.get("gw"),
                     "squad_source": state.get("source", "public")})
     out["chips"] = entry_chips(entry_id, state)
+    out["leagues"] = entry_leagues(info)
     return out
+
+
+def entry_leagues(info: dict) -> list[dict]:
+    """The classic leagues this entry is in, private ones first.
+
+    The Mini League tab asked for a league id and told people to dig it out
+    of a URL, when FPL already lists every league a manager belongs to in the
+    entry itself. Private leagues (``league_type`` "x") are the ones anybody
+    means by "my mini league"; the system ones — Overall, a country, a club's
+    supporters, "Gameweek 1" — run to millions of entries and come after.
+    """
+    rows = []
+    for lg in ((info.get("leagues") or {}).get("classic") or []):
+        try:
+            rows.append({
+                "id": int(lg["id"]),
+                "name": lg.get("name") or f"League {lg['id']}",
+                "private": lg.get("league_type") == "x",
+                "rank": lg.get("entry_rank"),
+                "size": lg.get("rank_count"),
+            })
+        except (KeyError, TypeError, ValueError):
+            continue
+    rows.sort(key=lambda r: (not r["private"], r["size"] or 10**9))
+    return rows[:20]
 
 
 def entry_chips(entry_id: int, state: dict | None = None) -> dict:

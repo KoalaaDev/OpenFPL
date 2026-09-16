@@ -275,6 +275,8 @@ export function planToDraft(plan, meta, label, note) {
     source: 'solver',
     entry: meta?.entry_id || null,
     objective: plan.objective,
+    // the stock the solve started from, so a hand edit re-runs the same ledger
+    ft0: meta?.state?.free_transfers ?? null,
     baseline: null,   // set below: the plan as delivered, for change highlighting
     gws: plan.per_gw.map((g) => ({
       gw: g.gw,
@@ -291,6 +293,71 @@ export function planToDraft(plan, meta, label, note) {
       hits: g.hits,
     })),
   }
+}
+
+/* The free-transfer ledger for a draft, recomputed from its transfers.
+
+   A draft built from the squad used to stamp the SAME free-transfer count on
+   every gameweek and a hard `hits: 0`. So rolling a transfer never accrued,
+   and a hand-made plan that ran out of free transfers never took its -4 —
+   gwEV subtracts `4 * hits`, so those plans showed inflated totals. Only
+   Solver drafts carried real numbers, and even those went stale the moment
+   a transfer was edited by hand.
+
+   The rules are the MILP's (optimise/chips.py), so a Solver draft and a hand
+   edit agree:
+     * each gameweek's moves use free transfers first, the rest are -4 hits
+     * whatever is left rolls, +1, capped at 5
+     * a Wildcard or Free Hit week spends nothing, costs nothing, and PRESERVES
+       the stock — no +1 either ("if you had 2 saved free transfers before
+       playing your Wildcard, you will still have 2 the following Gameweek")
+     * a 15-player build (pre-season) is free and banks nothing */
+export const MAX_FT = 5
+export const HIT_COST = 4
+
+export function applyFtLedger(draft, ft0) {
+  if (!draft?.gws?.length) return draft
+  const start = Number.isFinite(ft0) ? ft0 : null
+  if (start == null) return draft            // nothing to anchor the stock to
+  let ft = Math.max(0, Math.min(MAX_FT, start))
+  draft.ft0 = start
+  for (const g of draft.gws) {
+    const n = (g.transfers_in || []).length
+    const frozen = g.chip === 'wildcard' || g.chip === 'freehit'
+    const build = n === 15
+    g.ft_available = ft
+    if (frozen || build) {
+      g.free_used = 0
+      g.hits = 0
+      g.free_after = ft
+      // a chip week preserves the stock; a build banks nothing past the one
+      // free transfer the next gameweek grants
+      ft = build ? 1 : ft
+      continue
+    }
+    const used = Math.min(n, ft)
+    g.free_used = used
+    g.hits = Math.max(0, n - ft)
+    g.free_after = ft - used
+    ft = Math.min(MAX_FT, g.free_after + 1)
+  }
+  return draft
+}
+
+/* Where a draft's stock starts. A stored `ft0` wins; a draft saved before the
+   ledger existed recovers it from its first gameweek; a draft built from the
+   squad for the CURRENT gameweek always trusts the live entry, because the
+   number it was built with may itself have been wrong (the estimator used to
+   grant an extra free transfer after a Wildcard). */
+export function draftFt0(draft, entry, editableGw) {
+  const g0 = draft?.gws?.[0]
+  if (draft?.source === 'entry' && entry?.free_transfers != null
+      && g0 && editableGw != null && g0.gw === editableGw) {
+    return entry.free_transfers
+  }
+  if (Number.isFinite(draft?.ft0)) return draft.ft0
+  if (g0 && Number.isFinite(g0.free_after)) return g0.free_after + (g0.free_used || 0)
+  return entry?.free_transfers ?? null
 }
 
 // Snapshot a draft's gws as its baseline (what the deltas are measured against).

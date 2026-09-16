@@ -2408,6 +2408,58 @@ green fixture-difficulty shading disappeared exactly where the cell mattered
 most; and the player card grew a **Compare** button — same position only, on
 purpose, since none of the rows it shows are comparable across positions.
 
+### Free transfers were wrong twice, in two different places
+
+Reported by the owner: FPL showed 2 free transfers, the site showed 3.
+
+**1. The estimator granted a +1 in a chip week.** `manager.estimate_free_transfers`
+walked the public history debiting each week's transfers and adding one —
+including in a Wildcard or Free Hit week. FPL's own rule is that a chip week
+*preserves* the stock: "if you had 2 saved free transfers before playing your
+Wildcard, you will still have 2 the following Gameweek" — no debit and no +1.
+For entry 883566 (Bench Boost GW2, Wildcard GW3) it read 3 against FPL's 2.
+The MILP (`optimise/chips.py`) always had this right; only the estimator was
+wrong. Bench Boost and Triple Captain weeks are counted normally.
+`tests/test_free_transfers.py`.
+
+**2. Hand-edited drafts had no ledger at all.** A draft built from the squad
+stamped the *same* FT count on every gameweek and a hard `hits: 0`, and no edit
+ever recomputed them. So rolling never accrued ("2 FT" on all eight weeks),
+and a hand-made plan that ran out of free transfers never took its −4 — which
+`gwEV` subtracts, so **those plans showed inflated totals**. `util.applyFtLedger`
+now runs on every draft edit with the MILP's rules (free first, the rest −4,
+roll +1 capped at 5, chip weeks preserve, a 15-player build is free), a draft
+stores the stock it started from (`ft0`), and a draft saved before the fix is
+corrected on sight without an undo step. The ledger is JS and there is no JS
+runner, so `tests/test_ft_ledger_js.py` drives it through `node` and skips
+when node is absent.
+
+### Planner layout, round three
+
+Tools on the left, answers on the right. **Add a player** moved under the pitch
+(it acts on the pitch, and having the search a column away made a two-step
+action feel like two unrelated ones). **Model assist and the chip advisor are
+one panel with two tabs** — `GWn` and `Chips` — because they answered the same
+question from panels a screen apart, one saying "Best Free Hit for this
+gameweek" while the other said "play a Free Hit in GW10". Note `.advice` is
+already the chip-hint row style (a flex row); the merged panel is
+`.advice-panel`, and reusing the name laid the whole panel out sideways.
+
+**Mini League offers your own leagues.** FPL lists every classic league in the
+entry, so `services.entry_leagues` passes them through (private first) and the
+tab asks you to pick one rather than dig a number out of a URL.
+
+**Audit fixes elsewhere.** Prices still claimed the price model was
+"deliberately not in the solver's objective", which stopped being true when
+the playstyles began weighting it; the page now leads with one line and keeps
+the method behind a disclosure, and "+0.93 tenths" is "+£0.09m". Fixtures used
+letter case for home/away (as Projections did) and had an unexplained corner
+dot and ▲▼ — both now have a legend. Its Market-mode warning told *public
+visitors* to set `ODDS_API_KEY` and restart `python -m app`; visitors now get
+one plain sentence and the operator note shows to admins only. On a phone the
+Fixtures team column was half the screen, leaving four gameweeks; it is now a
+sticky three-letter column.
+
 ### Playstyles: what a strategy is allowed to vary
 
 `PLAYSTYLES` used to differ only in horizon decay, FT value and whether hits

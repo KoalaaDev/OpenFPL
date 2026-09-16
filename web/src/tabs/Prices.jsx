@@ -79,30 +79,35 @@ export default function Prices() {
   const top = rows[0]
   return (
     <div>
-      <div className="panel" style={{ marginBottom: 14 }}>
-        <div className="panel-head">Predicted price changes — after GW{data.gw}</div>
+      {/* The page used to open with three paragraphs of method before a single
+          player, and its last sentence — "deliberately not in the solver's
+          objective" — stopped being true when the playstyles began weighting
+          price moves as a tie-breaker. One line of what it is, one of what it
+          is worth, and the method behind a disclosure for whoever wants it. */}
+      <div className="panel prc-lead" style={{ marginBottom: 14 }}>
+        <div className="panel-head">Price changes — before the GW{data.gw + 1} deadline</div>
         <div className="prc-explain">
           <p>
-            Ranked by P(rise) − P(fall). Held out forward in time, the top-10
-            risers actually rose <b>67–75%</b> of the time against a <b>2%</b> base
-            rate — the model is strong.
+            Who is likely to rise or fall next. The top ten risers have actually
+            risen <b>67–75%</b> of the time, against a <b>2%</b> base rate.
+            {top ? <> The strongest mover this week is worth about{' '}
+              <b>{Math.abs(top.points).toFixed(2)} points</b> to hold.</> : null}
           </p>
-          <p>
-            What it is <i>worth</i> is a different question, and the answer is
-            deliberately small. A rise is realised only on sale, and FPL returns the
-            purchase price plus <b>half</b> the profit; that half buys a better squad
-            at <b>{data.pts_per_million_per_gw} points per £1m per gameweek</b>, over
-            the <b>{data.gws_remaining}</b> gameweeks left.
-            {top ? (
-              <> The strongest mover here is worth{' '}
-                <b>{Math.abs(top.points).toFixed(2)} points</b>.</>
-            ) : null}
-          </p>
-          <p className="ml-note">
-            Use it to break ties between transfers you already rate. It is
-            deliberately <i>not</i> in the solver&apos;s objective — a 0.2-point term
-            has no business reshaping a squad.
-          </p>
+          <details className="prc-method">
+            <summary>Why a strong prediction is only worth a fraction of a point</summary>
+            <p>
+              A rise is realised only when you sell, and FPL returns your purchase
+              price plus <b>half</b> the profit. That half buys a slightly better
+              squad at <b>{data.pts_per_million_per_gw} points per £1m per
+              gameweek</b>, over the <b>{data.gws_remaining}</b> gameweeks left.
+            </p>
+            <p>
+              So it breaks ties between players you already rate equally. The
+              Solver uses it the same way: each strategy adds it as a small
+              tie-breaker (Conservative weighs it most, because it holds players
+              longest), never as a reason to make a transfer on its own.
+            </p>
+          </details>
         </div>
       </div>
 
@@ -125,8 +130,8 @@ export default function Prices() {
               <th>Price</th>
               <th>P(rise)</th>
               <th>P(fall)</th>
-              <th>E[move]</th>
-              <th>Worth</th>
+              <th title="probability-weighted price change">Expected move</th>
+              <th title="what that move is worth in points if you hold him">Worth</th>
             </tr>
           </thead>
           <tbody>
@@ -158,9 +163,8 @@ export default function Prices() {
                   <PctBar v={r.p_fall} color="#d95926" />
                   <span className="prc-n">{(r.p_fall * 100).toFixed(0)}%</span>
                 </td>
-                <td className="num">
-                  {r.e_delta >= 0 ? '+' : ''}{(r.e_delta * 10).toFixed(2)}
-                  <span className="prc-unit"> tenths</span>
+                <td className="num" title={`expected change: ${(r.e_delta * 10).toFixed(2)} of a £0.1m step`}>
+                  {r.e_delta >= 0 ? '+' : '−'}£{Math.abs(r.e_delta).toFixed(2)}m
                 </td>
                 <td className="num" style={{
                   fontWeight: 700,

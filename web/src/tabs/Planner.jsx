@@ -5,11 +5,11 @@ import ModelAssist from '../components/ModelAssist'
 import PitchLines from '../components/Pitch'
 import Section from '../components/Section'
 import { api, pollJob } from '../api'
-import { useFixtureLookup, useStore } from '../store'
+import { useFixtureLookup, usePersisted, useStore } from '../store'
 import { Radar, VIZ, VIZ_NEUTRAL as VIZ_MUTED } from '../charts'
 import { DNA_AXES, dnaOf, dnaRaw, dnaScaled } from '../dna'
 import {
-  CHIP_LONG, CHIP_NAME, CHIP_SHORT, POSITIONS, baselineDeltas,
+  CHIP_LONG, CHIP_NAME, CHIP_SHORT, POSITIONS, applyFtLedger, baselineDeltas, draftFt0,
   bestAffordableXI, bestXI, chipAvailability, chipNote, epOf, fdrColor,
   formationRows, fmt1, gwEV, gwHasProj, money, shirtUrl, withBaseline, xiLegal,
 } from '../util'
@@ -77,6 +77,8 @@ export default function Planner() {
   }
 
   // every edit goes through here: snapshot for undo, then mutate a clone
+  // Every edit re-runs the free-transfer ledger, so a transfer, a chip or a
+  // rolled week immediately shows the right FT count and any -4 it costs.
   const updateDraft = (fn, { record = true } = {}) => {
     setDrafts((ds) => ds.map((d) => {
       if (d.id !== draft.id) return d
@@ -84,10 +86,27 @@ export default function Planner() {
         undoRef.current.push(structuredClone(d))
         if (undoRef.current.length > 60) undoRef.current.shift()
       }
-      return fn(structuredClone(d))
+      const next = fn(structuredClone(d))
+      return applyFtLedger(next, draftFt0(next, entry, editableGw))
     }))
     if (record) setUndoN((n) => n + 1)
   }
+
+  // A draft saved before the ledger existed (or built while the estimator was
+  // still over-counting after a Wildcard) shows stale numbers until it is
+  // edited. Correct it on sight, without an undo step — it is not a change
+  // the user made.
+  useEffect(() => {
+    if (!draft?.gws?.length) return
+    const ft0 = draftFt0(draft, entry, editableGw)
+    if (ft0 == null) return
+    const fixed = applyFtLedger(structuredClone(draft), ft0)
+    const stale = fixed.ft0 !== draft.ft0 || fixed.gws.some((g, i) => {
+      const o = draft.gws[i]
+      return g.free_after !== o.free_after || g.hits !== o.hits || g.free_used !== o.free_used
+    })
+    if (stale) setDrafts((ds) => ds.map((d) => (d.id === draft.id ? fixed : d)))
+  }, [draft?.id, entry?.free_transfers, editableGw, draft?.ft0])   // eslint-disable-line react-hooks/exhaustive-deps
   const undo = () => {
     const prev = undoRef.current.pop()
     if (!prev) return
@@ -214,11 +233,13 @@ export default function Planner() {
         vice: vice && xi.includes(vice) && vice !== captain
           ? vice : sorted.find((id) => id !== captain) || null,
         transfers_in: [], transfers_out: [],
-        bank: entry.bank, free_after: entry.free_transfers, free_used: 0, hits: 0,
+        bank: entry.bank,
       }
     })
     const label = String.fromCharCode(65 + drafts.length)
-    const d = withBaseline({ id: `d${Date.now()}`, label: `Draft ${label}`, source: 'entry', gws })
+    const d = withBaseline(applyFtLedger(
+      { id: `d${Date.now()}`, label: `Draft ${label}`, source: 'entry', gws },
+      entry.free_transfers))
     setDrafts((ds) => [...ds, d])
     setActiveDraftId(d.id)
   }
@@ -316,31 +337,32 @@ export default function Planner() {
               rail: it is the answer the whole tab exists to produce */}
           <PathsPanel draft={draft} byId={byId} gwIdx={gwIdx} setGwIdx={setGwIdx}
             proj={proj} />
+          {/* The search belongs beside the pitch it acts on, not across the
+              page from it: you pick a player here and then click the man he
+              replaces, and having those two things in different columns made
+              a two-step action feel like two unrelated ones. */}
+          <Section id="add" title="Add a player"
+            hint="search, then click who he replaces on the pitch"
+            badge={armed ? armed.web_name : null} defaultOpen={!!armed}>
+            <AddPlayerPanel plan={plan} players={players} byId={byId} proj={proj}
+              posOf={posOf} armed={armed} setArmed={setArmed} />
+          </Section>
         </div>
 
-        {/* One column, read top to bottom: which route am I on, what does the
-            model say to do about it, and only then the tools. Everything below
-            the first two folds away, because the complaint was never that a
-            control was missing — it was that they were all shouting at once. */}
+        {/* One column, read top to bottom: which route am I on, and what does
+            the model say to do about it. Everything that is a TOOL rather than
+            an answer lives on the left under the pitch, where there is room
+            for it and where the thing it acts on is already on screen. */}
         <aside className="planner-rail">
           <DraftsPanel drafts={drafts} setDrafts={setDrafts} proj={proj}
             activeDraftId={draft.id} setActiveDraftId={setActiveDraftId}
             gwIdx={gwIdx} setGwIdx={setGwIdx} createFromEntry={createFromEntry}
             entry={entry} />
           {plan && (
-            <ModelAssist draft={draft} gwIdx={gwIdx} plan={plan} posOf={posOf}
-              updateDraft={updateDraft} setToast={setToast} />
+            <Advice draft={draft} gwIdx={gwIdx} plan={plan} posOf={posOf}
+              updateDraft={updateDraft} setToast={setToast} proj={proj}
+              byId={byId} players={players} entryChips={entry?.chips} />
           )}
-          <Section id="add" title="Add a player"
-            hint="search, then click who he replaces"
-            badge={armed ? armed.web_name : null} defaultOpen={!!armed}>
-            <AddPlayerPanel plan={plan} players={players} byId={byId} proj={proj}
-              posOf={posOf} armed={armed} setArmed={setArmed} />
-          </Section>
-          <Section id="chips" title="Chip advisor" hint="where a chip looks worth playing">
-            <ChipAdvisor draft={draft} proj={proj} byId={byId} players={players}
-              posOf={posOf} updateDraft={updateDraft} entryChips={entry?.chips} />
-          </Section>
           {plan && (
             <Section id="dna" title="Team DNA" hint="the shape of the squad, not its total">
               <TeamDna plan={plan} draft={draft} gwIdx={gwIdx} byId={byId} proj={proj} />
@@ -377,6 +399,40 @@ export default function Planner() {
         <TransferModal draft={draft} gwIdx={gwIdx} outId={xfer} byId={byId}
           proj={proj} posOf={posOf} close={() => setXfer(null)}
           applyTransfer={applyTransfer} />
+      )}
+    </div>
+  )
+}
+
+/* Model assist and the chip advisor answered the same question — "what should
+   I do about this gameweek?" — from two panels a screen apart, one of which
+   said "Best Free Hit for this gameweek" while the other said "play a Free
+   Hit in GW10". One panel, two tabs: what to do NOW, and where a chip is
+   worth playing across the draft. */
+function Advice({ draft, gwIdx, plan, posOf, updateDraft, setToast, proj,
+                  byId, players, entryChips }) {
+  const [view, setView] = usePersisted('planner.advice', 'now')
+  return (
+    <div className="panel assist advice-panel">
+      <div className="panel-head">
+        Model assist
+        <span className="seg" role="tablist" aria-label="advice view">
+          <button role="tab" aria-selected={view === 'now'}
+            className={view === 'now' ? 'on' : ''}
+            onClick={() => setView('now')}>GW{plan.gw}</button>
+          <button role="tab" aria-selected={view === 'chips'}
+            className={view === 'chips' ? 'on' : ''}
+            onClick={() => setView('chips')}>Chips</button>
+        </span>
+      </div>
+      {view === 'now' ? (
+        <ModelAssist draft={draft} gwIdx={gwIdx} plan={plan} posOf={posOf}
+          updateDraft={updateDraft} setToast={setToast} embedded />
+      ) : (
+        <div className="advice-chips">
+          <ChipAdvisor draft={draft} proj={proj} byId={byId} players={players}
+            posOf={posOf} updateDraft={updateDraft} entryChips={entryChips} />
+        </div>
       )}
     </div>
   )

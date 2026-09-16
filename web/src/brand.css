@@ -580,3 +580,53 @@ body {
   .panel-head { font-size: 12px; }
   .panel-sub { flex-basis: 100%; margin-left: 0; }
 }
+
+/* ---------- mini league: pick from the leagues you are in ----------------- */
+.league-pick { padding: 22px 22px 18px; }
+.league-pick h3 { margin: 0 0 4px; font-size: 16px; }
+.league-pick > p { margin: 0 0 14px; font-size: 12.5px; color: var(--muted); max-width: 640px; }
+.lp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; }
+.lp-item {
+  display: flex; flex-direction: column; gap: 3px; text-align: left;
+  padding: 11px 13px; border-radius: 10px; min-height: 58px;
+  background: var(--bg-deep); border: 1px solid var(--line-soft); color: var(--text);
+}
+.lp-item:hover { border-color: var(--muted-2); }
+.lp-item.private { border-color: color-mix(in srgb, var(--accent) 45%, var(--line-soft)); }
+.lp-name { font-weight: 700; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lp-meta {
+  font-size: 11px; color: var(--muted-2); font-family: var(--mono);
+  display: flex; flex-wrap: wrap; column-gap: 0;
+}
+.lp-foot { margin: 12px 0 0; font-size: 11.5px; color: var(--muted-2); }
+
+/* ---------- prices: lead with the answer, keep the method a click away ---- */
+.prc-method { margin-top: 8px; }
+.prc-method summary {
+  cursor: pointer; font-size: 12px; font-weight: 700; color: var(--accent);
+  list-style: none; display: inline-flex; align-items: center; gap: 6px;
+}
+.prc-method summary::-webkit-details-marker { display: none; }
+.prc-method summary::before { content: '›'; transition: transform 0.12s; display: inline-block; }
+.prc-method[open] summary::before { transform: rotate(90deg); }
+.prc-method p { margin: 8px 0 0; }
+
+/* ---------- fixtures on a phone: a compact, sticky team column ------------ */
+.fdr td.team .tn-short { display: none; }
+@media (max-width: 820px) {
+  .fdr td.team .tn-long { display: none; }
+  .fdr td.team .tn-short { display: inline; font-weight: 800; font-size: 11.5px; letter-spacing: 0.03em; }
+  .fdr td.team, .fdr thead th:first-child {
+    position: sticky; left: 0; z-index: 2;
+    background: var(--panel); min-width: 0; width: 64px; padding-right: 6px;
+    box-shadow: 6px 0 8px -6px rgba(0, 0, 0, 0.6);
+  }
+  .fdr td.team img { width: 16px; height: 16px; margin-right: 5px; }
+  .fdr .fdr-cell { min-width: 48px; }
+  .fdr-legend { font-size: 10.5px; gap: 4px 12px; }
+}
+
+.odds-warn-admin {
+  margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--line);
+  font-size: 11px; color: var(--muted-2);
+}

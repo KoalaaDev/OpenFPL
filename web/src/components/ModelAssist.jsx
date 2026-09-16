@@ -17,7 +17,7 @@ import { CHIP_NAME, bestXI, chipAvailability, chipNote, epOf, fmt1 } from '../ut
    The XI number is always on screen, computed locally, because the most common
    mistake is not a bad transfer - it is leaving points on the bench. */
 export default function ModelAssist({
-  draft, gwIdx, plan, posOf, updateDraft, setToast,
+  draft, gwIdx, plan, posOf, updateDraft, setToast, embedded = false,
 }) {
   const { byId, proj, status, entry, entryId } = useStore()
   const [busy, setBusy] = useState(null)
@@ -209,13 +209,8 @@ export default function ModelAssist({
   // the one with points on the table first; the rest keep their order
   actions.sort((a, b) => (b.value || 0) - (a.value || 0))
 
-  return (
-    <div className="panel assist">
-      <div className="panel-head">
-        Model assist
-        <span className="assist-gw">GW{plan.gw}</span>
-      </div>
-
+  const body = (
+    <>
       {isPast ? (
         <div className="fold-note">GW{plan.gw} has been played — there is nothing
           left to optimise. Move the plan forward to GW{nextGw}.</div>
@@ -241,6 +236,19 @@ export default function ModelAssist({
       )}
 
       {note && <div className="assist-note"><span className="spinner" /> {note}</div>}
+    </>
+  )
+
+  // inside the Advice panel it supplies only its body; the panel owns the
+  // header and the tab strip
+  if (embedded) return body
+  return (
+    <div className="panel assist">
+      <div className="panel-head">
+        Model assist
+        <span className="assist-gw">GW{plan.gw}</span>
+      </div>
+      {body}
     </div>
   )
 }

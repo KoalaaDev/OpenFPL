@@ -26,7 +26,7 @@ const cellDiff = (fs, mode) => {
 }
 
 export default function Fixtures() {
-  const { fixtures, teams, status } = useStore()
+  const { fixtures, teams, status, isAdmin } = useStore()
   const [span, setSpan] = usePersisted('fix.span', 10)
   const [mode, setMode] = usePersisted('fix.mode', 'diff')
   // sort: key = 'team' | 'avg' | <gw number>; dir 1 = ascending (easiest first)
@@ -93,34 +93,17 @@ export default function Fixtures() {
     <div className="panel">
       {marketUseless && (
         <div className="odds-warn">
-          <b>No market prices for any upcoming fixture</b> — {os_.priced_upcoming} of{' '}
-          {os_.upcoming} are priced.
-          <ul>
-            {!os_.key_set && (
-              <li>
-                <code>ODDS_API_KEY</code> is <b>not visible to the server</b>. The
-                Odds API free tier is the only source here covering <i>upcoming</i>
-                matches — 500 credits a month, 2 per call.
-                <br />
-                If you have already set it: <code>setx</code> (and <code>export</code>)
-                only reach processes started <i>afterwards</i>, so a server that was
-                already running cannot see it. Close this terminal, open a new one,
-                restart <code>python -m app</code>, then hit ⟳ Data.
-              </li>
-            )}
-            {os_.key_set && (
-              <li>
-                <code>ODDS_API_KEY</code> is set but nothing upcoming came back —
-                the key may be rejected or out of credits. Check the pull log.
-              </li>
-            )}
-            <li>
-              football-data.co.uk{os_.sources?.includes('football-data')
-                ? ` supplied ${os_.priced} priced fixture${os_.priced === 1 ? '' : 's'}`
-                : ' supplied none'}, but it only publishes matches that have
-              already been played — useful for backtests, never for planning.
-            </li>
-          </ul>
+          <b>No bookmaker prices for the coming fixtures yet</b> — {os_.priced_upcoming} of{' '}
+          {os_.upcoming} are priced, so this view has nothing to show. Prices
+          usually appear two or three days before a gameweek; the other views
+          are unaffected.
+          {isAdmin && (
+            <div className="odds-warn-admin">
+              Operator: the live source is Oddschecker (runs in every pull). If it
+              returns nothing, check that the system <code>curl</code> is still
+              getting past Cloudflare, then look at the pull log.
+            </div>
+          )}
         </div>
       )}
       <div className="filterbar">
@@ -154,6 +137,12 @@ export default function Fixtures() {
           {sort.key === 'avg' ? (sort.dir > 0 ? ' ▴' : ' ▾') : ''}
         </button>
       </div>
+      <div className="fdr-legend" aria-label="legend">
+        <span><b className="lg-h">H</b> home</span>
+        <span><b className="lg-a">A</b> away</span>
+        <span><i className="odds-dot static" /> a bookmaker has priced it</span>
+        <span><i className="lg-arrow">▲▼</i> prediction market and bookmakers disagree by 4+ pts</span>
+      </div>
       <div className="fdr-table-wrap" style={{ padding: '0 10px 12px' }}>
         <table className="fdr">
           <thead>
@@ -166,10 +155,14 @@ export default function Fixtures() {
           <tbody>
             {rows.map((r) => (
               <tr key={r.tid}>
-                <td className="team">
+                <td className="team" title={r.team?.name}>
                   <img src={badgeUrl(r.team?.code)} alt=""
                     onError={(e) => { e.currentTarget.style.visibility = 'hidden' }} />
-                  {r.team?.name || r.tid}
+                  {/* full name on a desktop, three letters on a phone — the
+                      name column was eating half the screen, leaving room for
+                      four gameweeks */}
+                  <span className="tn-long">{r.team?.name || r.tid}</span>
+                  <span className="tn-short">{r.team?.short || r.tid}</span>
                 </td>
                 {gws.map((g) => {
                   const fs = r.byGw[String(g)] || []
@@ -216,7 +209,11 @@ export default function Fixtures() {
                               f.odds && f.market && `they disagree by `
                                 + `${((f.market.p_win - f.odds.p_win) * 100).toFixed(1)} pts`,
                             ].filter(Boolean).join(' · ')}>
-                            {f.home ? opp : <span className="away">{opp.toLowerCase()}</span>}
+                            {/* venue said, not implied by letter case — the
+                                same tag the Projections tab uses */}
+                            <span className="ep-opp">
+                              {opp}<b className={f.home ? 'h' : 'a'}>{f.home ? 'H' : 'A'}</b>
+                            </span>
                             <span className="val">
                               {unpriced ? 'no price'
                                 : mode === 'odds'
