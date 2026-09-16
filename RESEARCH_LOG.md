@@ -1762,3 +1762,48 @@ players. **Not shipped**; env-gated (`$FPL_XPTS_VARIANT=style`,
 `style_gk`, `style_mid`) and queued with `defcon_style` for re-test as
 2026-27 accrues. The mechanism for midfielders is measured and the arm is
 the right shape; the decision value is unresolved at n=74.
+
+## E27. An outside architecture review, sorted; two new lineup feeds; cross-league seeding gated
+
+The owner brought a separate research summary (2026-09-16: the academic
+OpenFPL paper, 2PM-Transformer, hierarchical Bayes, GNNs, commercial stacks,
+bookmaker props, predicted-lineup accuracy). Sorted against this log:
+
+* **Confirms, already measured here:** minutes/lineups are the binding
+  constraint (E8, E8b, E16 pricing), the market is at least as good as any
+  team model (the encompassing regression), the engine is already the
+  hurdle/compound structure it recommends (P(0 min) → conditional rates →
+  scoring rule), and a new regressor over the same features cannot beat the
+  variance floor (E14: perfect rates are worth nothing).
+* **Refuted here:** market-as-calibration-target (E17 market-only lambda,
+  null), tail-calibration objectives (E1-E2 rank functionals, null),
+  Bayesian time-varying ability (adaptive shrinkage, worse).
+* **Genuinely new, acted on:**
+  1. **Two more predicted-lineup feeds, forward-collected.** Fantasy Football
+     Scout's free page serves every club's predicted XI (formation, rows,
+     full names) AND Out / Doubts-with-percentage / Banned / latest-news
+     lists (`acquire/sources/ffscout_lineups.py`); SportsGambler serves
+     predicted or confirmed XIs per fixture through its own AJAX endpoint
+     (`acquire/sources/sportsgambler_lineups.py`). Both keyless, stdlib
+     parsed, wired into the scheduled collector (`acquire/actions.py`:
+     `data/collected/lineups_ffscout/`, `team_news_ffscout/`,
+     `lineups_sportsgambler/`, append-only, change-detected per club) and
+     seeded 2026-09-16 (220 + 108 + 264 rows). The lineup-tester evidence
+     says the best provider varies by club, so an ensemble of three feeds
+     is the right thing to price in E15's harness once the band rows accrue;
+     the Scout doubts-with-percentage list is the first pre-deadline injury
+     feed with a stated probability, to be gated against FPL's flag.
+  2. **Cross-league seeding for new signings — killed at the gate.** The EPL
+     ingest drops a player's other-league Understat matches; a collector now
+     keeps them (`understat_foreign_match`, seasons before his first FPL
+     one; 18,691 rows over 249 players). For 105 new signings with >= 900
+     foreign minutes, the foreign npxG/90 and xA/90 predict the first six
+     EPL appearances no better than the engine's cold-start rate: joint
+     regression t_foreign (goals / assists) = −0.14 / −0.18 (DEF, 42
+     players), +1.99 / +0.68 (MID, 38), −0.38 / −0.80 (FWD, 18), with the
+     engine term significant in most cells; MAE within 0.015 of the
+     engine's everywhere. One borderline cell in six is noise.
+     `research/cold_start_gate.py`. No arm.
+  3. **Player-prop odds** (anytime scorer, clean sheet) are the one market
+     signal that reaches a player directly; forward logging needs a working
+     Odds API key (currently 401). Queued.

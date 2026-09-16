@@ -1358,6 +1358,17 @@ bootstrap and commits to `data/collected/`:
   panel was enumerated after GW2, so its GW1-2 picks are conditioned and
   excluded from any differential analysis (see RESEARCH_LOG).
 
+* `lineups_ffscout/<season>.csv`, `team_news_ffscout/<season>.csv`,
+  `lineups_sportsgambler/<season>.csv` — two more predicted-XI feeds
+  (2026-09-16, E27): Fantasy Football Scout's free page (every club's
+  predicted XI with formation and rows, plus Out / Doubts with a
+  percentage / Banned / latest news) and SportsGambler's per-fixture
+  predicted or confirmed XIs (`lineups-load2.php?id=`). Append-only,
+  change-detected per club; stdlib parsers in `acquire/sources/`. With
+  RotoWire that is three feeds to ensemble in the E15 lineup-feed harness;
+  the Scout doubts list is the first pre-deadline injury feed with a
+  stated probability.
+
 `python -m acquire actions-import` replays the file archive into the
 `acq_*` change-log tables so research keeps one query surface. Scheduled
 workflows fire only on the default branch — the workflow must be merged to
@@ -2369,6 +2380,19 @@ this replay (`bt_base_pre_r21` kept, with the audits the residual gates
 read; regenerate audits for the new baseline before the next residual
 gate). Serve-time absences come from FPL's
 change log (`absence.py` kind `fpl`) plus bans and Transfermarkt spells.
+
+### Round 23: an outside review sorted, two lineup feeds added, cross-league seeding killed
+
+An architecture review the owner commissioned (E27) mostly confirmed what
+this file already measures; its refuted items are E17's market-only lambda
+and the rank functionals. Acted on: **two more predicted-lineup feeds now
+collect forward** (Fantasy Football Scout with Out/Doubts%/Banned, and
+SportsGambler — see the collection section) and **cross-league seeding of
+new signings' rates is killed at the gate** — for 105 signings with >= 900
+foreign Understat minutes (kept in `understat_foreign_match`, which the
+EPL ingest otherwise drops), the engine's own cold-start rate predicts
+their first six appearances at least as well (`research/cold_start_gate.py`).
+Player-prop odds are queued behind a working Odds API key.
 
 ### Round 22: opponent possession and the DefCon rate — real, unproven at n=37
 

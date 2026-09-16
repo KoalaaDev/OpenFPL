@@ -49,6 +49,7 @@ import os
 
 from .core import http
 from .sources import fpl_availability, predicted_lineups
+from .sources import ffscout_lineups, sportsgambler_lineups
 
 BOOTSTRAP_URL = fpl_availability.URL
 API = "https://fantasy.premierleague.com/api"
@@ -301,6 +302,140 @@ def _collect_lineups(out_dir: str, season: str, next_gw: int | None,
     return wrote
 
 
+FEED_FIELDS = ("observed_utc", "gw", "source", "team_abbr", "opponent_abbr", "status",
+               "formation", "row", "slot", "player", "short", "kickoff_text")
+NEWS_FIELDS = ("observed_utc", "gw", "source", "team_abbr", "kind", "player", "pct", "news")
+
+
+def _feed_state(path: str) -> dict:
+    """The most recent XI recorded per (team, status) in a feed archive."""
+    if not os.path.exists(path):
+        return {}
+    try:
+        with open(path, encoding="utf-8", newline="") as fh:
+            rows = list(csv.DictReader(fh))
+    except OSError:
+        return {}
+    latest: dict = {}
+    for r in rows:
+        key = (r["team_abbr"], r["status"])
+        latest.setdefault(key, {}).setdefault(r["observed_utc"], []).append(f"{r['row']}:{r['player']}")
+    return {k: _fingerprint(None, v[max(v)]) for k, v in latest.items()}
+
+
+def _append_feed(path: str, fields, observed: str, groups, keyfn, rowsfn) -> int:
+    """Append each group whose fingerprint changed since the last run."""
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    exists = os.path.exists(path)
+    seen = _feed_state(path)
+    wrote = 0
+    with open(path, "a", encoding="utf-8", newline="") as fh:
+        w = csv.writer(fh)
+        if not exists:
+            w.writerow(fields)
+        for g in groups:
+            key = keyfn(g)
+            fp = _fingerprint(None, [f"{r['row']}:{r['player']}" for r in g])
+            if seen.get(key) == fp:
+                continue
+            for row in rowsfn(g):
+                w.writerow(row)
+                wrote += 1
+    return wrote
+
+
+def _collect_ffscout(out_dir: str, season: str, next_gw: int | None, observed: str) -> dict:
+    """Fantasy Football Scout's free predicted XIs and team news (Out /
+    Doubts % / Banned / latest news), append-only, change-detected per club.
+    A second predicted-lineup feed for the E8b pricing, and the first
+    pre-deadline injury list with a stated probability. Never fatal."""
+    try:
+        resp = http.get(ffscout_lineups.URL, delay=1.0)
+        if not resp.ok:
+            return {"lineups": 0, "news": 0}
+        lineups, news = ffscout_lineups.parse(resp.text)
+    except Exception:                                # noqa: BLE001
+        return {"lineups": 0, "news": 0}
+    by_team: dict = {}
+    for r in lineups:
+        by_team.setdefault(r["team_abbr"], []).append(r)
+    path = os.path.join(out_dir, "lineups_ffscout", f"{season}.csv")
+    n_lu = _append_feed(
+        path, FEED_FIELDS, observed, list(by_team.values()),
+        keyfn=lambda g: (g[0]["team_abbr"], "predicted"),
+        rowsfn=lambda g: [[observed, next_gw, "ffscout", r["team_abbr"], None, "predicted",
+                           r["formation"], r["row"], r["slot"], r["player"], r["short"],
+                           r["next_match"]] for r in g])
+    # team news: one row per item per run whenever the club's list changed
+    npath = os.path.join(out_dir, "team_news_ffscout", f"{season}.csv")
+    os.makedirs(os.path.dirname(npath), exist_ok=True)
+    exists = os.path.exists(npath)
+    last: dict = {}
+    if exists:
+        try:
+            with open(npath, encoding="utf-8", newline="") as fh:
+                for r in csv.DictReader(fh):
+                    last.setdefault(r["team_abbr"], {}).setdefault(r["observed_utc"], []).append(
+                        f"{r['kind']}:{r['player']}:{r['pct']}:{(r['news'] or '')[:80]}")
+        except OSError:
+            last = {}
+    n_news = 0
+    with open(npath, "a", encoding="utf-8", newline="") as fh:
+        w = csv.writer(fh)
+        if not exists:
+            w.writerow(NEWS_FIELDS)
+        by_club: dict = {}
+        for r in news:
+            by_club.setdefault(r["team_abbr"], []).append(r)
+        for abbr, items in by_club.items():
+            fp = sorted(f"{r['kind']}:{r['player']}:{r['pct']}:{(r['news'] or '')[:80]}" for r in items)
+            prev = last.get(abbr)
+            if prev and sorted(prev[max(prev)]) == fp:
+                continue
+            for r in items:
+                w.writerow([observed, next_gw, "ffscout", abbr, r["kind"], r["player"], r["pct"], r["news"]])
+                n_news += 1
+    return {"lineups": n_lu, "news": n_news}
+
+
+def _collect_sportsgambler(out_dir: str, season: str, next_gw: int | None, observed: str) -> int:
+    """SportsGambler's predicted / confirmed XIs per fixture (index page, then
+    one request per fixture), append-only, change-detected per club and
+    status. A third feed. Never fatal."""
+    try:
+        resp = http.get(sportsgambler_lineups.INDEX_URL, delay=1.0)
+        if not resp.ok:
+            return 0
+        fixtures = sportsgambler_lineups.parse_index(resp.text)
+    except Exception:                                # noqa: BLE001
+        return 0
+    groups = []
+    for f in fixtures[:12]:                          # the coming gameweek and a little beyond
+        if not f["home_abbr"] or not f["away_abbr"]:
+            continue
+        try:
+            r2 = http.get(sportsgambler_lineups.LOAD_URL.format(id=f["id"]), delay=1.0)
+            if not r2.ok:
+                continue
+            lu = sportsgambler_lineups.parse_lineup(r2.text)
+        except Exception:                            # noqa: BLE001
+            continue
+        for side, abbr, opp in (("home", f["home_abbr"], f["away_abbr"]), ("away", f["away_abbr"], f["home_abbr"])):
+            if lu.get(side):
+                groups.append([{**r, "team_abbr": abbr, "opponent_abbr": opp, "status": f["status"],
+                                "formation": (lu.get("formation") or {}).get(side),
+                                "kickoff_text": f"{f['date']} {f['time'] or ''}".strip()} for r in lu[side]])
+    if not groups:
+        return 0
+    path = os.path.join(out_dir, "lineups_sportsgambler", f"{season}.csv")
+    return _append_feed(
+        path, FEED_FIELDS, observed, groups,
+        keyfn=lambda g: (g[0]["team_abbr"], g[0]["status"]),
+        rowsfn=lambda g: [[observed, next_gw, "sportsgambler", r["team_abbr"], r["opponent_abbr"],
+                           r["status"], r["formation"], r["row"], r["slot"], r["player"], None,
+                           r["kickoff_text"]] for r in g])
+
+
 def _by_side(rows: list[dict]):
     order, groups = [], {}
     for r in rows:
@@ -357,11 +492,13 @@ def collect(out_dir: str = OUT_DIR, *, payload: str | None = None) -> dict:
     deadlines = [(ev.get("deadline_time"), int(ev["id"]))
                  for ev in boot.get("events", []) if ev.get("deadline_time")]
     lineups = _collect_lineups(out_dir, season, next_gw, observed, deadlines)
+    ffs = _collect_ffscout(out_dir, season, next_gw, observed)
+    sgl = _collect_sportsgambler(out_dir, season, next_gw, observed)
 
     summary = {"observed_utc": observed, "season": season,
                "next_gw": next_gw, "availability_changes": changed,
                "snapshot": snap, "ownership": own, "picks": picks,
-               "lineups": lineups}
+               "lineups": lineups, "ffscout": ffs, "sportsgambler": sgl}
     _write_json(os.path.join(out_dir, "meta.json"), summary)
     return summary
 
