@@ -1838,3 +1838,16 @@ correct-score P(clean sheet) answers CLAUDE.md's open question 1 (the
 exact-score market as a direct P(no goals)) once the same window has
 accrued, scored on log-loss next to `exp(-lambda)` in
 `research/cs_engine.py`.
+
+**E28 addendum — the horizon beyond the market, and the prices on the card.**
+The owner asked whether Polymarket could substitute for gameweeks no
+bookmaker has priced; it lists only the current round (10 fixtures), fewer
+than Oddschecker's two. Measured instead: the team model compresses the
+market's strength gaps by 23-31% in every full season (log-log slope
+1.23/1.23/1.31, r 0.92-0.95, 2,162 fixture-sides; 2022-23 excluded at
+r=0.60), so `odds_model.fit_market_stretch` fits that mapping on every pull
+and the engine applies it to UNPRICED fixtures only (replays untouched:
+`backtest` passes `market_stretch=False`). Per-player anytime-scorer and
+club clean-sheet prices resolve to FPL players at 97-99%
+(`oddschecker.match_player`; the rest are non-FPL squad members) and are
+shown on the player card, not modelled.

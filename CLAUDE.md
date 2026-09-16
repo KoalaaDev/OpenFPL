@@ -2079,7 +2079,27 @@ Polymarket fallback stays behind it, and the Odds API key is optional.
 **Not a model change** (the blend and weight are the backtested ones), so
 no replay. `market_prop` (clean sheets, both-to-score, anytime scorers per
 player) accrues forward from GW5 for a gate against the engine's own
-components — the E27 "player props" item, now free.
+components — the E27 "player props" item, now free — and is SHOWN on the
+player card ("bookmakers: 46% to score anytime · clean sheet 34%",
+`services._attach_market`, names resolved at 97-99% by
+`oddschecker.match_player`), never fed to the projection.
+
+**5b. Beyond the bookmakers' two-round horizon the team model compresses
+strength gaps by a quarter to a third.** Bookmakers price ~2 rounds ahead
+(the index lists one; sibling fixtures on each match page reach the next),
+Polymarket only the current round, so GW+2 onward has no market at all.
+Regressing log(market lambda) on log(model lambda) over every priced
+fixture, point-in-time: slope **1.23 / 1.23 / 1.31** (2023-24 / 2024-25 /
+2025-26) with r = 0.92-0.95 — the model ranks fixtures as the market does
+and understates the gaps, every season (2022-23, the model's first season
+of data, fits at r=0.60 and is excluded). `odds_model.fit_market_stretch`
+refits `lambda' = exp(a + b log lambda)` on every pull
+(`models/xpts/market_stretch.json`, b=1.25, a=-0.07, n=2,162, r=0.93) and
+the engine applies it to fixtures WITHOUT a market price only; `backtest`
+passes `market_stretch=False` and `$FPL_MARKET_STRETCH=0` disables it. A
+live-only calibration by construction (no replayed fixture is unpriced),
+measured on 2,162 fixture-sides rather than assumed. On GW7 it moves City's
+players up ~0.3-0.5 and Ipswich's down ~0.3.
 
 ### Where the forward-collected tests stand (2026-27 GW3)
 

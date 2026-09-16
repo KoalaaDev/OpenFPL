@@ -23,6 +23,8 @@ export default function PlayerModal({ pid, draft, plan, actions, close }) {
   // the app-layer history estimate does not, so scale only the latter
   const engineXm = proj?.players?.[String(pid)]?.xmins
   // Round 18: the coming gameweek's press-conference statement, if any
+  const marketByGw = proj?.players?.[String(pid)]?.market || null
+  const market = marketByGw ? (marketByGw[String(status?.editable_gw ?? status?.next_gw)] || Object.values(marketByGw)[0]) : null
   const presserByGw = proj?.players?.[String(pid)]?.presser || null
   const presser = presserByGw ? (presserByGw[String(status?.next_gw)] || Object.values(presserByGw)[0]) : null
   const xminsBase = engineXm != null ? engineXm / Math.max(0.01, ava / 100) : (p?.xmins ?? 0)
@@ -124,6 +126,16 @@ export default function PlayerModal({ pid, draft, plan, actions, close }) {
                 <span style={{ color: 'var(--muted)', marginLeft: 6 }}>{p.news}</span>
               )}
             </div>
+            {market && (market.anytime != null || market.cs != null) && (
+              <div className="pm-presser" title="Bookmaker prices (Oddschecker, median of ~24 books). Shown beside the model, not fed into it.">
+                <span className="presser-tag available">bookmakers</span>
+                <span className="presser-quote">
+                  {market.anytime != null ? `${Math.round(market.anytime * 100)}% to score anytime${market.best_odds ? ` (best ${market.best_odds})` : ''}` : ''}
+                  {market.anytime != null && market.cs != null ? ' · ' : ''}
+                  {market.cs != null ? `clean sheet ${Math.round(market.cs * 100)}%` : ''}
+                </span>
+              </div>
+            )}
             {presser && (
               <div className="pm-presser" title="From the manager's Friday press conference (BBC Sport). Applied to the projection as a conservative exposure factor.">
                 <span className={`presser-tag ${presser.cls}`}>{presser.cls}</span>

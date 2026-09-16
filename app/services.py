@@ -601,6 +601,21 @@ def entry_chips(entry_id: int, state: dict | None = None) -> dict:
 # one local file and take precedence over the public picks endpoints.
 # --------------------------------------------------------------------------
 
+def _attach_market(conn, season: str, gw: int, cache: dict) -> None:
+    """Bookmaker prices per player for one gameweek (Oddschecker: anytime
+    scorer, the club's clean sheet) — SHOWN on the player card, never fed
+    to the projection. Absent for gameweeks no bookmaker has priced."""
+    try:
+        from fpl_engine.ingest import oddschecker as _oc
+        props = _oc.props_for_gw(conn, season, gw)
+    except Exception:  # noqa: BLE001
+        return
+    for pid, v in props.items():
+        rec = cache["players"].get(str(pid))
+        if rec is not None:
+            rec.setdefault("market", {})[str(gw)] = v
+
+
 def _price_in_rumours(conn, season: str, gw: int, cache: dict) -> None:
     """Fold strong transfer rumours into the projection for one gameweek.
 
@@ -1103,6 +1118,7 @@ def build_projections(job_id: str | None, gws: list[int], *,
                     rec["xmins"] = xm          # kept: older callers read this
                     rec["ep"][str(g)] = round(float(getattr(r, f"ep_gw{g}")), 3)
                 _price_in_rumours(conn, season, g, cache)
+                _attach_market(conn, season, g, cache)
                 cache["gws"][str(g)] = {"built_at": time.time()}
             cache["updated_at"] = time.time()
             _save_proj_cache(cache)

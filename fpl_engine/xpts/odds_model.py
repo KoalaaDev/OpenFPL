@@ -165,3 +165,103 @@ def fixture_odds_map(conn, season: str, fixture_ids: list[int],
         if sources is not None:
             sources[fid] = "polymarket"
     return out
+
+
+# ---------------------------------------------------------------------------
+# The market stretch: what the team model does to fixtures NO market has priced
+# ---------------------------------------------------------------------------
+# Over every fixture that both the team model and a bookmaker priced
+# (2023-24 to 2025-26, ~2,160 fixtures), log(market lambda) on log(model
+# lambda) has a slope of 1.23 / 1.23 / 1.31 with r = 0.92-0.95: the model
+# RANKS fixtures as the market does and COMPRESSES the gaps by a quarter to
+# a third, every season (ridge shrinkage and a 240-day window will do that).
+# Where a fixture carries a price the blend fixes it; beyond the bookmakers'
+# two-round horizon the far-horizon projections were left with the
+# compressed spread — City vs Sunderland looked like a mid-table match. The
+# stretch applies the fitted mapping to UNPRICED fixtures only. It is refit
+# on every pull from the seasons on hand (point-in-time: model rates as of
+# each gameweek's first kickoff), stored in models/xpts/market_stretch.json,
+# and never touches a replay (every replayed fixture has football-data odds,
+# and backtest.run passes market_stretch=False regardless).
+STRETCH_PATH = None      # resolved lazily from config.MODELS_DIR
+STRETCH_MIN_R = 0.8      # a season whose fit is this weak is left out (2022-23: r=0.60)
+
+
+def _stretch_path() -> str:
+    import os
+    from .. import config
+    return STRETCH_PATH or os.path.join(config.MODELS_DIR, "xpts", "market_stretch.json")
+
+
+def fit_market_stretch(conn, seasons: list[str], *, path: str | None = None) -> dict | None:
+    """Fit log(lambda_market) = a + b log(lambda_model) on priced fixtures of
+    ``seasons`` and store it. Returns the record, or None when too few."""
+    import json
+    import os
+    import numpy as np
+    from . import engine as _eng, team_model as _tm
+    lm, lk, used = [], [], {}
+    for season in seasons:
+        odds = {int(r["fixture_id"]): (r["lam_home"], r["lam_away"]) for r in conn.execute(
+            "SELECT fixture_id, lam_home, lam_away FROM match_odds WHERE season=? AND lam_home IS NOT NULL",
+            (season,))}
+        if len(odds) < 60:
+            continue
+        s_lm, s_lk = [], []
+        for gw in range(3, 39):
+            as_of = _eng.first_kickoff(conn, season, gw)
+            if not as_of:
+                continue
+            fx = _eng._gw_fixtures(conn, season, gw)
+            if not fx or not any(f["fixture_id"] in odds for f in fx):
+                continue
+            tm = _tm.fit(conn, as_of)
+            for f in fx:
+                od = odds.get(f["fixture_id"])
+                if not od or not od[0] or not od[1]:
+                    continue
+                lh, la = tm.fixture(f["hcode"], f["acode"])
+                if lh > 0 and la > 0:
+                    s_lm += [np.log(lh), np.log(la)]
+                    s_lk += [np.log(od[0]), np.log(od[1])]
+        if len(s_lm) < 100:
+            continue
+        r = float(np.corrcoef(s_lm, s_lk)[0, 1])
+        if r < STRETCH_MIN_R:
+            continue
+        used[season] = {"n": len(s_lm), "r": round(r, 3)}
+        lm += s_lm
+        lk += s_lk
+    if len(lm) < 300:
+        return None
+    b, a = np.polyfit(np.asarray(lm), np.asarray(lk), 1)
+    rec = {"a": float(a), "b": float(b), "n": len(lm), "seasons": used,
+           "r": round(float(np.corrcoef(lm, lk)[0, 1]), 3)}
+    out = path or _stretch_path()
+    os.makedirs(os.path.dirname(out), exist_ok=True)
+    with open(out, "w", encoding="utf-8") as fh:
+        json.dump(rec, fh, indent=1)
+    return rec
+
+
+def load_market_stretch(path: str | None = None) -> dict | None:
+    import json
+    import os
+    if os.environ.get("FPL_MARKET_STRETCH", "1") in ("0", "off", "false"):
+        return None
+    try:
+        with open(path or _stretch_path(), encoding="utf-8") as fh:
+            rec = json.load(fh)
+    except (OSError, ValueError):
+        return None
+    if not rec or rec.get("b") is None or rec.get("a") is None:
+        return None
+    return rec
+
+
+def apply_stretch(lam: float, rec: dict) -> float:
+    """lambda' = exp(a + b log lambda), clipped to a sane goal rate."""
+    import math
+    if lam <= 0:
+        return lam
+    return float(min(4.0, max(0.2, math.exp(rec["a"] + rec["b"] * math.log(lam)))))

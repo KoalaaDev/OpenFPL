@@ -213,6 +213,7 @@ def xpts_predict_gw(conn, season: str, gw: int, *, as_of: str | None = None,
                     rate_override: "pd.DataFrame | None" = None,
                     lambda_override: dict | None = None,
                     calib: dict | None = None,
+                    market_stretch: bool | None = None,
                     defence_leak: dict | None = None,
                     tweaks: dict | None = None) -> pd.DataFrame:
     """Expected points per player for one gameweek (point-in-time at as_of).
@@ -356,6 +357,11 @@ def xpts_predict_gw(conn, season: str, gw: int, *, as_of: str | None = None,
     omap = (odds_model.fixture_odds_map(
                 conn, season, [f["fixture_id"] for f in fixtures], model_totals=_totals)
             if ow > 0 else {})
+    # fixtures NO market has priced (beyond the bookmakers' ~two-round
+    # horizon) get the market-calibrated stretch of the team model's rates;
+    # off in replays (backtest passes False), off with $FPL_MARKET_STRETCH=0
+    _stretch = odds_model.load_market_stretch() if (market_stretch if market_stretch is not None
+                                                    else True) else None
     team_fixtures: dict[int, list[list]] = {}   # [lam_for, lam_against, p0_learned, fixture_id]
     for f in fixtures:
         lh, la = tm.fixture(f["hcode"], f["acode"])
@@ -366,6 +372,9 @@ def xpts_predict_gw(conn, season: str, gw: int, *, as_of: str | None = None,
         if od:
             lh = (1 - ow) * lh + ow * od[0]
             la = (1 - ow) * la + ow * od[1]
+        elif _stretch and lo is None:
+            lh = odds_model.apply_stretch(lh, _stretch)
+            la = odds_model.apply_stretch(la, _stretch)
         team_fixtures.setdefault(f["team_h"], []).append(
             [lh, la * (1 + venue_adj), None, f["fixture_id"]])
         team_fixtures.setdefault(f["team_a"], []).append(

@@ -323,3 +323,85 @@ def ingest(conn, season: str, *, client=None, max_fixtures: int = 40,
                             round(p["prob"], 4), p["best_odds"], p["median_odds"], p["n_bookmakers"], ""])
     conn.commit()
     return out
+
+
+# ------------------------------------------------------------ resolution --
+_LETTERS = str.maketrans({"ø": "o", "Ø": "O", "ß": "ss", "æ": "ae", "Æ": "AE", "œ": "oe", "đ": "d", "Đ": "D",
+                          "ł": "l", "Ł": "L", "ð": "d", "þ": "th"})
+
+
+def _norm(s: str) -> str:
+    import unicodedata
+    s = unicodedata.normalize("NFKD", (s or "").translate(_LETTERS)).encode("ascii", "ignore").decode()
+    return re.sub(r"[^a-z ]", " ", s.lower()).strip()
+
+
+def match_player(name: str, candidates: list[dict]) -> int | None:
+    """Resolve a bookmaker's player name to one FPL player among the two
+    clubs' squads: exact full name, then a unique surname, then the largest
+    token overlap when it is unique. None rather than a guess."""
+    toks = set(_norm(name).split())
+    if not toks:
+        return None
+    exact = [c for c in candidates if _norm(c["full_name"]) == _norm(name)]
+    if len(exact) == 1:
+        return int(exact[0]["player_id"])
+    last = _norm(name).split()[-1]
+    by_last = [c for c in candidates if _norm(c["web_name"]).split()[-1:] == [last]
+               or _norm(c["full_name"]).split()[-1:] == [last]]
+    if len(by_last) == 1:
+        return int(by_last[0]["player_id"])
+    scored = []
+    for c in candidates:
+        ct = set(_norm(c["full_name"]).split()) | set(_norm(c["web_name"]).split())
+        k = len(toks & ct)
+        if k:
+            scored.append((k, int(c["player_id"])))
+    if not scored:
+        return None
+    scored.sort(reverse=True)
+    if len(scored) > 1 and scored[0][0] == scored[1][0]:
+        return None
+    return scored[0][1]
+
+
+def props_for_gw(conn, season: str, gw: int) -> dict[int, dict]:
+    """player_id -> {anytime, best_odds, n_bookmakers, cs, observed_utc} for
+    the gameweek's fixtures that carry Oddschecker props; the clean-sheet
+    probability is the club's, attached to every player of that club."""
+    try:
+        fx = conn.execute("SELECT fixture_id, team_h, team_a FROM fixture WHERE season=? AND gw=?",
+                          (season, gw)).fetchall()
+        players = [dict(r) for r in conn.execute(
+            "SELECT player_id, web_name, full_name, team_id FROM player WHERE season=?", (season,))]
+        props = conn.execute("SELECT fixture_id, kind, player, prob, best_odds, n_bookmakers, observed_utc "
+                             "FROM market_prop WHERE season=? AND fixture_id IN (%s)"
+                             % ",".join(str(int(f["fixture_id"])) for f in fx) if fx else
+                             "SELECT fixture_id, kind, player, prob, best_odds, n_bookmakers, observed_utc "
+                             "FROM market_prop WHERE 0", (season,) if fx else ()).fetchall()
+    except Exception:      # noqa: BLE001 - table absent
+        return {}
+    by_team: dict[int, list[dict]] = {}
+    for pl in players:
+        by_team.setdefault(int(pl["team_id"]), []).append(pl)
+    sides = {int(f["fixture_id"]): (int(f["team_h"]), int(f["team_a"])) for f in fx}
+    out: dict[int, dict] = {}
+    for r in props:
+        fid = int(r["fixture_id"])
+        if fid not in sides:
+            continue
+        h, a = sides[fid]
+        if r["kind"] in ("cs_home", "cs_away"):
+            team = h if r["kind"] == "cs_home" else a
+            for pl in by_team.get(team, []):
+                out.setdefault(int(pl["player_id"]), {})["cs"] = round(float(r["prob"]), 3)
+            continue
+        if r["kind"] != "anytime" or not r["player"]:
+            continue
+        pid = match_player(r["player"], by_team.get(h, []) + by_team.get(a, []))
+        if pid is None:
+            continue
+        out.setdefault(pid, {}).update({"anytime": round(float(r["prob"]), 3), "best_odds": r["best_odds"],
+                                        "n_bookmakers": r["n_bookmakers"], "observed_utc": r["observed_utc"],
+                                        "name": r["player"]})
+    return out

@@ -79,6 +79,16 @@ def _pull_odds(conn, season: str) -> dict | str:
         out["oddschecker"] = oddschecker.ingest(conn, season)
     except Exception as e:  # noqa: BLE001
         out["oddschecker"] = f"skipped ({e})"
+    # Refit the market stretch the engine applies to fixtures beyond the
+    # bookmakers' horizon (see odds_model.fit_market_stretch).
+    try:
+        from .xpts import odds_model as _om
+        seasons = [x for x in config.BACKFILL_SEASONS if x >= "2023-24"] + [season]
+        rec = _om.fit_market_stretch(conn, seasons)
+        out["market_stretch"] = ({"b": round(rec["b"], 3), "a": round(rec["a"], 3), "n": rec["n"],
+                                  "r": rec["r"]} if rec else "not fitted")
+    except Exception as e:  # noqa: BLE001
+        out["market_stretch"] = f"skipped ({e})"
     # Prediction-market prices. Free and keyless, and they land in their own
     # table — they are shown next to the bookmaker's view, never fed to the
     # model, because every Polymarket EPL market is team level.

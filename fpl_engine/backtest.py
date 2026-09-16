@@ -302,7 +302,8 @@ def run(conn, season: str = "2025-26", *, gws: list[int] | None = None,
         x = xpts_engine.xpts_predict_gw(conn, season, g, as_of=as_of,
                                         use_availability=False,
                                         minutes_bundle=(clf, meta), rules=rules,
-                                        calib=mult, **(xpts_kwargs or {}))
+                                        calib=mult, market_stretch=False,
+                                        **(xpts_kwargs or {}))
         if online is not None and not x.empty:
             # DGW actuals are summed per player before they are compared
             ag = act_comp[act_comp["gw"] == g]
