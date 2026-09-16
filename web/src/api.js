@@ -47,6 +47,7 @@ export const api = {
   refresh: () => send('/api/refresh', 'POST', {}),
   deadline: (force = false) => get(`/api/admin/deadline${force ? '?force=1' : ''}`),
   live: () => get('/api/live'),
+  modelHistory: (force = false) => get(`/api/admin/model${force ? '?force=1' : ''}`),
   entry: (id) => get(`/api/entry/${id}`),
   league: (id, { gw, limit } = {}) => {
     const q = new URLSearchParams()

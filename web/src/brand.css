@@ -172,12 +172,27 @@ body {
 
   /* planner: the pitch scales to the width it has */
   .planner-grid { gap: 12px; }
-  /* horizontal scroll hid the chips and the totals off the right edge with
-     nothing to say they were there; wrapping shows the whole bar instead */
-  .gwbar { gap: 8px 10px; padding: 8px 10px; overflow-x: visible; flex-wrap: wrap; }
-  .gwbar .pager { flex-wrap: wrap; }
-  .gwbar .chipbar { margin-left: 0; flex-wrap: wrap; }
-  .gwbar .stats { gap: 14px; margin-left: 0; width: 100%; justify-content: space-between; }
+  /* Three compact rows, each scrolling sideways on its own: gameweeks, then
+     chips, then the totals. Scrolling the whole bar hid the chips and the
+     totals with nothing to say they were there; wrapping every button instead
+     pushed the pitch 400px down the page, which is worse. */
+  .gwbar { gap: 6px; padding: 8px 10px; overflow: visible; flex-wrap: wrap; }
+  .gwbar .pager,
+  .gwbar .chipbar {
+    flex-wrap: nowrap; overflow-x: auto; width: 100%; margin-left: 0;
+    scrollbar-width: none; padding-bottom: 2px;
+  }
+  .gwbar .pager::-webkit-scrollbar,
+  .gwbar .chipbar::-webkit-scrollbar { display: none; }
+  .gwbar .pager .gw-dot, .gwbar .chipbar .dd { flex: none; }
+  .gwbar .chip-btn { font-size: 11px; padding: 6px 8px; }
+  .gwbar > .pill-btn { order: 3; }
+  .gwbar .stats {
+    order: 4; gap: 10px; margin-left: auto; justify-content: space-between;
+    flex: 1 1 auto; min-width: 0;
+  }
+  .gwbar .stat { gap: 4px; }
+  .gwbar .stat .k { font-size: 9px; }
   .stat .v { font-size: 13px; }
   .pitch-wrap { padding: 8px 6px 8px; }
   .pitch { padding: 16px 4px 12px; border-radius: 10px; }
@@ -216,6 +231,44 @@ body {
 @media (max-width: 400px) {
   .topnav .right .squad-btn { display: none; }     /* still reachable from the Planner */
   .pcard { min-width: 54px; }
+  .lh-clock b { font-size: 34px; }
+  .route-stop { flex-basis: 150px; }
+}
+
+/* ---------- the "More" sheet behind the bottom bar ------------------------ */
+.bn-sheet-backdrop {
+  position: fixed; inset: 0; z-index: 70; background: rgba(8, 8, 18, 0.55);
+  display: flex; align-items: flex-end;
+  animation: bn-fade 0.14s ease-out;
+}
+.bn-sheet {
+  width: 100%; background: var(--bg-deep);
+  border-top: 1px solid var(--line); border-radius: 18px 18px 0 0;
+  padding: 8px 12px calc(14px + env(safe-area-inset-bottom));
+  box-shadow: 0 -18px 50px rgba(0, 0, 0, 0.45);
+  animation: bn-rise 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.bn-grip {
+  width: 38px; height: 4px; border-radius: 3px; background: var(--line);
+  margin: 4px auto 10px;
+}
+.bn-sheet-item {
+  display: flex; align-items: center; gap: 12px; width: 100%;
+  padding: 13px 12px; border-radius: 10px; min-height: 48px;
+  font-size: 14px; font-weight: 600; color: var(--text); text-align: left;
+}
+.bn-sheet-item span { font-size: 17px; width: 24px; text-align: center; }
+.bn-sheet-item.active { background: var(--accent-soft); color: var(--accent); }
+.bn-sheet-item:active { background: var(--panel-2); }
+.bn-sheet-close {
+  width: 100%; margin-top: 6px; padding: 12px; border-radius: 10px;
+  min-height: 46px; background: var(--panel); color: var(--muted);
+  font-size: 13px; font-weight: 700;
+}
+@keyframes bn-rise { from { transform: translateY(16px); opacity: 0.6; } }
+@keyframes bn-fade { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .bn-sheet, .bn-sheet-backdrop { animation: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -431,3 +484,99 @@ body {
 .ops-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .ops-grid > .panel { min-width: 0; }
 @media (max-width: 900px) { .ops-grid { grid-template-columns: 1fr; } }
+
+/* ---------- admin model history ------------------------------------------ */
+.tile-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+.tile-row.inner { padding: 12px 14px 0; }
+.chart-wrap { padding: 8px 10px 4px; overflow-x: auto; }
+.chart-wrap svg { max-width: 100%; height: auto; }
+.table-wrap { overflow-x: auto; }
+.ptable.compact th, .ptable.compact td { padding: 6px 10px; font-size: 12px; }
+.ptable.compact tr.lead td { background: var(--accent-soft); }
+.imp-blocks, .imp-list { padding: 10px 14px 4px; display: grid; gap: 7px; }
+.imp-block, .imp-row { display: grid; grid-template-columns: 150px minmax(0, 1fr) 46px; gap: 10px; align-items: center; }
+.imp-row { grid-template-columns: 170px minmax(0, 1fr) 46px; }
+.ib-name, .ir-name {
+  font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ir-name { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.ib-bar, .ir-bar { height: 8px; border-radius: 4px; background: var(--panel-3); overflow: hidden; }
+.ib-bar i, .ir-bar i { display: block; height: 100%; background: var(--accent); }
+.ir-bar i { background: var(--blue-cell); }
+.ib-val, .ir-val { font-family: var(--mono); font-size: 11px; color: var(--muted-2); text-align: right; }
+@media (max-width: 720px) {
+  .imp-block, .imp-row { grid-template-columns: minmax(0, 1fr) 46px; }
+  .ib-bar, .ir-bar { grid-column: 1 / -1; }
+}
+
+/* ---------- mobile, round two --------------------------------------------- */
+/* Everything below is a phone defect that survived the first pass: the
+   notch, a close button that scrolls away inside a full-screen sheet, tap
+   feedback, and a handful of grids that were still desktop-shaped. */
+@media (max-width: 820px) {
+  /* the notch: the sticky header must not sit under it */
+  .topnav {
+    padding-top: env(safe-area-inset-top);
+    height: calc(54px + env(safe-area-inset-top));
+  }
+
+  /* a full-screen sheet needs its close button pinned, or it scrolls away
+     and the only way out is the browser's back gesture */
+  .pmodal-overlay, .modal-overlay { padding: 0; }
+  .pmodal .head, .modal-card .head {
+    position: sticky; top: 0; z-index: 5;
+    background: color-mix(in srgb, var(--panel) 94%, transparent);
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    padding-top: calc(12px + env(safe-area-inset-top));
+  }
+  .pmodal .head h2 { font-size: 19px; }
+  .pm-hero { opacity: 0.5; }                 /* never competes with the text */
+  .pd-grid, .statgrid { grid-template-columns: 1fr 1fr !important; }
+  .pmodal .actions { flex-wrap: wrap; }
+  .pmodal .actions .pill-btn { flex: 1 1 44%; justify-content: center; }
+
+  /* the planner rail becomes a stack, and the two panels that matter stay
+     open while the rest keep folding */
+  .planner-rail { gap: 0; }
+  .assist-card { flex-wrap: wrap; }
+  .assist-card .pill-btn { width: 100%; justify-content: center; margin-top: 2px; }
+  .assist-card .ac-icon { width: 22px; height: 22px; font-size: 12px; }
+
+  /* the plan reads as cards you swipe, which is what the track already is */
+  .route-track { padding: 10px; gap: 8px; scroll-snap-type: x mandatory; }
+  .route-stop { flex-basis: 162px; }
+
+  /* side-by-side panels that were still two columns on a phone */
+  .ops-grid, .live-grid, .ops-checks { grid-template-columns: 1fr; }
+  .tile-row { grid-template-columns: 1fr 1fr; }
+  .fx-slots, .pick-grid, .dd-clubs { grid-template-columns: 1fr; }
+  .live-row { grid-template-columns: auto minmax(0, 1fr); row-gap: 2px; }
+  .live-row .dd-when { grid-column: 2; font-size: 10px; }
+  .live-list { max-height: 340px; }
+
+  /* the solver's two columns stack, and its strategy cards go full width */
+  .solver-grid { grid-template-columns: 1fr; }
+  .style-card { flex: 1 1 100%; }
+
+  /* touch feedback: a tap that does nothing visible reads as a dead control */
+  .pill-btn:active, .fold-head:active, .route-stop:active,
+  .assist-card .pill-btn:active, .draft-row:active, .ta-item:active {
+    transform: scale(0.985);
+  }
+  button, a { -webkit-tap-highlight-color: rgba(139, 123, 255, 0.18); }
+
+  /* nothing may scroll the page sideways; wide things scroll inside a box */
+  body { overflow-x: hidden; }
+  .chart-wrap, .table-wrap, .route-track, .draft-cells { -webkit-overflow-scrolling: touch; }
+}
+
+@media (max-width: 560px) {
+  .tile-row { grid-template-columns: 1fr; }
+  .pd-grid, .statgrid { grid-template-columns: 1fr 1fr !important; }
+  .pmc-table th, .pmc-table td { padding: 6px 8px; font-size: 12px; }
+  .drafts-foot span { display: none; }
+  .dp-actions { width: 100%; }
+  .dp-actions .pill-btn { flex: 1; justify-content: center; }
+  .panel-head { font-size: 12px; }
+  .panel-sub { flex-basis: 100%; margin-left: 0; }
+}

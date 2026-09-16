@@ -1,0 +1,335 @@
+{
+  "season": "2026-27",
+  "gw": 4,
+  "spearman": 0.718,
+  "top20_hits": 3,
+  "captain_pick": "Jo\u00e3o Pedro",
+  "captain_actual": 12.0,
+  "captain_best": 17.0,
+  "predicted_total": 914,
+  "actual_total": 921,
+  "over_predictions": [
+    {
+      "player": "Disasi",
+      "position": "DEF",
+      "team": "Crystal Palace",
+      "pred": 3.39,
+      "actual": -3.0,
+      "e_min": 74,
+      "mins": 33.0,
+      "exp_xgi": 0.08,
+      "actual_xgi": 0,
+      "why": "mixed"
+    },
+    {
+      "player": "Foden",
+      "position": "MID",
+      "team": "Man City",
+      "pred": 3.44,
+      "actual": -2.0,
+      "e_min": 51,
+      "mins": 22.0,
+      "exp_xgi": 0.39,
+      "actual_xgi": 0.02,
+      "why": "mixed"
+    },
+    {
+      "player": "Gakpo",
+      "position": "MID",
+      "team": "Liverpool",
+      "pred": 5.57,
+      "actual": 1.0,
+      "e_min": 81,
+      "mins": 30.0,
+      "exp_xgi": 0.68,
+      "actual_xgi": 0.1,
+      "why": "mixed"
+    },
+    {
+      "player": "Awoniyi",
+      "position": "FWD",
+      "team": "Coventry City",
+      "pred": 2.53,
+      "actual": -2.0,
+      "e_min": 48,
+      "mins": 52.0,
+      "exp_xgi": 0.27,
+      "actual_xgi": 0.07,
+      "why": "mixed"
+    },
+    {
+      "player": "Lacroix",
+      "position": "DEF",
+      "team": "Chelsea",
+      "pred": 5.51,
+      "actual": 1.0,
+      "e_min": 85,
+      "mins": 4.0,
+      "exp_xgi": 0.2,
+      "actual_xgi": 0,
+      "why": "mixed"
+    },
+    {
+      "player": "Reinildo",
+      "position": "DEF",
+      "team": "Sunderland",
+      "pred": 2.15,
+      "actual": -2.0,
+      "e_min": 78,
+      "mins": 90.0,
+      "exp_xgi": 0.04,
+      "actual_xgi": 0.01,
+      "why": "mixed"
+    },
+    {
+      "player": "Canvot",
+      "position": "DEF",
+      "team": "Crystal Palace",
+      "pred": 4.12,
+      "actual": 0.0,
+      "e_min": 80,
+      "mins": 0.0,
+      "exp_xgi": 0.1,
+      "actual_xgi": 0,
+      "why": "MINUTES (didn't play)"
+    },
+    {
+      "player": "Pedro Porro",
+      "position": "DEF",
+      "team": "Spurs",
+      "pred": 3.85,
+      "actual": 0.0,
+      "e_min": 82,
+      "mins": 0.0,
+      "exp_xgi": 0.16,
+      "actual_xgi": 0,
+      "why": "MINUTES (didn't play)"
+    },
+    {
+      "player": "N.Jackson",
+      "position": "FWD",
+      "team": "Aston Villa",
+      "pred": 3.54,
+      "actual": 0.0,
+      "e_min": 69,
+      "mins": 45.0,
+      "exp_xgi": 0.41,
+      "actual_xgi": 0.04,
+      "why": "RATE (chances never came)"
+    },
+    {
+      "player": "Hato",
+      "position": "DEF",
+      "team": "Chelsea",
+      "pred": 3.46,
+      "actual": 0.0,
+      "e_min": 59,
+      "mins": 45.0,
+      "exp_xgi": 0.17,
+      "actual_xgi": 0.1,
+      "why": "mixed"
+    },
+    {
+      "player": "Hall",
+      "position": "DEF",
+      "team": "Newcastle",
+      "pred": 3.43,
+      "actual": 0.0,
+      "e_min": 81,
+      "mins": 90.0,
+      "exp_xgi": 0.14,
+      "actual_xgi": 0.03,
+      "why": "mixed"
+    },
+    {
+      "player": "E.Le F\u00e9e",
+      "position": "MID",
+      "team": "Sunderland",
+      "pred": 3.38,
+      "actual": 0.0,
+      "e_min": 84,
+      "mins": 90.0,
+      "exp_xgi": 0.19,
+      "actual_xgi": 1.44,
+      "why": "mixed"
+    }
+  ],
+  "under_predictions": [
+    {
+      "player": "Gro\u00df",
+      "position": "MID",
+      "team": "Brighton",
+      "pred": 4.39,
+      "actual": 17.0,
+      "e_min": 86,
+      "mins": 90.0,
+      "exp_xgi": 0.45,
+      "actual_xgi": 1.01
+    },
+    {
+      "player": "Bogle",
+      "position": "DEF",
+      "team": "Leeds",
+      "pred": 2.87,
+      "actual": 15.0,
+      "e_min": 66,
+      "mins": 82.0,
+      "exp_xgi": 0.15,
+      "actual_xgi": 0.46
+    },
+    {
+      "player": "Davis",
+      "position": "DEF",
+      "team": "Ipswich Town",
+      "pred": 2.59,
+      "actual": 14.0,
+      "e_min": 80,
+      "mins": 90.0,
+      "exp_xgi": 0.11,
+      "actual_xgi": 0.71
+    },
+    {
+      "player": "Schade",
+      "position": "MID",
+      "team": "Brentford",
+      "pred": 3.92,
+      "actual": 15.0,
+      "e_min": 77,
+      "mins": 90.0,
+      "exp_xgi": 0.36,
+      "actual_xgi": 0.31
+    },
+    {
+      "player": "Raya",
+      "position": "GK",
+      "team": "Arsenal",
+      "pred": 3.75,
+      "actual": 14.0,
+      "e_min": 78,
+      "mins": 90.0,
+      "exp_xgi": 0.0,
+      "actual_xgi": 0
+    },
+    {
+      "player": "Belloumi",
+      "position": "MID",
+      "team": "Hull City",
+      "pred": 2.9,
+      "actual": 13.0,
+      "e_min": 77,
+      "mins": 59.0,
+      "exp_xgi": 0.15,
+      "actual_xgi": 0.23
+    },
+    {
+      "player": "Emersonn",
+      "position": "FWD",
+      "team": "Ipswich Town",
+      "pred": 2.09,
+      "actual": 12.0,
+      "e_min": 43,
+      "mins": 62.0,
+      "exp_xgi": 0.19,
+      "actual_xgi": 0.49
+    },
+    {
+      "player": "Dunk",
+      "position": "DEF",
+      "team": "Brighton",
+      "pred": 3.18,
+      "actual": 12.0,
+      "e_min": 72,
+      "mins": 90.0,
+      "exp_xgi": 0.08,
+      "actual_xgi": 0.06
+    },
+    {
+      "player": "Mykolenko",
+      "position": "DEF",
+      "team": "Everton",
+      "pred": 2.47,
+      "actual": 11.0,
+      "e_min": 72,
+      "mins": 90.0,
+      "exp_xgi": 0.05,
+      "actual_xgi": 0.07
+    },
+    {
+      "player": "Matheus N.",
+      "position": "DEF",
+      "team": "Man City",
+      "pred": 0.99,
+      "actual": 9.0,
+      "e_min": 22,
+      "mins": 90.0,
+      "exp_xgi": 0.05,
+      "actual_xgi": 0.01
+    },
+    {
+      "player": "Gvardiol",
+      "position": "DEF",
+      "team": "Man City",
+      "pred": 3.58,
+      "actual": 11.0,
+      "e_min": 80,
+      "mins": 90.0,
+      "exp_xgi": 0.19,
+      "actual_xgi": 0.02
+    },
+    {
+      "player": "De Cuyper",
+      "position": "DEF",
+      "team": "Brighton",
+      "pred": 3.73,
+      "actual": 11.0,
+      "e_min": 61,
+      "mins": 90.0,
+      "exp_xgi": 0.3,
+      "actual_xgi": 0.07
+    }
+  ],
+  "components_60plus": {
+    "n": 197,
+    "goals": {
+      "predicted": 19.0,
+      "actual": 21,
+      "actual_xg": 22.6
+    },
+    "assists": {
+      "predicted": 16.7,
+      "actual": 23,
+      "actual_xa": 14.6
+    },
+    "clean_sheets_gk_def": {
+      "predicted": 19.6,
+      "actual": 35
+    }
+  },
+  "minutes_calibration": {
+    "(0.0, 0.2]": {
+      "n": 242,
+      "pred_p60": 0.05,
+      "real_60share": 0.02
+    },
+    "(0.2, 0.4]": {
+      "n": 34,
+      "pred_p60": 0.3,
+      "real_60share": 0.21
+    },
+    "(0.4, 0.6]": {
+      "n": 46,
+      "pred_p60": 0.49,
+      "real_60share": 0.52
+    },
+    "(0.6, 0.8]": {
+      "n": 80,
+      "pred_p60": 0.72,
+      "real_60share": 0.7
+    },
+    "(0.8, 1.01]": {
+      "n": 119,
+      "pred_p60": 0.89,
+      "real_60share": 0.88
+    }
+  }
+}

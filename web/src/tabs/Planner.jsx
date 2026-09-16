@@ -9,7 +9,7 @@ import { useFixtureLookup, useStore } from '../store'
 import { Radar, VIZ, VIZ_NEUTRAL as VIZ_MUTED } from '../charts'
 import { DNA_AXES, dnaOf, dnaRaw, dnaScaled } from '../dna'
 import {
-  CHIP_LONG, CHIP_NAME, CHIP_SHORT, POS_ORDER, baselineDeltas,
+  CHIP_LONG, CHIP_NAME, CHIP_SHORT, POSITIONS, baselineDeltas,
   bestAffordableXI, bestXI, chipAvailability, chipNote, epOf, fdrColor,
   formationRows, fmt1, gwEV, gwHasProj, money, shirtUrl, withBaseline, xiLegal,
 } from '../util'
@@ -312,6 +312,10 @@ export default function Planner() {
             <ChangesStrip moves={manualMoves} plan={plan} draft={draft} gwIdx={gwIdx}
               byId={byId} proj={proj} undoTransfer={undoTransfer} />
           )}
+          {/* the plan itself, under the pitch rather than folded away in the
+              rail: it is the answer the whole tab exists to produce */}
+          <PathsPanel draft={draft} byId={byId} gwIdx={gwIdx} setGwIdx={setGwIdx}
+            proj={proj} />
         </div>
 
         {/* One column, read top to bottom: which route am I on, what does the
@@ -336,9 +340,6 @@ export default function Planner() {
           <Section id="chips" title="Chip advisor" hint="where a chip looks worth playing">
             <ChipAdvisor draft={draft} proj={proj} byId={byId} players={players}
               posOf={posOf} updateDraft={updateDraft} entryChips={entry?.chips} />
-          </Section>
-          <Section id="path" title="Transfer path" hint={`every move in ${draft.label}`}>
-            <PathsPanel draft={draft} byId={byId} />
           </Section>
           {plan && (
             <Section id="dna" title="Team DNA" hint="the shape of the squad, not its total">
@@ -565,7 +566,7 @@ function PitchView({ plan, sel, setSel, setStatPid, posOf, updateDraft, gwIdx, s
       <div className="pitch">
         <PitchLines />
         <div className="pitch-rows">
-          {['GK', 'DEF', 'MID', 'FWD'].map((pp) => (
+          {POSITIONS.map((pp) => (
             <div className="pitch-row" key={pp}>
               {rows[pp].map((pid) => (
                 <Card key={pid} pid={pid} plan={plan} sel={sel}
@@ -605,8 +606,16 @@ function Card({ pid, plan, sel, onClick, posOf, dim, delta }) {
   const isNew = plan.transfers_in.length < 15 && plan.transfers_in.includes(pid)
   const selected = sel?.pid === pid
 
+  /* A clickable <div> is invisible to a keyboard and to a screen reader, and
+     the pitch is the primary control on the tab — so every card is a real
+     control: focusable, operable with Enter/Space, and named. */
   return (
     <div className={`pcard ${selected ? 'selected' : ''} ${dim ? 'dim' : ''}`}
+      role="button" tabIndex={0}
+      aria-label={`${p?.web_name || pid}, ${posOf(pid)}, ${fmt1(ep)} projected points`}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(pid, e) }
+      }}
       onClick={(e) => onClick(pid, e)}>
       {isCap && <span className="armband">{plan.chip === 'triple_captain' ? 'T' : 'C'}</span>}
       {isVice && <span className="armband vice">V</span>}
@@ -751,21 +760,51 @@ function AddPlayerPanel({ plan, players, byId, proj, posOf, armed, setArmed }) {
       </div>
       <div className="addlist">
         {opts.map((p) => (
-          <div key={p.id} className={`ta-item ${armed?.id === p.id ? 'armed' : ''}`}
-            onClick={() => setArmed(armed?.id === p.id ? null : p)}>
-            <div>
-              <div style={{ fontWeight: 700 }}>{p.web_name}<Flag p={p} /></div>
-              <div className="sub">{p.position} · own {p.own}%</div>
-            </div>
-            <span className="chip blue num">{fmt1(p.ep)}</span>
-            <span className="pr num">{money(p.price)}</span>
-          </div>
+          <PlayerRow key={p.id} p={p} armed={armed?.id === p.id}
+            onClick={() => setArmed(armed?.id === p.id ? null : p)} />
         ))}
         {!opts.length && <div className="ml-note">No players match.</div>}
       </div>
       <div className="fold-note">Click a player to pick him up, then click the
         man he replaces on the pitch.</div>
     </>
+  )
+}
+
+/* A player in a list: his club's shirt, then name, then club · role ·
+   ownership, then the two numbers. The shirt does the identifying work a
+   three-letter club code cannot — you recognise a kit before you read a
+   name — and it gives the row a fixed left edge so a column of them scans
+   as a column instead of as ragged text. */
+function PlayerRow({ p, armed, onClick, right }) {
+  const { teams } = useStore()
+  const team = teams[String(p.team_id)]
+  return (
+    <div className={`ta-item prow ${armed ? 'armed' : ''}`}
+      role={onClick ? 'button' : undefined} tabIndex={onClick ? 0 : undefined}
+      aria-pressed={onClick ? !!armed : undefined}
+      onKeyDown={onClick ? (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(e) }
+      } : undefined}
+      onClick={onClick}>
+      <img className="prow-shirt" alt="" loading="lazy"
+        src={shirtUrl(team?.code, p.position === 'GK')}
+        onError={(e) => { e.currentTarget.style.visibility = 'hidden' }} />
+      <div className="prow-id">
+        <div className="prow-name">{p.web_name}<Flag p={p} /></div>
+        <div className="prow-meta">
+          <b>{team?.short || '???'}</b>
+          <i>·</i>{p.position}
+          <i>·</i>{p.own}%
+        </div>
+      </div>
+      {right ?? (
+        <>
+          <span className="chip blue num">{fmt1(p.ep)}</span>
+          <span className="pr num">{money(p.price)}</span>
+        </>
+      )}
+    </div>
   )
 }
 
@@ -853,7 +892,7 @@ function ChipAdvisor({ draft, proj, byId, players, posOf, updateDraft, entryChip
           </div>
           {showXi === h.chip && h.xi?.length > 0 && (
             <div className="fh-xi">
-              {POS_ORDER.map((pos) => {
+              {POSITIONS.map((pos) => {
                 const ids = h.xi.filter((id) => posOf(id) === pos)
                 if (!ids.length) return null
                 return (
@@ -922,15 +961,15 @@ function TransferModal({ draft, gwIdx, outId, byId, proj, posOf, close, applyTra
             {opts.map((p) => {
               const d = p.ep - outEp
               return (
-                <div key={p.id} className="ta-item" style={{ opacity: p.afford ? 1 : 0.4 }}
+                <div key={p.id} className="tm-row" style={{ opacity: p.afford ? 1 : 0.4 }}
                   onClick={() => { if (applyTransfer(outId, p)) close() }}>
-                  <div>
-                    <div style={{ fontWeight: 700 }}>{p.web_name}<Flag p={p} /></div>
-                    <div className="sub">{POS_ORDER[p.position] != null ? p.position : ''} · own {p.own}%</div>
-                  </div>
-                  <span className={`dv ${d >= 0 ? 'up' : 'down'}`}>{d >= 0 ? '+' : ''}{fmt1(d)}</span>
-                  <span className="chip blue num">{fmt1(p.ep)}</span>
-                  <span className="pr num">{money(p.price)}</span>
+                  <PlayerRow p={p} right={(
+                    <>
+                      <span className={`dv ${d >= 0 ? 'up' : 'down'}`}>{d >= 0 ? '+' : ''}{fmt1(d)}</span>
+                      <span className="chip blue num">{fmt1(p.ep)}</span>
+                      <span className="pr num">{money(p.price)}</span>
+                    </>
+                  )} />
                 </div>
               )
             })}
@@ -1032,8 +1071,9 @@ function DraftsPanel({ drafts, setDrafts, proj, activeDraftId, setActiveDraftId,
             </div>
             <div className="draft-cells">
               {d.gws.map((p, i) => (
-                <div key={p.gw}
+                <button key={p.gw} type="button"
                   className={`draft-cell ${d.id === activeDraftId && i === gwIdx ? 'cur' : ''}`}
+                  aria-label={`${d.label}, gameweek ${p.gw}`}
                   onClick={() => { setActiveDraftId(d.id); setGwIdx(i) }}>
                   <div className="ev">{fmt1(evs[i])}
                     {dl && Math.abs(dl[i]) >= 0.05 && (
@@ -1049,7 +1089,7 @@ function DraftsPanel({ drafts, setDrafts, proj, activeDraftId, setActiveDraftId,
                         ? `${p.free_used ?? p.transfers_in.length}/${p.transfers_in.length}${p.hits ? ` -${p.hits * 4}` : ''}`
                         : '—'}
                   </div>
-                </div>
+                </button>
               ))}
             </div>
             <div className="draft-total">
@@ -1083,32 +1123,43 @@ function DraftsPanel({ drafts, setDrafts, proj, activeDraftId, setActiveDraftId,
 
 /* ------------------------------------------------------------------ */
 
-function PathsPanel({ draft, byId }) {
+function PathsPanel({ draft, byId, gwIdx, setGwIdx, proj }) {
   const nm = (pid) => byId.get(pid)?.web_name || pid
   return (
-    <>
-      {draft.gws.map((p, i) => (
-        <div className="path-gw" key={p.gw}>
-          <div className="path-step">{i + 1}</div>
-          <div className="path-moves">
-            {p.chip && <div className="path-chipbanner">{CHIP_LONG[p.chip]}</div>}
-            {p.transfers_out.length === 0 && !p.chip && (
-              <span style={{ color: 'var(--muted-2)', fontSize: 12 }}>roll — no moves</span>
-            )}
-            {p.transfers_out.map((o, k) => (
-              <div className="path-move" key={o}>
-                <span className="out">{nm(o)}</span>
-                <span className="arrow">→</span>
-                <span className="in">{nm(p.transfers_in[k])}</span>
-              </div>
-            ))}
-          </div>
-          <div className="path-side">
-            <span>£{fmt1(p.bank)}m itb</span>
-            <span>{p.free_after ?? '–'} ft{p.hits ? ` · -${p.hits * 4}` : ''}</span>
-          </div>
-        </div>
-      ))}
-    </>
+    <div className="panel route">
+      <div className="panel-head">
+        The plan — {draft.label}
+        <span className="panel-sub">{draft.gws.length} gameweeks · click one to edit it</span>
+      </div>
+      <div className="route-track">
+        {draft.gws.map((p, i) => {
+          const moves = p.transfers_out.length
+          const build = p.transfers_in.length === 15
+          return (
+            <button key={p.gw} className={`route-stop ${i === gwIdx ? 'cur' : ''} ${p.chip ? 'chipped' : ''}`}
+              onClick={() => setGwIdx(i)}>
+              <span className="rs-gw">GW{p.gw}</span>
+              {p.chip && <span className="rs-chip">{CHIP_SHORT[p.chip]}</span>}
+              <span className="rs-ev">{fmt1(gwEV(p, proj))}</span>
+              <span className="rs-moves">
+                {build ? <em className="none">squad build</em>
+                  : moves === 0 ? <em className="none">roll — no moves</em>
+                    : p.transfers_out.map((o, k) => (
+                      <em key={o}>
+                        <span className="out">{nm(o)}</span>
+                        <span className="arrow">→</span>
+                        <span className="in">{nm(p.transfers_in[k])}</span>
+                      </em>
+                    ))}
+              </span>
+              <span className="rs-foot">
+                £{fmt1(p.bank)}m · {p.free_after ?? '–'} FT
+                {p.hits ? <b className="hit"> −{p.hits * 4}</b> : null}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+    </div>
   )
 }

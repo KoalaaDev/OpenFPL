@@ -8,6 +8,8 @@ import Solver from './tabs/Solver'
 import Prices from './tabs/Prices'
 import Deadline from './tabs/Deadline'
 import Live from './tabs/Live'
+import Model from './tabs/Model'
+import ErrorBoundary from './components/ErrorBoundary'
 import MyTeamModal from './components/MyTeamModal'
 import AccountMenu from './components/AccountMenu'
 import { BrandMark, Wordmark } from './components/Brand'
@@ -42,7 +44,7 @@ export default function App() {
   const tabs = [
     ...(liveOn ? [['Live', '🔴']] : []),
     ...TABS,
-    ...(isAdmin ? [['Deadline', '🛰']] : []),
+    ...(isAdmin ? [['Deadline', '🛰'], ['Model', '📉']] : []),
   ]
   // a window that opens while you are sitting on the page still gets mounted
   useEffect(() => {
@@ -138,21 +140,24 @@ export default function App() {
       </header>
 
       <main className={`page ${tab === 'Mini League' ? 'wide' : ''}`}>
-        {!entryId && !['Fixtures', 'Prices', 'Live'].includes(tab) && (
+        {/* the prompt belongs where a squad is needed, not on a read-only or
+            operator tab */}
+        {!entryId && !['Fixtures', 'Prices', 'Live', 'Deadline', 'Model'].includes(tab) && (
           <Welcome setEntryId={setEntryId} openTeam={() => setTeamModal(true)} />
         )}
-        {visited.Live && liveOn && <Pane on={tab === 'Live'}><Live /></Pane>}
-        {visited.Planner && <Pane on={tab === 'Planner'}><Planner /></Pane>}
-        {visited.Projections && <Pane on={tab === 'Projections'}><Projections /></Pane>}
-        {visited.Fixtures && <Pane on={tab === 'Fixtures'}><Fixtures /></Pane>}
-        {visited.Prices && <Pane on={tab === 'Prices'}><Prices /></Pane>}
-        {visited['Mini League'] && <Pane on={tab === 'Mini League'}><MiniLeague /></Pane>}
+        {visited.Live && liveOn && <Pane name="Live" on={tab === 'Live'}><Live /></Pane>}
+        {visited.Planner && <Pane name="Planner" on={tab === 'Planner'}><Planner /></Pane>}
+        {visited.Projections && <Pane name="Projections" on={tab === 'Projections'}><Projections /></Pane>}
+        {visited.Fixtures && <Pane name="Fixtures" on={tab === 'Fixtures'}><Fixtures /></Pane>}
+        {visited.Prices && <Pane name="Prices" on={tab === 'Prices'}><Prices /></Pane>}
+        {visited['Mini League'] && <Pane name="Mini League" on={tab === 'Mini League'}><MiniLeague /></Pane>}
         {visited.Solver && (
-          <Pane on={tab === 'Solver'}>
+          <Pane name="Solver" on={tab === 'Solver'}>
             <Solver goPlanner={() => openTab('Planner')} />
           </Pane>
         )}
-        {visited.Deadline && isAdmin && <Pane on={tab === 'Deadline'}><Deadline /></Pane>}
+        {visited.Deadline && isAdmin && <Pane name="Deadline" on={tab === 'Deadline'}><Deadline /></Pane>}
+        {visited.Model && isAdmin && <Pane name="Model" on={tab === 'Model'}><Model /></Pane>}
         <footer className="site-foot">
           <span><b>FPLabs</b> by KoalaaDev · models refresh automatically{status?.proj_updated_at ? ` · last run ${ago(status.proj_updated_at)}` : ''}</span>
           <span className="muted">Built on the open OpenFPL research models. Not affiliated with the Premier League.
@@ -160,14 +165,7 @@ export default function App() {
         </footer>
       </main>
 
-      <nav className="bottomnav" aria-label="sections">
-        {tabs.map(([t, icon]) => (
-          <button key={t} className={`bn-tab ${tab === t ? 'active' : ''}`} onClick={() => openTab(t)}>
-            <span className="bn-icon" aria-hidden="true">{icon}</span>
-            <span className="bn-label">{t === 'Mini League' ? 'League' : t}</span>
-          </button>
-        ))}
-      </nav>
+      <BottomNav tabs={tabs} tab={tab} openTab={openTab} />
 
       {teamModal && <MyTeamModal close={() => setTeamModal(false)} />}
 
@@ -200,10 +198,75 @@ function ago(ts) {
   return `${Math.round(s / 86400)} d ago`
 }
 
+/* A phone bottom bar holds five things legibly. With the Live desk open and
+   an admin signed in there are nine, and nine `flex: 1` items at 400px is
+   44px each — labels truncate to "Proje…" and the bar stops being navigation.
+   Four primary destinations plus More, which opens a sheet with the rest;
+   whichever tab you are on is always one of the five, so the bar never shows
+   you standing somewhere it cannot indicate. */
+const BN_PRIMARY = ['Live', 'Planner', 'Projections', 'Solver']
+
+function BottomNav({ tabs, tab, openTab }) {
+  const [more, setMore] = useState(false)
+  const byName = Object.fromEntries(tabs.map((t) => [t[0], t]))
+  let primary = BN_PRIMARY.filter((n) => byName[n]).map((n) => byName[n]).slice(0, 4)
+  let rest = tabs.filter((t) => !primary.includes(t))
+  // never hide where you actually are
+  if (rest.some((t) => t[0] === tab)) {
+    const here = rest.find((t) => t[0] === tab)
+    primary = [...primary.slice(0, 3), here]
+    rest = tabs.filter((t) => !primary.includes(t))
+  }
+  const short = (t) => (t === 'Mini League' ? 'League' : t === 'Projections' ? 'Points' : t)
+  return (
+    <>
+      <nav className="bottomnav" aria-label="sections">
+        {primary.map(([t, icon]) => (
+          <button key={t} className={`bn-tab ${tab === t ? 'active' : ''}`}
+            aria-current={tab === t ? 'page' : undefined}
+            onClick={() => openTab(t)}>
+            <span className="bn-icon" aria-hidden="true">{icon}</span>
+            <span className="bn-label">{short(t)}</span>
+          </button>
+        ))}
+        {rest.length > 0 && (
+          <button className={`bn-tab ${more ? 'active' : ''}`} aria-expanded={more}
+            onClick={() => setMore(true)}>
+            <span className="bn-icon" aria-hidden="true">⋯</span>
+            <span className="bn-label">More</span>
+          </button>
+        )}
+      </nav>
+
+      {more && (
+        <div className="bn-sheet-backdrop" onClick={() => setMore(false)}>
+          <div className="bn-sheet" onClick={(e) => e.stopPropagation()}
+            role="dialog" aria-label="More sections">
+            <div className="bn-grip" aria-hidden="true" />
+            {rest.map(([t, icon]) => (
+              <button key={t} className={`bn-sheet-item ${tab === t ? 'active' : ''}`}
+                onClick={() => { openTab(t); setMore(false) }}>
+                <span aria-hidden="true">{icon}</span>{t}
+              </button>
+            ))}
+            <button className="bn-sheet-close" onClick={() => setMore(false)}>Close</button>
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
+
 // keeps a tab alive but out of the way; `hidden` would also stop layout but
-// display:none is what lets a re-shown tab keep its scroll position
-function Pane({ on, children }) {
-  return <div style={{ display: on ? 'contents' : 'none' }}>{children}</div>
+// display:none is what lets a re-shown tab keep its scroll position.
+// The boundary is per pane so a render error is contained to the tab that
+// caused it instead of unmounting the whole app (see ErrorBoundary).
+function Pane({ on, name, children }) {
+  return (
+    <div style={{ display: on ? 'contents' : 'none' }}>
+      <ErrorBoundary where={name}>{children}</ErrorBoundary>
+    </div>
+  )
 }
 
 /* No team id yet: the first thing a new visitor sees. There is no default

@@ -2263,7 +2263,16 @@ Run: `python -m pytest tests/ -q`
 `app/` (FastAPI backend) + `web/` (React/Vite frontend) serve the planner,
 branded **FPLabs by KoalaaDev**, on `$FPLABS_HOST:$FPLABS_PORT` (default
 `0.0.0.0:9999`; see `docs/DEPLOY.md` for the reverse proxy, TLS and Google
-sign-in setup) with six tabs: Planner (pitch + drafts), Projections (per-GW
+sign-in setup).
+
+**`services.API_VERSION` must be bumped with any payload change, and the
+running server restarted.** The page compares its own constant against the
+server's and shows *"the server is running an older build than this page"* —
+which is a build that was deployed to `app/static` without restarting
+`python -m app`. Rebuilding the frontend alone is never enough when the
+backend changed.
+
+Tabs: Planner (pitch + drafts), Projections (per-GW
 model output table), Fixtures (FDR heatmap), Prices, Mini League and Solver
 (chip-aware optimisation via `fpl_engine/optimise/chips.py` — a superset of
 `milp.py` adding WC/FH/BB/TC chips, target/avoid/ban constraints, club-level
@@ -2330,6 +2339,74 @@ press". The changes are structural, not cosmetic.
 * **Projections spell out the venue.** Home/away was carried by letter case
   alone (`ARS` vs `ars`), which nobody reads as a venue; it is now an explicit
   `H`/`A` tag, green for home.
+
+### The 2026-09-16 UI round, part two: a crash, an audit, and the admin's charts
+
+**A render error was blanking the whole app.** `util.POS_ORDER` maps position
+-> RANK (an object, for sorting); the chip advisor called `.map` on it, and
+React's response to a render error is to unmount the entire tree — so "show
+XI" produced a white screen with the squad and the unsaved plan gone. Three
+things ship from that: `POSITIONS` is now the array and `POS_ORDER` stays the
+ranks, every tab renders inside `components/ErrorBoundary.jsx` so a failure is
+contained to the tab that caused it, and `tests/test_web_source_guards.py`
+greps for the mistake (there is no JS test runner here, and the guard has a
+test proving it can still see the bug).
+
+**The scorecards score themselves.** The post-mortem and the lineup-feed
+report were things the admin desk told you to run in a terminal, so they were
+usually empty and the product read as though nothing were automatic.
+`scheduler.score_finished_gameweeks` runs both for every finished gameweek on
+each refresh; the JSON already on disk is the "done" marker, so a daily
+refresh re-scores nothing and a season backfills itself. Errors are reported
+into the job and swallowed — a scorecard must never cost a data pull.
+
+**A new admin tab, Model** (`app/modelhistory.py`, `/api/admin/model`,
+`tabs/Model.jsx`): rank correlation per gameweek, captain picked against best
+possible, per-component calibration (expected ÷ actual), the lineup-feed
+scorecard against the model in the ambiguous band, where the minutes model
+gets its information (feature gain read from the **booster on disk**, so it
+reports the model that is serving rather than the one someone meant to ship),
+and the committed season replays with every baseline arm beside the engine.
+It says, where an admin will read it, *read the trend, not a gameweek*.
+
+**Two defects it exposed on the way.** The deadline desk read
+`pooled.band.feed_acc` against a file that says `band_metrics.feed_accuracy`,
+so it showed nothing while four gameweeks sat on disk. And both "biggest
+projection moves" lists rendered every player at `+0.00` after a rebuild that
+changed nothing, which reads as the model having gone quiet; they now say so.
+
+**The self-audit the owner asked for, and what it found.** Against ordinary
+modern-UI practice, four real failures, all fixed:
+
+* **Contrast.** `--muted-2` was `#6c7397` — **3.71:1** on `--panel`, below the
+  4.5:1 WCAG AA minimum, and it is the colour every explanatory line on the
+  site uses at 10-11px. Now `#8a91b8`: 6.3 on bg-deep, 5.6 on panel, 5.2 on
+  panel-2, 4.6 on panel-3.
+* **Keyboard and screen readers.** The pitch — the primary control on the main
+  tab — was clickable `<div>`s: unreachable by keyboard, unnamed to a screen
+  reader. Player cards and list rows are now `role="button"`, focusable,
+  Enter/Space-operable and labelled; draft cells are real `<button>`s.
+* **Navigation that outgrew its bar.** Nine tabs (admin, Live open) wrapped
+  the desktop row onto two lines and gave the phone bar nine 44px slots with
+  truncated labels. The desktop row tightens then scrolls; the phone bar is
+  four destinations plus **More**, a sheet — and whichever tab you are on is
+  always one of the five, so the bar never shows you standing somewhere it
+  cannot indicate.
+* **Phone layout.** Safe-area padding under the notch, sticky modal headers
+  (a full-screen sheet whose close button scrolls away has no exit), tap
+  feedback on every control, `overflow-x` contained so the page never scrolls
+  sideways, and the gameweek bar as three compact scrolling rows instead of
+  five wrapped ones — which was pushing the pitch 400px down the page.
+
+Also this round: the add-a-player row leads with the club shirt and reads
+`ARS · MID · 12.3%` (you recognise a kit before you read three letters, and a
+fixed left edge makes a column scan as a column); the transfer path came out
+of the rail and sits under the pitch as a left-to-right route, because it is
+the answer the tab exists to produce; the venue tag in Projections went
+achromatic (solid for home, hollow for away) because a green tag on
+green fixture-difficulty shading disappeared exactly where the cell mattered
+most; and the player card grew a **Compare** button — same position only, on
+purpose, since none of the rows it shows are comparable across positions.
 
 ### Playstyles: what a strategy is allowed to vary
 

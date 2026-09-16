@@ -24,8 +24,8 @@ from fastapi.staticfiles import StaticFiles
 
 from fpl_engine import config, db
 
-from . import (auth, deadline, images, jobs, legal, live, plans, scheduler,
-               security, services, userdata)
+from . import (auth, deadline, images, jobs, legal, live, modelhistory, plans,
+               scheduler, security, services, userdata)
 
 log = logging.getLogger("fplabs")
 DEBUG = os.environ.get("FPLABS_DEBUG") == "1"
@@ -313,6 +313,13 @@ def api_live(force: int = 0, _=Depends(rate("cheap"))):
     """The public live desk. Cached for a minute server-side: it is the one
     page everyone opens at the same time, in the hour before a deadline."""
     return live.payload(force=bool(force))
+
+
+@app.get("/api/admin/model")
+def admin_model(request: Request, force: int = 0, admin=Depends(require_admin)):
+    """How the model has actually been doing, from the scorecards the
+    scheduled refresh writes after every gameweek."""
+    return modelhistory.payload(force=bool(force))
 
 
 @app.get("/api/admin/deadline")

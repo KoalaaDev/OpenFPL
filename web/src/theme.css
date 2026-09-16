@@ -10,7 +10,12 @@
   --line-soft: #222842;
   --text: #eef0ff;
   --muted: #9aa2c8;
-  --muted-2: #6c7397;
+  /* was #6c7397, which is 3.71:1 on --panel — below the 4.5:1 WCAG AA
+     minimum, and it is the colour every explanatory line on the site uses
+     (fold hints, card bodies, table notes) at 10-11px. #8a91b8 clears 4.5
+     on every surface those lines actually sit on: bg-deep 6.3, panel 5.6,
+     panel-2 5.2, panel-3 4.6. */
+  --muted-2: #8a91b8;
   --accent: #8b7bff;
   --accent-2: #3ddc97;
   --accent-soft: rgba(139, 123, 255, 0.14);
@@ -59,9 +64,17 @@ input, select { font-family: inherit; color: inherit; }
   background: radial-gradient(circle at 35% 30%, #ff6d8d, var(--accent) 60%, #b3123c);
   display: grid; place-items: center; font-size: 15px;
 }
-.topnav .tabs { display: flex; margin: 0 auto; }
+/* Nine tabs (admin, with the Live desk open) wrapped "MINI LEAGUE" onto two
+   lines and pushed the bar out of alignment. The row never wraps now: it
+   tightens, and scrolls sideways only if it still cannot fit. */
+.topnav .tabs {
+  display: flex; margin: 0 auto; flex-wrap: nowrap; min-width: 0;
+  overflow-x: auto; scrollbar-width: none;
+}
+.topnav .tabs::-webkit-scrollbar { display: none; }
 .topnav .tab {
-  display: flex; align-items: center; padding: 0 26px;
+  display: flex; align-items: center; flex: none; white-space: nowrap;
+  padding: 0 clamp(11px, 1.6vw, 26px);
   font-weight: 700; font-size: 12.5px; letter-spacing: 0.14em;
   color: var(--muted); border-bottom: 3px solid transparent; text-transform: uppercase;
 }
@@ -251,6 +264,7 @@ input, select { font-family: inherit; color: inherit; }
 .draft-cell {
   min-width: 44px; flex: none; border-radius: 6px; text-align: center;
   padding: 3px 4px; background: var(--panel-3); cursor: pointer;
+  color: inherit; font: inherit; border: 0;
 }
 .draft-cell.cur { outline: 1.5px solid var(--accent); }
 .draft-cell .ev { font-family: var(--mono); font-weight: 700; font-size: 12.5px; }
@@ -455,17 +469,24 @@ input[type='range'] { accent-color: var(--accent); flex: 1; }
 
 /* ---------- projections gw-cell secondary line ---------- */
 .ep-cell .ep-sub {
-  display: block; font-size: 9px; font-weight: 600; opacity: 0.75;
-  letter-spacing: 0.02em; margin-top: 1px;
+  display: block; font-size: 9px; font-weight: 700; opacity: 0.92;
+  letter-spacing: 0.02em; margin-top: 2px;
 }
-/* the venue, said rather than implied by letter case */
-.ep-opp { white-space: nowrap; }
+/* The venue, said rather than implied by letter case — and it has to stay
+   readable ON TOP of the fixture-difficulty shading, which is itself green
+   for an easy fixture. A green-on-green tag disappeared exactly where the
+   cell mattered most, so the tag is achromatic: solid dark for home, hollow
+   outline for away. Shape and weight carry it, not hue. */
+.ep-opp { white-space: nowrap; display: inline-flex; align-items: center; gap: 2px; }
 .ep-opp b {
-  font-weight: 800; margin-left: 1px; padding: 0 1.5px;
-  border-radius: 2px; font-size: 8.5px; vertical-align: 1px;
+  font-weight: 900; font-size: 8px; line-height: 1;
+  padding: 1.5px 2.5px; border-radius: 3px; letter-spacing: 0.04em;
 }
-.ep-opp b.h { background: rgba(61, 220, 151, 0.22); color: #7df0bd; }
-.ep-opp b.a { background: rgba(255, 255, 255, 0.12); }
+.ep-opp b.h { background: rgba(10, 10, 22, 0.78); color: #fff; }
+.ep-opp b.a {
+  background: transparent; color: inherit;
+  box-shadow: inset 0 0 0 1px currentColor; opacity: 0.85;
+}
 .ep-opp-sep { font-style: normal; opacity: 0.5; margin: 0 1px; }
 
 /* ---------- player stats modal ---------- */
@@ -1235,7 +1256,7 @@ select:focus-visible, [tabindex]:focus-visible, summary:focus-visible {
   min-height: 132px; padding-bottom: 18px;
   border-radius: 12px 12px 0 0;
 }
-.pm-head-text, .pm-head .close { position: relative; z-index: 2; }
+.pm-head-text, .pm-head .close, .pm-head-tools { position: relative; z-index: 2; }
 .pm-hero { position: absolute; inset: 0; pointer-events: none; z-index: 0; }
 .pm-hero-img {
   /* Framed on the FACE, with the kit cropped away below. Premier League
@@ -1359,3 +1380,135 @@ select:focus-visible, [tabindex]:focus-visible, summary:focus-visible {
 .tm-inj-line { font-size: 11.5px; color: var(--muted); line-height: 1.5; }
 .tm-inj-line.warn { color: var(--gold); }
 .tm-inj-line.muted { color: var(--muted-2); }
+
+/* ---- a player in a list: shirt, identity, numbers ----------------------- */
+/* Left-aligned kit first. You recognise a club by its shirt before you read
+   three letters of its name, and a fixed left edge makes a column of rows
+   scan as a column rather than as ragged text. */
+.ta-item.prow {
+  display: grid; grid-template-columns: 30px minmax(0, 1fr) auto auto;
+  gap: 10px; align-items: center;
+}
+.prow-shirt { width: 30px; height: 30px; object-fit: contain; }
+.prow-id { min-width: 0; }
+.prow-name {
+  font-weight: 700; font-size: 13px; display: flex; align-items: center; gap: 4px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.prow-meta {
+  display: flex; align-items: center; gap: 4px; margin-top: 1px;
+  font-size: 10.5px; color: var(--muted-2); font-family: var(--mono);
+}
+.prow-meta b { color: var(--muted); font-weight: 800; letter-spacing: 0.03em; }
+.prow-meta i { font-style: normal; opacity: 0.45; }
+.tm-row { cursor: pointer; border-radius: 8px; }
+.tm-row:hover { background: var(--panel-2); }
+.tm-row .ta-item { background: none; }
+
+/* ---- the plan, as a route ---------------------------------------------- */
+/* It used to be a folded panel in the rail. It is the answer the tab exists
+   to produce, so it sits under the pitch, reads left to right like the
+   season does, and every stop is a button to that gameweek. */
+.route { margin-top: 14px; }
+.route .panel-sub {
+  margin-left: auto; font-size: 10.5px; font-weight: 600; letter-spacing: 0;
+  text-transform: none; color: var(--muted-2);
+}
+.route-track {
+  display: flex; gap: 8px; padding: 12px; overflow-x: auto;
+  scroll-snap-type: x proximity;
+}
+.route-stop {
+  flex: 0 0 168px; scroll-snap-align: start; text-align: left;
+  display: grid; gap: 4px; align-content: start;
+  padding: 9px 10px; border-radius: 10px;
+  background: var(--bg-deep); border: 1px solid var(--line-soft);
+  color: var(--text);
+}
+.route-stop:hover { border-color: var(--muted-2); }
+.route-stop.cur { border-color: var(--accent); background: var(--accent-soft); }
+.route-stop.chipped { border-color: var(--gold); }
+.rs-gw {
+  font-family: var(--mono); font-size: 11px; font-weight: 800;
+  letter-spacing: 0.06em; color: var(--muted-2);
+}
+.route-stop.cur .rs-gw { color: var(--accent); }
+.rs-chip {
+  justify-self: start; font-size: 9.5px; font-weight: 800; letter-spacing: 0.08em;
+  background: var(--gold); color: #16162c; border-radius: 4px; padding: 1px 6px;
+}
+.rs-ev { font-family: var(--mono); font-size: 18px; font-weight: 800; line-height: 1; }
+.rs-moves { display: grid; gap: 3px; font-size: 11px; min-height: 16px; }
+.rs-moves em { font-style: normal; display: flex; gap: 4px; align-items: baseline; min-width: 0; }
+.rs-moves em.none { color: var(--muted-2); }
+.rs-moves .out { color: var(--red); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rs-moves .in { color: var(--green); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rs-moves .arrow { color: var(--muted-2); flex: none; }
+.rs-foot {
+  font-family: var(--mono); font-size: 10px; color: var(--muted-2);
+  border-top: 1px solid var(--line-soft); padding-top: 4px; margin-top: 1px;
+}
+.rs-foot .hit { color: var(--red); font-weight: 800; }
+
+/* ---- a contained render error ------------------------------------------ */
+.panel.crash { padding: 26px 22px; text-align: center; }
+.panel.crash .crash-mark {
+  width: 34px; height: 34px; margin: 0 auto 10px; border-radius: 50%;
+  display: grid; place-items: center; background: var(--red); color: #fff;
+  font-weight: 900;
+}
+.panel.crash h3 { margin: 0 0 6px; font-size: 16px; }
+.panel.crash p { margin: 0 auto 12px; max-width: 460px; color: var(--muted); font-size: 13px; }
+.panel.crash pre {
+  max-width: 560px; margin: 0 auto 14px; padding: 9px 11px; text-align: left;
+  background: var(--bg-deep); border: 1px solid var(--line); border-radius: 8px;
+  font-size: 11.5px; color: var(--muted-2); overflow: auto; white-space: pre-wrap;
+}
+.crash-actions { display: flex; gap: 8px; justify-content: center; }
+
+/* ---- player card: compare ---------------------------------------------- */
+/* the tools sit over the hero cut-out, so they carry their own ground —
+   without it "Compare" reads across the player's face */
+.pm-head-tools {
+  display: flex; align-items: center; gap: 6px; margin-left: auto;
+  align-self: flex-start; padding: 4px; border-radius: 22px;
+  background: rgba(10, 10, 22, 0.62); backdrop-filter: blur(6px);
+}
+.pm-head-tools .close { margin-left: 0; padding: 0 8px; }
+.pm-compare {
+  margin: 0 20px 14px; border: 1px solid var(--accent);
+  border-radius: 10px; background: var(--accent-soft); overflow: hidden;
+}
+.pmc-head {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 10px 12px; font-size: 13px; border-bottom: 1px solid var(--line);
+}
+.pmc-head .muted { font-size: 11px; color: var(--muted-2); }
+.pmc-head .pill-btn { margin-left: auto; }
+.pmc-verdict { font-weight: 800; font-family: var(--mono); font-size: 12px; }
+.pmc-verdict.up { color: var(--green); }
+.pmc-verdict.down { color: var(--red); }
+.pm-compare.pick .search { margin: 10px 12px; }
+.pmc-opts { display: grid; gap: 4px; padding: 0 12px 12px; }
+.pmc-opt {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 10px;
+  align-items: center; text-align: left; padding: 7px 10px; border-radius: 8px;
+  background: var(--bg-deep); color: var(--text); font-size: 12.5px;
+}
+.pmc-opt:hover { background: var(--panel-2); }
+.pmc-opt .muted { color: var(--muted-2); font-size: 11px; }
+.pmc-opt .num { font-family: var(--mono); font-weight: 700; }
+.pmc-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.pmc-table th, .pmc-table td { padding: 6px 12px; text-align: right; }
+.pmc-table thead th { font-size: 11px; color: var(--muted-2); font-weight: 700; }
+.pmc-table th.l { text-align: left; color: var(--muted); font-weight: 600; }
+.pmc-table td { font-family: var(--mono); font-weight: 700; }
+.pmc-table td.win { color: var(--green); }
+.pmc-table td.lose { color: var(--muted-2); }
+.pmc-table .note { text-align: left; font-family: inherit; font-weight: 400; font-size: 10.5px; color: var(--muted-2); }
+.pmc-table tbody tr:nth-child(odd) { background: rgba(255, 255, 255, 0.02); }
+.pmc-note { padding: 9px 12px; font-size: 11px; line-height: 1.5; color: var(--muted-2); }
+@media (max-width: 620px) {
+  .pmc-table .note { display: none; }
+  .pm-compare { margin: 0 12px 12px; }
+}

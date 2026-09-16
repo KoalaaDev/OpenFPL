@@ -1,5 +1,9 @@
 // Shared helpers: images, EV maths, squad legality, CSV.
 
+// POSITIONS is the ORDER (an array, to map over); POS_ORDER is the RANK of
+// each (an object, to sort by). Conflating them cost a blank screen: the chip
+// advisor called POS_ORDER.map, which threw and took the whole app down.
+export const POSITIONS = ['GK', 'DEF', 'MID', 'FWD']
 export const POS_ORDER = { GK: 0, DEF: 1, MID: 2, FWD: 3 }
 export const POS_LABEL = { GK: 'GKP', DEF: 'DEF', MID: 'MID', FWD: 'FWD' }
 export const CHIP_SHORT = {

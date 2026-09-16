@@ -13,6 +13,10 @@ export default function PlayerModal({ pid, draft, plan, actions, close }) {
           setTransferWatch, context, status } = useStore()
   const fixOf = useFixtureLookup()
   const [fdrMode, setFdrMode] = useState('diff_att')
+  // "is he better than the one I already have?" is the question a player card
+  // is actually opened to answer, and it was the one thing it could not do.
+  const [cmpId, setCmpId] = useState(null)
+  const [cmpQ, setCmpQ] = useState('')
   const p = byId.get(pid)
   const team = teams[String(p?.team_id)]
   const inXi = plan?.xi?.includes(pid)
@@ -80,16 +84,24 @@ export default function PlayerModal({ pid, draft, plan, actions, close }) {
       if (key === 'ppm') return q.price ? epTot(q) / q.price : 0
       return q[key] ?? 0
     }
-    const pct = (key) => {
-      const mine = val(p, key)
+    const pctFor = (who, key) => {
+      const mine = val(who, key)
       const vs = peers.map((q) => val(q, key))
       const below = vs.filter((v) => v < mine).length
       const same = vs.filter((v) => v === mine).length
       return ((below + same / 2) / vs.length) * 100
     }
-    const values = PROFILE_AXES.map((a) => pct(a.key))
-    return [{ name: p.web_name, color: VIZ[0], values, raw: values }]
-  }, [p, players, proj, gws.join(',')])
+    const seriesFor = (who, color) => {
+      const values = PROFILE_AXES.map((a) => pctFor(who, a.key))
+      return { name: who.web_name, color, values, raw: values }
+    }
+    const out = [seriesFor(p, VIZ[0])]
+    // a comparison only means anything against the SAME position's peers, so
+    // the other player is only offered — and only plotted — inside it
+    const other = cmpId ? byId.get(cmpId) : null
+    if (other && other.position === p.position) out.push(seriesFor(other, VIZ[1]))
+    return out
+  }, [p, players, proj, gws.join(','), cmpId, byId])
 
   const n = rows.length || 1
   const totEp = rows.reduce((a, r) => a + r.ep, 0)
@@ -144,8 +156,20 @@ export default function PlayerModal({ pid, draft, plan, actions, close }) {
               </div>
             )}
           </div>
-          <button className="close" onClick={close}>✕</button>
+          <div className="pm-head-tools">
+            <button className={`pill-btn ${cmpId ? 'accent' : ''}`}
+              title="Put another player of the same position beside this one"
+              onClick={() => { setCmpId(cmpId ? null : 'pick'); setCmpQ('') }}>
+              ⇆ {cmpId ? 'Stop comparing' : 'Compare'}
+            </button>
+            <button className="close" onClick={close}>✕</button>
+          </div>
         </div>
+
+        {cmpId && (
+          <ComparePicker p={p} players={players} cmpId={cmpId} setCmpId={setCmpId}
+            q={cmpQ} setQ={setCmpQ} byId={byId} teams={teams} proj={proj} gws={gws} />
+        )}
 
         {actions && (
           <div className="actions">
@@ -309,6 +333,112 @@ export default function PlayerModal({ pid, draft, plan, actions, close }) {
    the move completes, and prediction markets only cover the superstar tier. So
    the fact comes from you and the consequence comes from the engine, which
    reprojects him onto the destination's fixtures using his own rates. */
+/* Compare: pick a peer, then read the two of them side by side.
+
+   Restricted to the same position on purpose. A defender and a forward are
+   not comparable on any row here — not per-90 rates, not the radar (whose
+   axes are percentiles WITHIN a position), not even expected points, which is
+   why "who should I captain" and "who should I buy" are different questions.
+   Offering a cross-position comparison would produce a table that looks
+   authoritative and means nothing. */
+function ComparePicker({ p, players, cmpId, setCmpId, q, setQ, byId, teams, proj, gws }) {
+  const other = cmpId && cmpId !== 'pick' ? byId.get(cmpId) : null
+  const opts = useMemo(() => {
+    if (other) return []
+    const lq = q.trim().toLowerCase()
+    const epTot = (id) => {
+      const r = proj?.players?.[String(id)]
+      return r?.ep ? gws.reduce((a, g) => a + (r.ep[String(g)] ?? 0), 0) : 0
+    }
+    return (players || [])
+      .filter((x) => x.position === p.position && x.id !== p.id)
+      .filter((x) => !lq || x.web_name.toLowerCase().includes(lq)
+        || x.name.toLowerCase().includes(lq))
+      .map((x) => ({ ...x, ep: epTot(x.id) }))
+      .sort((a, b) => b.ep - a.ep)
+      .slice(0, 8)
+  }, [players, q, p, other, proj, gws.join(',')])   // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (!other) {
+    return (
+      <div className="pm-compare pick">
+        <div className="pmc-head">
+          Compare <b>{p.web_name}</b> with another {p.position}
+          <span className="muted">same position only — the rates and percentiles below
+            are only comparable within one</span>
+        </div>
+        <div className="search"><span aria-hidden="true">🔍</span>
+          <input autoFocus placeholder={`Search ${p.position}s…`} value={q}
+            onChange={(e) => setQ(e.target.value)} /></div>
+        <div className="pmc-opts">
+          {opts.map((x) => (
+            <button key={x.id} className="pmc-opt" onClick={() => setCmpId(x.id)}>
+              <b>{x.web_name}</b>
+              <span className="muted">{teams[String(x.team_id)]?.short || '???'} · {money(x.price)}</span>
+              <span className="num">{fmt1(x.ep)}</span>
+            </button>
+          ))}
+          {!opts.length && <div className="muted" style={{ padding: 8 }}>No players match.</div>}
+        </div>
+      </div>
+    )
+  }
+
+  const epTot = (id) => {
+    const r = proj?.players?.[String(id)]
+    return r?.ep ? gws.reduce((a, g) => a + (r.ep[String(g)] ?? 0), 0) : 0
+  }
+  const xm = (id) => proj?.players?.[String(id)]?.xmins ?? byId.get(id)?.xmins ?? 0
+  const mine = epTot(p.id)
+  const theirs = epTot(other.id)
+  const ROWS = [
+    ['Projected points', (x) => fmt1(epTot(x.id)), (x) => epTot(x.id), `${gws.length} GW`],
+    ['Price', (x) => money(x.price), (x) => -x.price, 'cheaper is better'],
+    ['Points per £m', (x) => (x.price ? (epTot(x.id) / x.price).toFixed(2) : '—'),
+      (x) => (x.price ? epTot(x.id) / x.price : 0), ''],
+    ['Expected minutes', (x) => Math.round(xm(x.id)), (x) => xm(x.id), 'per gameweek'],
+    ['Ownership', (x) => `${(x.own ?? 0).toFixed(1)}%`, (x) => x.own ?? 0, 'higher = template'],
+    ['Goals / 90', (x) => (x.g90 ?? 0).toFixed(2), (x) => x.g90 ?? 0, ''],
+    ['Assists / 90', (x) => (x.a90 ?? 0).toFixed(2), (x) => x.a90 ?? 0, ''],
+    ['Availability', (x) => `${availPct(x)}%`, (x) => availPct(x), ''],
+  ]
+  return (
+    <div className="pm-compare">
+      <div className="pmc-head">
+        <b>{p.web_name}</b> vs <b>{other.web_name}</b>
+        <span className={`pmc-verdict ${mine >= theirs ? 'up' : 'down'}`}>
+          {mine === theirs ? 'level over the horizon'
+            : `${mine > theirs ? p.web_name : other.web_name} by ${fmt1(Math.abs(mine - theirs))} pts`}
+        </span>
+        <button className="pill-btn" onClick={() => setCmpId('pick')}>change</button>
+      </div>
+      <table className="pmc-table">
+        <thead>
+          <tr><th /><th>{p.web_name}</th><th>{other.web_name}</th><th className="note" /></tr>
+        </thead>
+        <tbody>
+          {ROWS.map(([label, show, rank, note]) => {
+            const a = rank(p), b = rank(other)
+            return (
+              <tr key={label}>
+                <th className="l">{label}</th>
+                <td className={a > b ? 'win' : a < b ? 'lose' : ''}>{show(p)}</td>
+                <td className={b > a ? 'win' : b < a ? 'lose' : ''}>{show(other)}</td>
+                <td className="note">{note}</td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+      <div className="pmc-note">
+        A green cell is only better on that row. The projection already folds
+        fixtures, minutes and availability together — where it disagrees with
+        the per-90 rates, it is because one of them has the easier run.
+      </div>
+    </div>
+  )
+}
+
 function TransferWatch({ pid, p, teams, gws, watch, setTransferWatch, rows }) {
   const entry = watch?.players?.[String(pid)]
   const alt = watch?.alt?.[String(pid)]

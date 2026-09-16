@@ -135,6 +135,11 @@ def _refresh(job_id: str, *, understat: bool = True) -> dict:
     gws = scheduled[:horizon()] or [start]
     jobs.progress(job_id, f"Projecting GW{gws[0]}–GW{gws[-1]}…", pct=0.6)
     services.build_projections(job_id, gws, force=True)
+    # The two after-the-fact scorecards used to be things an admin was told to
+    # run in a terminal, which meant they were usually empty and the desk read
+    # as though nothing was automatic. They are library calls; they run here,
+    # once per finished gameweek, and never fail a refresh.
+    score_finished_gameweeks(job_id)
     # keep the anonymous-doc table from growing without bound
     try:
         from . import userdata
@@ -142,6 +147,66 @@ def _refresh(job_id: str, *, understat: bool = True) -> dict:
     except Exception:  # noqa: BLE001
         pass
     return {"pulled": out.get("summary"), "projected": gws}
+
+
+def score_finished_gameweeks(job_id: str | None = None, *, limit: int = 6) -> dict:
+    """Post-mortem and lineup-feed scorecards for every finished gameweek that
+    has not been scored yet.
+
+    Both write one JSON under ``data/`` and both are cheap to skip (the file
+    already being there is the "done" marker), so a refresh re-scores nothing
+    and a season backfills itself a gameweek at a time. Errors are reported
+    into the job and swallowed: a scorecard must never cost a data pull.
+    """
+    from fpl_engine import config, db
+    done = {"postmortem": [], "lineup_feed": [], "errors": []}
+    season = config.CURRENT_SEASON
+    conn = db.connect(config.DB_PATH)
+    try:
+        finished = [int(r[0]) for r in conn.execute(
+            "SELECT DISTINCT gw FROM fixture WHERE season=? AND finished=1 "
+            "AND gw IS NOT NULL ORDER BY gw DESC", (season,))][:limit]
+        for gw in sorted(finished):
+            path = os.path.join(config.DATA_DIR, f"postmortem_{season}_gw{gw}.json")
+            if os.path.exists(path):
+                continue
+            try:
+                from fpl_engine import postmortem
+                if job_id:
+                    jobs.progress(job_id, f"Scoring GW{gw} against what happened…")
+                postmortem.run(conn, season=season, gw=gw)
+                done["postmortem"].append(gw)
+            except Exception as exc:  # noqa: BLE001
+                done["errors"].append(f"postmortem gw{gw}: {exc}")
+        try:
+            from fpl_engine import lineup_feed as lf
+            archive = lf.load_archive(season)
+            scored = _scored_feed_gws(season)
+            for gw in sorted(finished):
+                if gw in scored or archive.empty:
+                    continue
+                if not len(archive[(archive["gw"] == gw)
+                                   & (archive["status"] == "predicted")]):
+                    continue        # nothing was forecast for that gameweek
+                if job_id:
+                    jobs.progress(job_id, f"Scoring the lineup feed for GW{gw}…")
+                lf.save(season, lf.score_gw(conn, season, gw, archive=archive))
+                done["lineup_feed"].append(gw)
+        except Exception as exc:  # noqa: BLE001
+            done["errors"].append(f"lineup feed: {exc}")
+    finally:
+        conn.close()
+    return done
+
+
+def _scored_feed_gws(season: str) -> set[int]:
+    from fpl_engine import config
+    path = os.path.join(config.DATA_DIR, f"lineup_feed_{season}.json")
+    try:
+        with open(path, encoding="utf-8") as fh:
+            return {int(g) for g in (json.load(fh).get("gws") or {})}
+    except (OSError, ValueError):
+        return set()
 
 
 def run_now(reason: str = "manual") -> str | None:

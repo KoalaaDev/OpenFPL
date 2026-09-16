@@ -230,14 +230,25 @@ def _movers(gw: int, pl: dict, tm: dict) -> dict:
 
 
 def _feed_test(season: str) -> dict | None:
+    """The running lineup-feed scorecard.
+
+    The keys are `band_metrics.feed_accuracy` / `model_accuracy`; this used to
+    read `band.feed_acc`, which does not exist, so the desk showed nothing
+    even once the file had four gameweeks in it.
+    """
     path = os.path.join(config.DATA_DIR, f"lineup_feed_{season}.json")
     try:
-        d = json.load(open(path, encoding="utf-8"))
+        with open(path, encoding="utf-8") as fh:
+            d = json.load(fh)
     except (OSError, ValueError):
         return None
     pooled = d.get("pooled") or {}
-    return {"gws": sorted(int(g) for g in (d.get("gws") or d.get("reports") or {}).keys()) if isinstance(d.get("gws") or d.get("reports"), dict) else None,
-            "pooled": pooled}
+    return {"gws": sorted(int(g) for g in (d.get("gws") or {})),
+            "band": pooled.get("band_metrics"),
+            "all": pooled.get("all_metrics"),
+            "priceable": pooled.get("priceable"),
+            "rows_needed": pooled.get("rows_needed_for_estimate"),
+            "updated": d.get("updated_utc")}
 
 
 def payload(force: bool = False) -> dict:

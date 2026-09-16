@@ -39,6 +39,8 @@ export default function Deadline() {
   const r = d.refresh || {}
   const m = d.model || {}
   const mk = d.market || {}
+  // a rebuild that changed nothing still returns every player at delta 0.00
+  const movers = (d.movers?.rows || []).filter((p) => Math.abs(p.delta) >= 0.05)
 
   /* the three things that have actually broken here before */
   const projAge = r.proj_updated_at ? (Date.now() / 1000 - r.proj_updated_at) / 3600 : null
@@ -81,7 +83,8 @@ export default function Deadline() {
           <div className="ops-sub">
             {hrs != null && (hrs >= 0 ? `in ${fmtHrs(hrs)}` : `${fmtHrs(-hrs)} ago`)}
             {d.gw_in_progress ? ' · previous gameweek in progress' : ''}
-            {' · '}team news, manager quotes and the predicted XIs are on the Live tab
+            {' · '}team news, manager quotes and predicted XIs are on the Live tab;
+            accuracy over time is on Model
           </div>
         </div>
         <button className="pill-btn" onClick={() => load(true)} disabled={busy}>
@@ -143,17 +146,21 @@ export default function Deadline() {
         <div className="panel">
           <div className="panel-head">Lineup-feed scorecard
             <span className="panel-sub">RotoWire vs the model, ambiguous band</span></div>
-          {d.feed_test?.pooled?.band ? (
+          {d.feed_test?.band?.n ? (
             <div className="dd-kv">
-              <Kv k="feed accuracy" v={fmt(d.feed_test.pooled.band.feed_acc, 3)} />
-              <Kv k="model accuracy" v={fmt(d.feed_test.pooled.band.model_acc, 3)} />
-              <Kv k="band rows" v={d.feed_test.pooled.band.n ?? '—'} />
+              <Kv k="feed accuracy" v={fmt(d.feed_test.band.feed_accuracy, 3)} />
+              <Kv k="model accuracy" v={fmt(d.feed_test.band.model_accuracy, 3)} />
+              <Kv k="band rows" v={`${d.feed_test.band.n}${d.feed_test.rows_needed ? ` of ${d.feed_test.rows_needed} needed` : ''}`} />
+              <Kv k="implied value" v={d.feed_test.band.implied_points_per_season != null
+                ? `+${fmt(d.feed_test.band.implied_points_per_season, 0)} pts/season` : '—'} />
               <Kv k="gameweeks scored" v={(d.feed_test.gws || []).join(', ') || '—'} />
+              <Kv k="last scored" v={d.feed_test.updated
+                ? new Date(d.feed_test.updated).toLocaleString() : '—'} />
             </div>
           ) : (
             <div className="dd-empty">
-              No readings yet — run <code>python -m fpl_engine lineup-feed --gw N</code>
-              {' '}after each deadline. Eight to ten gameweeks before it is priceable.
+              Nothing scored yet. Each finished gameweek is scored on the next
+              scheduled refresh — no command to run.
             </div>
           )}
         </div>
@@ -163,7 +170,11 @@ export default function Deadline() {
             {d.movers.from && <span className="panel-sub">{ago(d.movers.from)} → {ago(d.movers.to)}</span>}</div>
           <div className="live-list">
             {!d.movers.rows.length && <div className="dd-empty">Needs two builds to compare.</div>}
-            {d.movers.rows.map((p) => (
+            {d.movers.rows.length > 0 && !movers.length && (
+              <div className="dd-empty">Nothing moved by more than 0.05 points
+                since the previous build.</div>
+            )}
+            {movers.map((p) => (
               <div key={p.player_id} className="live-row tight">
                 <span className={`num mv ${p.delta >= 0 ? 'up' : 'down'}`}>
                   {p.delta >= 0 ? '+' : ''}{p.delta.toFixed(2)}
