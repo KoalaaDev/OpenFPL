@@ -52,3 +52,37 @@ def test_status_payload_carries_the_window():
     st = services.status_payload()
     assert set(st["live"]) >= {"phase", "gw"}
     assert st["live"]["phase"] in ("idle", "open", "closed")
+
+
+def test_the_desk_is_admin_only_outside_its_window(monkeypatch):
+    """The tab is hidden from visitors until the window opens; the endpoint has
+    to agree, or anyone calling /api/live directly gets the desk early."""
+    from fastapi.testclient import TestClient
+    from app import auth, main
+
+    monkeypatch.setattr(live, "window", lambda deadlines, now=None: {
+        "phase": "idle", "gw": 5, "deadline": 0.0, "seconds": 999999.0})
+    called = []
+    monkeypatch.setattr(live, "payload", lambda force=False: called.append(force) or {"gw": 5})
+    client = TestClient(main.app)
+
+    monkeypatch.setattr(auth, "is_admin", lambda user: False)
+    r = client.get("/api/live").json()
+    assert r.get("preview_only") is True and "gw" not in r and not called
+
+    monkeypatch.setattr(auth, "is_admin", lambda user: True)
+    assert client.get("/api/live").json() == {"gw": 5}
+
+
+def test_inside_the_window_everyone_gets_it_and_force_is_admin_only(monkeypatch):
+    from fastapi.testclient import TestClient
+    from app import auth, main
+
+    monkeypatch.setattr(live, "window", lambda deadlines, now=None: {
+        "phase": "open", "gw": 5, "deadline": 0.0, "seconds": 3600.0})
+    seen = []
+    monkeypatch.setattr(live, "payload", lambda force=False: seen.append(force) or {"gw": 5})
+    monkeypatch.setattr(auth, "is_admin", lambda user: False)
+    client = TestClient(main.app)
+    assert client.get("/api/live?force=1").json() == {"gw": 5}
+    assert seen == [False]          # a visitor cannot bust the cache

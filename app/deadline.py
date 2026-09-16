@@ -161,7 +161,7 @@ def _lineups(conn, season: str, gw: int, pl: dict, tm: dict, start_p: dict) -> d
         return {"clubs": [], "gw": gw,
                 "note": f"no predicted XI archived for GW{gw} yet"}
     players = pd.DataFrame([dict(r) for r in conn.execute(
-        "SELECT p.player_id, p.full_name, p.web_name, p.team_id, t.short_name "
+        "SELECT p.player_id, p.full_name, p.web_name, p.team_id, p.position, t.short_name "
         "FROM player p JOIN team t ON t.team_id = p.team_id AND t.season = p.season "
         "WHERE p.season = ?", (season,))])
     if players.empty:
@@ -184,6 +184,8 @@ def _lineups(conn, season: str, gw: int, pl: dict, tm: dict, start_p: dict) -> d
             in_xi = pid in ids
             if in_xi or (ps is not None and ps >= 0.3):
                 rows.append({"player_id": pid, "name": srow["web_name"],
+                             # the desk draws the predicted XI as a formation
+                             "pos": srow["position"],
                              "predicted": in_xi,
                              "p_start": None if ps is None else round(float(ps), 2),
                              # only meaningful once the club's XI actually
@@ -193,14 +195,85 @@ def _lineups(conn, season: str, gw: int, pl: dict, tm: dict, start_p: dict) -> d
                                  (in_xi and ps is not None and ps < 0.5)
                                  or ((not in_xi) and ps is not None and ps >= 0.6))})
         rows.sort(key=lambda r: (not r["predicted"], -(r["p_start"] or 0)))
-        clubs.append({"team": abbr, "observed": when, "n_named": len(names),
+        xi, formation = _formation(archive, gw, abbr, when, names, resolved,
+                                   {r["player_id"]: r for r in rows}, pl)
+        clubs.append({"team": abbr, "team_id": tid, "observed": when,
+                      "n_named": len(names),
                       "n_resolved": len(ids), "rows": rows,
+                      "xi": xi, "formation": formation,
                       "disagreements": sum(1 for r in rows if r["disagree"])})
     note = None
     if unresolved:
         note = (f"{len(unresolved)} named players could not be matched to an "
                 f"FPL id (e.g. {', '.join(n for _, n in unresolved[:3])})")
     return {"clubs": clubs, "gw": gw, "note": note}
+
+
+# RotoWire's pitch positions, not FPL's four labels. FPL calls Saka a "MID", so
+# Arsenal's 4-2-3-1 drawn from FPL positions reads as 4-5-1; the feed says
+# where each man actually stands. Bands run from the keeper forward, and a
+# position's L/C/R suffix orders it across the pitch.
+_BANDS = [
+    ("GK", {"GK"}),
+    ("DEF", {"DL", "DC", "DR", "WBL", "WBR", "D"}),
+    ("DM", {"DML", "DMC", "DMR", "DM"}),
+    ("MID", {"ML", "MC", "MR", "M"}),
+    ("AM", {"AML", "AMC", "AMR", "AM"}),
+    ("FWD", {"FWL", "FW", "FWR", "F"}),
+]
+
+
+def _band(position: str | None) -> int:
+    p = (position or "").upper()
+    for i, (_name, codes) in enumerate(_BANDS):
+        if p in codes:
+            return i
+    return 3                              # unknown: park it in midfield
+
+
+def _side(position: str | None) -> int:
+    p = (position or "").upper()
+    return 0 if p.endswith("L") else 2 if p.endswith("R") else 1
+
+
+def _formation(archive, gw, abbr, when, names, resolved, model_rows, pl):
+    """The feed's predicted XI as rows on a pitch, and its formation string.
+
+    Built from the FEED's own eleven — a name the resolver could not match
+    still stands in the XI (with no model number) rather than leaving a gap,
+    because the formation is the feed's forecast and the model's P(start) is
+    only an annotation on it.
+    """
+    try:
+        d = archive[(archive["gw"] == gw) & (archive["team_abbr"] == abbr)
+                    & (archive["status"] == "predicted")
+                    & (archive["observed"] == pd.Timestamp(when))]
+    except Exception:  # noqa: BLE001
+        return [], None
+    xi = []
+    for r in d.itertuples():
+        if r.player not in names:
+            continue
+        pid = resolved.get((abbr, r.player))
+        m = model_rows.get(pid) if pid is not None else None
+        slot = pd.to_numeric(r.slot, errors="coerce")
+        xi.append({
+            "player_id": pid,
+            "name": (pl.get(pid) or {}).get("name") if pid is not None
+                    else str(r.player).split()[-1],
+            "full_name": r.player,
+            "position": r.position,
+            "band": _band(r.position),
+            "side": _side(r.position),
+            "slot": None if pd.isna(slot) else int(slot),
+            "p_start": m["p_start"] if m else None,
+            "disagree": bool(m and m["disagree"]),
+            "resolved": pid is not None,
+        })
+    xi.sort(key=lambda x: (x["band"], x["side"], x["slot"] or 0))
+    counts = [sum(1 for x in xi if x["band"] == b) for b in range(1, len(_BANDS))]
+    formation = "-".join(str(c) for c in counts if c) or None
+    return xi, formation
 
 
 def forecasts_names(forecasts: dict) -> dict:

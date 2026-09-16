@@ -2515,6 +2515,25 @@ Everything is already archived by the pipeline and **nothing on it changes a
 projection**. Cached 60 s server-side — it is the one page everyone opens at
 the same moment. `tests/test_live_window.py` pins the four boundaries.
 
+**Who sees it when.** Outside the window the tab exists for admins only,
+labelled `Live · preview`, and `/api/live` agrees: a non-admin calling it
+directly gets only `{"window": …, "preview_only": true}`, and `force` (a cache
+bypass) is honoured for admins only. Inside the window everyone gets the desk.
+`tests/test_live_window.py`.
+
+**Predicted XIs are drawn as formations**, from the feed's OWN pitch positions
+(`GK · DL DC DC DR · DMC DMC · AML AMC AMR · FW`), not FPL's four labels —
+FPL calls a winger a MID, so a 4-2-3-1 drawn from FPL labels reads 4-5-1.
+`deadline._formation` bands and orders them left to right and builds the
+string (all 20 clubs: 4-2-3-1, 3-4-2-1, 5-4-1). The eleven come from the feed,
+so a name the resolver cannot match still stands in the XI, marked, with no
+model number; the model's P(start) is an annotation, and anyone it rates as a
+likely starter the feed left out is listed under the pitch. **The classes are
+`lu-*`**: the Mini League already owns `.xi-card` (68px wide), `.xi-pitch`,
+`.xi-row` and `.xi-name`, and reusing them squeezed every club into a strip —
+the second class collision this round after `.advice`. Grep for a class name
+before introducing one.
+
 The admin **Deadline** tab stopped duplicating those feeds and became what only
 an operator can act on: three health checks (scheduled refresh, projections,
 market coverage) that are green or not and say why, the serving model, market

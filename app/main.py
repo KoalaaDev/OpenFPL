@@ -309,10 +309,20 @@ def pull(request: Request, body: dict | None = None, admin=Depends(require_admin
 
 
 @app.get("/api/live")
-def api_live(force: int = 0, _=Depends(rate("cheap"))):
-    """The public live desk. Cached for a minute server-side: it is the one
-    page everyone opens at the same time, in the hour before a deadline."""
-    return live.payload(force=bool(force))
+def api_live(request: Request, force: int = 0, _=Depends(rate("cheap"))):
+    """The live desk. Cached for a minute server-side: it is the one page
+    everyone opens at the same time, in the hour before a deadline.
+
+    Outside its window (24 h before a deadline to 6 h after) the desk is an
+    admin preview, so everyone else gets only the schedule — the tab is hidden
+    for them too, and the endpoint must not hand the content out early to
+    anyone who calls it directly. `force` is honoured for admins only; it
+    bypasses the cache and is a CPU knob on a public server."""
+    admin = auth.is_admin(current_user(request))
+    win = live.window((services.status_payload().get("deadlines") or {}))
+    if win["phase"] == "idle" and not admin:
+        return {"window": win, "preview_only": True}
+    return live.payload(force=bool(force) and admin)
 
 
 @app.get("/api/admin/model")

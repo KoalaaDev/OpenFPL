@@ -54,3 +54,38 @@ def test_the_desk_frame_carries_every_column_resolve_reads():
     src = inspect.getsource(deadline._lineups)
     for col in ("full_name", "web_name", "short_name", "team_id"):
         assert col in src, col
+
+
+def test_formation_uses_the_feeds_positions_not_fpls_labels():
+    """FPL calls a winger a MID, so a 4-2-3-1 drawn from FPL labels reads as
+    4-5-1. The feed's own pitch positions give the real shape."""
+    archive = pd.DataFrame([
+        {"gw": 5, "team_abbr": "ARS", "status": "predicted", "observed": pd.Timestamp("2026-09-16T05:00Z"),
+         "player": n, "position": pos, "slot": str(i + 1)}
+        for i, (n, pos) in enumerate([
+            ("David Raya", "GK"), ("Left Back", "DL"), ("Centre One", "DC"), ("Centre Two", "DC"),
+            ("Right Back", "DR"), ("Holder One", "DMC"), ("Holder Two", "DMC"),
+            ("Left Wing", "AML"), ("Ten", "AMC"), ("Bukayo Saka", "AMR"), ("Striker", "FW")])])
+    names = set(archive["player"])
+    xi, formation = deadline._formation(
+        archive, 5, "ARS", "2026-09-16T05:00:00+00:00", names,
+        {("ARS", "David Raya"): 1}, {1: {"p_start": 0.91, "disagree": False}},
+        {1: {"name": "Raya"}})
+    assert formation == "4-2-3-1"
+    assert len(xi) == 11
+    raya = next(x for x in xi if x["full_name"] == "David Raya")
+    assert raya["name"] == "Raya" and raya["p_start"] == 0.91 and raya["resolved"]
+    # an unmatched name still stands in the XI, with no model number
+    saka = next(x for x in xi if x["full_name"] == "Bukayo Saka")
+    assert saka["resolved"] is False and saka["p_start"] is None and saka["name"] == "Saka"
+    # left to right across a band
+    band4 = [x["position"] for x in xi if x["band"] == 4]
+    assert band4 == ["AML", "AMC", "AMR"]
+
+
+def test_the_lineup_classes_do_not_reuse_the_mini_league_names():
+    """.xi-card (68px wide) belongs to the Mini League; reusing it squeezed
+    every club on the Live desk into a strip."""
+    import pathlib
+    live = (pathlib.Path(__file__).resolve().parents[1] / "web" / "src" / "tabs" / "Live.jsx").read_text(encoding="utf-8")
+    assert 'className="xi-' not in live and "`xi-" not in live

@@ -630,3 +630,89 @@ body {
   margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--line);
   font-size: 11px; color: var(--muted-2);
 }
+
+/* ---------- live desk: fixtures as scoreboards, crest first ---------------- */
+.fx-match {
+  display: grid; gap: 2px; padding: 6px 0;
+  border-top: 1px solid var(--line-soft);
+}
+.fx-slot .fx-match:first-of-type { border-top: 0; padding-top: 2px; }
+.fx-side { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.fx-crest { width: 20px; height: 20px; object-fit: contain; flex: none; }
+.fx-name {
+  font-size: 13px; font-weight: 600; flex: 1; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.fx-score { font-family: var(--mono); font-weight: 800; font-size: 13px; color: var(--muted); }
+.fx-side.won .fx-name, .fx-side.won .fx-score { color: var(--text); font-weight: 800; }
+.fx-match.done .fx-side:not(.won) .fx-name { color: var(--muted); }
+
+/* ---------- live desk: each club's predicted XI on a pitch ------------------ */
+/* `lu-` (line-up), not `xi-`: the Mini League's mini-XI already owns .xi-card
+   (width: 68px), .xi-pitch, .xi-row and .xi-name, and sharing them squeezed
+   every club here into a 68px strip. */
+.lu-legend {
+  display: flex; flex-wrap: wrap; gap: 6px 16px; padding: 10px 14px 0;
+  font-size: 11px; color: var(--muted-2);
+}
+.lu-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.lu-dot { width: 9px; height: 9px; border-radius: 3px; background: rgba(10, 10, 22, 0.8); box-shadow: inset 0 0 0 1px var(--line); }
+.lu-dot.dis { background: var(--gold); box-shadow: none; }
+.lu-dot.unk { background: transparent; box-shadow: inset 0 0 0 1px var(--muted-2); border-style: dashed; }
+.lu-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  gap: 12px; padding: 12px 14px 14px;
+}
+.lu-card {
+  border: 1px solid var(--line-soft); border-radius: 12px; overflow: hidden;
+  background: var(--bg-deep); display: flex; flex-direction: column;
+}
+.lu-head {
+  display: flex; align-items: center; gap: 8px; padding: 9px 11px;
+  font-size: 13px; border-bottom: 1px solid var(--line-soft);
+}
+.lu-head b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lu-form {
+  font-family: var(--mono); font-size: 11px; font-weight: 800;
+  padding: 2px 7px; border-radius: 5px; background: var(--panel-3); color: var(--text);
+}
+.lu-when { margin-left: auto; font-size: 10.5px; color: var(--muted-2); white-space: nowrap; }
+.lu-pitch {
+  position: relative; padding: 10px 4px 8px;
+  background:
+    repeating-linear-gradient(180deg, rgba(255,255,255,0.03) 0 10%, rgba(0,0,0,0.03) 10% 20%),
+    linear-gradient(180deg, #1c6443 0%, #155337 100%);
+}
+.lu-pitch .pitch-lines { stroke: rgba(255, 255, 255, 0.22); }
+.lu-rows {
+  position: relative; z-index: 1; display: flex; flex-direction: column;
+  gap: 8px; min-height: 250px; justify-content: space-between;
+}
+.lu-row { display: flex; justify-content: space-evenly; gap: 3px; }
+.lu-p {
+  flex: 0 1 62px; min-width: 0; display: flex; flex-direction: column;
+  align-items: center; border-radius: 6px; overflow: hidden;
+  background: rgba(10, 10, 22, 0.8); box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+}
+.lu-name {
+  width: 100%; text-align: center; padding: 3px 3px 1px;
+  font-size: 10.5px; font-weight: 700; color: #fff;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.lu-ps {
+  width: 100%; text-align: center; padding: 1px 0 2px;
+  font-family: var(--mono); font-size: 9.5px; font-weight: 700; color: var(--muted);
+}
+.lu-p.dis { background: var(--gold); }
+.lu-p.dis .lu-name, .lu-p.dis .lu-ps { color: #16162c; }
+.lu-p.unk { background: rgba(10, 10, 22, 0.45); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.35); }
+.lu-omit {
+  display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline;
+  padding: 8px 11px; font-size: 11px; color: var(--muted-2);
+  border-top: 1px solid var(--line-soft);
+}
+.lu-omit b { color: var(--gold); font-weight: 700; }
+@media (max-width: 620px) {
+  .lu-grid { grid-template-columns: 1fr; padding: 10px; }
+  .lu-rows { min-height: 230px; }
+}

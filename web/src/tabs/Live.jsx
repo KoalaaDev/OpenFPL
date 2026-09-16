@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react'
 import { api } from '../api'
 import { useStore } from '../store'
 import { Empty, Loading } from '../components/States'
-import { fmt1, money } from '../util'
+import { badgeUrl, fmt1, money } from '../util'
+import PitchLines from '../components/Pitch'
 
 /* Live deadline coverage.
 
@@ -139,6 +140,7 @@ function Elapsed({ ms }) {
 /* ------------------------------------------------------------------ */
 
 function Fixtures({ rows }) {
+  const { teams } = useStore()
   if (!rows.length) return null
   // grouped by kick-off slot, which is how a gameweek actually reads
   const groups = []
@@ -149,6 +151,20 @@ function Fixtures({ rows }) {
     if (g) g.rows.push(r)
     else groups.push({ key, rows: [r] })
   }
+  /* A scoreboard line per side, crest first: you find your club by its badge
+     long before you read its name, and a fixed left edge makes a slot of
+     three matches scan as a list. */
+  const Side = ({ id, short, score, won }) => {
+    const t = teams[String(id)]
+    return (
+      <div className={`fx-side ${won ? 'won' : ''}`}>
+        <img className="fx-crest" src={badgeUrl(t?.code)} alt="" loading="lazy"
+          onError={(e) => { e.currentTarget.style.visibility = 'hidden' }} />
+        <span className="fx-name">{t?.name || short}</span>
+        {score != null && <span className="fx-score">{score}</span>}
+      </div>
+    )
+  }
   return (
     <div className="panel">
       <div className="panel-head">Fixtures <span className="chip dim num">{rows.length}</span></div>
@@ -157,10 +173,11 @@ function Fixtures({ rows }) {
           <div className="fx-slot" key={g.key}>
             <div className="fx-when">{g.key}</div>
             {g.rows.map((r) => (
-              <div className={`fx-row ${r.finished ? 'done' : ''}`} key={r.fixture_id}>
-                <span className="h">{r.home}</span>
-                <span className="s">{r.score ? `${r.score[0]}–${r.score[1]}` : 'v'}</span>
-                <span className="a">{r.away}</span>
+              <div className={`fx-match ${r.finished ? 'done' : ''}`} key={r.fixture_id}>
+                <Side id={r.home_id} short={r.home} score={r.score?.[0]}
+                  won={r.score && r.score[0] > r.score[1]} />
+                <Side id={r.away_id} short={r.away} score={r.score?.[1]}
+                  won={r.score && r.score[1] > r.score[0]} />
               </div>
             ))}
           </div>
@@ -298,6 +315,7 @@ function PriceWatch({ p, open }) {
 }
 
 function Lineups({ l }) {
+  const { teams } = useStore()
   const [open, setOpen] = useState(false)
   const clubs = l.clubs || []
   const dis = clubs.reduce((a, c) => a + (c.disagreements || 0), 0)
@@ -311,26 +329,74 @@ function Lineups({ l }) {
       </div>
       {l.note && <div className="dd-empty">{l.note}</div>}
       {open ? (
-        <div className="dd-clubs">
-          {clubs.map((c) => (
-            <div key={c.team} className="dd-club">
-              <div className="dd-club-head"><b>{c.team}</b>
-                <span className="muted">{ago(Date.parse(c.observed) / 1000)}</span>
-                {c.disagreements > 0 && <span className="chip gold num">{c.disagreements}</span>}</div>
-              {c.rows.map((p) => (
-                <div key={p.player_id} className={`dd-xi ${p.disagree ? 'dis' : ''} ${p.predicted ? '' : 'sub'}`}>
-                  <span>{p.predicted ? '●' : '○'}</span><span className="nm">{p.name}</span>
-                  <span className="num">{p.p_start == null ? '—' : p.p_start.toFixed(2)}</span>
-                </div>
-              ))}
-            </div>
-          ))}
-        </div>
+        <>
+          <div className="lu-legend">
+            <span><i className="lu-dot" /> model&apos;s chance he starts</span>
+            <span><i className="lu-dot dis" /> the model disagrees with the feed</span>
+            <span><i className="lu-dot unk" /> not matched to an FPL player</span>
+          </div>
+          <div className="lu-grid">
+            {clubs.map((c) => <XiCard key={c.team} c={c} team={teams[String(c.team_id)]} />)}
+          </div>
+        </>
       ) : (
         <div className="fold-note" style={{ padding: '0 12px 12px' }}>
           A predicted XI is somebody&apos;s forecast, not the team sheet — the real
           one lands about an hour before kick-off, after this deadline. Where a
           feed disagrees with the model&apos;s own P(start), both are shown.
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* One club's predicted eleven, drawn in the shape the feed says they line up
+   in — its own pitch positions (DL, DMC, AMR…), not FPL's four labels, which
+   would flatten every 4-2-3-1 with an attacking winger into a 4-5-1. Keeper at
+   the top, as on the Planner. The model's P(start) sits under each name, and
+   anyone the model rates as a likely starter but the feed left out is listed
+   underneath, because that is the disagreement worth an eye. */
+function XiCard({ c, team }) {
+  const bands = []
+  for (const x of c.xi || []) {
+    (bands[x.band] = bands[x.band] || []).push(x)
+  }
+  const omitted = (c.rows || []).filter((r) => !r.predicted && r.disagree)
+  return (
+    <div className="lu-card">
+      <div className="lu-head">
+        <img className="fx-crest" src={badgeUrl(team?.code)} alt="" loading="lazy"
+          onError={(e) => { e.currentTarget.style.visibility = 'hidden' }} />
+        <b>{team?.name || c.team}</b>
+        {c.formation && <span className="lu-form">{c.formation}</span>}
+        <span className="lu-when">{ago(Date.parse(c.observed) / 1000)}</span>
+      </div>
+      <div className="lu-pitch">
+        <PitchLines />
+        <div className="lu-rows">
+          {bands.filter(Boolean).map((row, i) => (
+            <div className="lu-row" key={i}>
+              {row.map((x) => (
+                <div key={`${x.full_name}-${x.slot}`}
+                  className={`lu-p ${x.disagree ? 'dis' : ''} ${x.resolved ? '' : 'unk'}`}
+                  title={`${x.full_name} · ${x.position}${x.p_start != null
+                    ? ` · model P(start) ${Math.round(x.p_start * 100)}%` : ''}`}>
+                  <span className="lu-name">{x.name}</span>
+                  <span className="lu-ps">
+                    {x.p_start != null ? `${Math.round(x.p_start * 100)}%` : '—'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+      {omitted.length > 0 && (
+        <div className="lu-omit">
+          <span>Model also rates:</span>
+          {omitted.map((r) => (
+            <b key={r.player_id}>{r.name} {Math.round((r.p_start || 0) * 100)}%</b>
+          ))}
         </div>
       )}
     </div>
