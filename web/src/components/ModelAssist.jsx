@@ -154,93 +154,68 @@ export default function ModelAssist({
   const nextGw = status?.editable_gw ?? status?.next_gw
   const isPast = nextGw != null && plan.gw < nextGw
 
-  /* Four identical buttons in a row is a menu, not advice: it asks the reader
-     to know which of them applies to their situation. These are the same four
-     actions, each stated as what it would do and what it is worth, ordered so
-     the one with something to say is at the top. */
-  const gain = xiGap && xiGap.gain > 0.05 ? xiGap.gain : 0
-  const actions = [
-    {
-      key: 'xi',
-      icon: '⚡',
-      title: gain ? `Your XI leaves ${fmt1(gain)} pts on the bench` : 'Your XI is already the best one',
-      body: gain
-        ? `Best legal XI scores ${fmt1(xiGap.top)} against your ${fmt1(xiGap.mine)}, captain included.`
-        : `Nothing in this fifteen beats the eleven you have picked for GW${plan.gw}.`,
-      cta: 'Fix my XI',
-      value: gain,
-      run: optimiseXI,
-      disabled: isPast || !gain,
-    },
-    {
-      key: 'transfer',
-      icon: '↔',
-      title: 'Best single transfer from here',
-      body: 'Solves one move from the squad this draft reaches at this gameweek — free transfer, no hit.',
-      cta: 'Find it',
-      run: () => runSolve('transfer'),
-      disabled: !!busy || isPast,
-    },
-    {
-      key: 'freehit',
-      icon: '🃏',
-      title: chip === 'freehit' ? 'Free Hit is set for this gameweek' : 'Best Free Hit for this gameweek',
-      body: avail.freehit?.usable
-        ? 'A one-week squad, solved for GW' + plan.gw + ' alone. It does not carry forward.'
-        : chipNote(avail.freehit, CHIP_NAME.freehit),
-      cta: 'Build it',
-      run: () => runSolve('freehit'),
-      disabled: !!busy || isPast || !avail.freehit?.usable,
-      on: chip === 'freehit',
-    },
-    {
-      key: 'wildcard',
-      icon: '♻',
-      title: chip === 'wildcard' ? 'Wildcard is set for this gameweek' : 'Best Wildcard from this gameweek',
-      body: avail.wildcard?.usable
-        ? 'Rebuilds the fifteen from GW' + plan.gw + ' and carries that squad forward.'
-        : chipNote(avail.wildcard, CHIP_NAME.wildcard),
-      cta: 'Rebuild',
-      run: () => runSolve('wildcard'),
-      disabled: !!busy || isPast || !avail.wildcard?.usable,
-      on: chip === 'wildcard',
-    },
-  ]
-  // the one with points on the table first; the rest keep their order
-  actions.sort((a, b) => (b.value || 0) - (a.value || 0))
-
   return (
-    <div className="panel assist">
-      <div className="panel-head">
-        Model assist
-        <span className="assist-gw">GW{plan.gw}</span>
+    <div className="assist">
+      <div className="assist-head">
+        <span className="section-label">Model assist — GW{plan.gw}</span>
+        {xiGap && (
+          <span className="assist-gap">
+            your XI <b>{fmt1(xiGap.mine)}</b>
+            {xiGap.gain > 0.05 ? (
+              <>
+                {' · '}best legal XI <b>{fmt1(xiGap.top)}</b>
+                <span className="up"> +{fmt1(xiGap.gain)}</span>
+              </>
+            ) : <span className="ok"> · already optimal</span>}
+          </span>
+        )}
       </div>
 
-      {isPast ? (
-        <div className="fold-note">GW{plan.gw} has been played — there is nothing
-          left to optimise. Move the plan forward to GW{nextGw}.</div>
-      ) : (
-        <div className="assist-list">
-          {actions.map((a) => (
-            <div key={a.key}
-              className={`assist-card ${a.value ? 'hot' : ''} ${a.on ? 'on' : ''} ${a.disabled ? 'off' : ''}`}>
-              <span className="ac-icon" aria-hidden="true">
-                {busy === a.key ? <span className="spinner" /> : a.icon}
-              </span>
-              <div className="ac-text">
-                <div className="ac-title">{a.title}
-                  {a.value ? <span className="ac-val">+{fmt1(a.value)}</span> : null}
-                </div>
-                <div className="ac-body">{a.body}</div>
-              </div>
-              <button className={`pill-btn ${a.value ? 'accent' : ''}`}
-                disabled={a.disabled} onClick={a.run}>{a.cta}</button>
-            </div>
-          ))}
-        </div>
-      )}
+      <div className="assist-row">
+        <button className={`pill-btn ${xiGap?.gain > 0.05 ? 'accent' : ''}`}
+          onClick={optimiseXI} disabled={isPast}
+          title="Pick the highest-projected legal XI and captain from this squad">
+          ⚡ Optimise XI
+        </button>
+
+        <button className="pill-btn" disabled={!!busy || isPast}
+          onClick={() => runSolve('transfer')}
+          title="The single best transfer from this exact position">
+          {busy === 'transfer' ? <span className="spinner" /> : '↔'} Best transfer
+        </button>
+
+        <button className={`pill-btn ${chip === 'freehit' ? 'accent' : ''}`}
+          disabled={!!busy || isPast || !avail.freehit?.usable}
+          onClick={() => runSolve('freehit')}
+          title={avail.freehit?.usable
+            ? 'Build the best possible one-week squad for this gameweek'
+            : chipNote(avail.freehit, CHIP_NAME.freehit)}>
+          {busy === 'freehit' ? <span className="spinner" /> : '🃏'} Best Free Hit
+        </button>
+
+        <button className={`pill-btn ${chip === 'wildcard' ? 'accent' : ''}`}
+          disabled={!!busy || isPast || !avail.wildcard?.usable}
+          onClick={() => runSolve('wildcard')}
+          title={avail.wildcard?.usable
+            ? 'Rebuild the squad from this gameweek onward'
+            : chipNote(avail.wildcard, CHIP_NAME.wildcard)}>
+          {busy === 'wildcard' ? <span className="spinner" /> : '♻'} Best Wildcard
+        </button>
+      </div>
 
       {note && <div className="assist-note"><span className="spinner" /> {note}</div>}
+      {isPast && (
+        <div className="assist-note">
+          GW{plan.gw} has been played — there is nothing left to optimise.
+        </div>
+      )}
+      {!isPast && !note && (
+        <p className="assist-hint">
+          Free Hit solves this gameweek alone and does not carry forward; Wildcard
+          rebuilds and does. Both start from the squad this draft reaches here, so
+          they work mid-plan, not just in GW{nextGw ?? '?'}.
+        </p>
+      )}
     </div>
   )
 }

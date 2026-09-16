@@ -18,11 +18,7 @@ export default function Solver({ goPlanner }) {
   const [solveFrom, setSolveFrom] = usePersisted('solver.from', null)
   const [ftValue, setFtValue] = usePersisted('solver.ftValue', 1.5)
   const [decay, setDecay] = usePersisted('solver.decay', 0.85)
-  // which strategies to solve. Each is a different *preference* — how far
-  // ahead to look, whether hits are allowed, and whether it wants points that
-  // arrive in bursts or every week — so they are chosen, not counted.
-  const [styles, setStyles] = usePersisted('solver.styles',
-    ['aggressive', 'balanced', 'conservative'])
+  const [nPlans, setNPlans] = usePersisted('solver.nPlans', 3)
   const [advanced, setAdvanced] = usePersisted('solver.advanced', false)
   const [hitCost, setHitCost] = usePersisted('solver.hitCost', 4)
   const [benchWeight, setBenchWeight] = usePersisted('solver.benchWeight', 0.1)
@@ -83,9 +79,7 @@ export default function Solver({ goPlanner }) {
         solve_from: from, horizon,
         decay, ft_value: ftValue, hit_cost: hitCost, bench_weight: benchWeight,
         max_transfers: maxTransfers, time_limit: timeLimit,
-        keep_per_position: keepPerPos,
-        playstyles: styles.length ? styles : ['balanced'],
-        n_plans: Math.max(1, styles.length),
+        keep_per_position: keepPerPos, n_plans: nPlans,
         free_transfers: ftOverride === '' ? null : Number(ftOverride),
         chips: chipParams,
         locked, avoid, banned_teams: banned, sell_teams: sellTeams,
@@ -150,8 +144,14 @@ export default function Solver({ goPlanner }) {
             </div>
           </div>
 
-          <StylePicker styles={styles} setStyles={setStyles}
-            defs={status?.playstyles || []} />
+          <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap' }}>
+            <NumField label="FT value" hint="Bonus points for each banked free transfer at horizon end"
+              value={ftValue} step={0.25} onChange={setFtValue} />
+            <NumField label="Time decay" hint="Weight per future gameweek (uncertainty discount)"
+              value={decay} step={0.05} onChange={(v) => setDecay(Math.min(1, Math.max(0.5, v)))} />
+            <NumField label="Transfer plans" hint="How many alternative plans to generate"
+              value={nPlans} step={1} onChange={(v) => setNPlans(Math.min(5, Math.max(1, Math.round(v))))} />
+          </div>
 
           <button className="pill-btn" style={{ marginTop: 6 }}
             onClick={() => setAdvanced((a) => !a)}>
@@ -159,15 +159,6 @@ export default function Solver({ goPlanner }) {
           </button>
           {advanced && (
             <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', marginTop: 14 }}>
-              <div style={{ flexBasis: '100%', fontSize: 11, color: 'var(--muted-2)' }}>
-                Each strategy sets its own horizon weighting, free-transfer value
-                and hit policy, so these two are only used when you solve a single
-                strategy on its own.
-              </div>
-              <NumField label="FT value" hint="Bonus points for each banked free transfer at horizon end"
-                value={ftValue} step={0.25} onChange={setFtValue} />
-              <NumField label="Time decay" hint="Weight per future gameweek (uncertainty discount)"
-                value={decay} step={0.05} onChange={(v) => setDecay(Math.min(1, Math.max(0.5, v)))} />
               <NumField label="Hit cost" value={hitCost} step={1} onChange={setHitCost} />
               <NumField label="Bench weight" hint="How much bench points matter (autosub proxy)"
                 value={benchWeight} step={0.05} onChange={setBenchWeight} />
@@ -377,46 +368,6 @@ export default function Solver({ goPlanner }) {
 
 /* ------------------------------------------------------------------ */
 
-/* The strategy is the first real decision on this tab, so it is a choice
-   between three described things rather than a "how many plans?" number.
-   The definitions come from the engine (status.playstyles) so the screen and
-   the solver can never drift apart. */
-function StylePicker({ styles, setStyles, defs }) {
-  const list = defs.length ? defs : [{ key: 'balanced', label: 'Balanced', note: '' }]
-  const toggle = (k) => setStyles((cur) => {
-    const has = cur.includes(k)
-    // never solve nothing: the last one on stays on
-    if (has && cur.length === 1) return cur
-    return has ? cur.filter((x) => x !== k) : [...cur, k]
-  })
-  return (
-    <div className="field">
-      <div className="lbl">
-        <span className="section-label">Strategy</span>
-        <span className="hintdot" title="One plan is solved per strategy selected. They differ in what they prefer, never in the rules — a -4 always costs 4.">i</span>
-        <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--muted-2)' }}>
-          {styles.length} plan{styles.length === 1 ? '' : 's'}
-        </span>
-      </div>
-      <div className="style-picker">
-        {list.map((d) => {
-          const on = styles.includes(d.key)
-          return (
-            <button key={d.key} className={`style-card ${on ? 'on' : ''}`}
-              onClick={() => toggle(d.key)} title={d.detail || d.note}>
-              <span className="sc-head">
-                <span className="sc-tick" aria-hidden="true">{on ? '✓' : ''}</span>
-                {d.label}
-              </span>
-              <span className="sc-note">{d.note}</span>
-            </button>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-
 function NumField({ label, hint, value, step, onChange }) {
   return (
     <div className="field">
@@ -514,9 +465,6 @@ function PlanCard({ plan, i, addDraft, byId, freeFirst }) {
           <span style={{ color: 'var(--muted-2)' }}>{open ? '▴' : '▾'}</span>
         </span>
       </div>
-      {open && plan.style_detail && (
-        <div className="plan-note style">{plan.style_detail}</div>
-      )}
       {open && freeFirst && (
         <div className="plan-note">
           Pre-deadline: GW{plan.per_gw[0]?.gw} moves are free (FPL's unlimited transfers

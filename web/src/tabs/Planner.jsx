@@ -2,8 +2,6 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import Flag from '../components/Flag'
 import PlayerModal from '../components/PlayerModal'
 import ModelAssist from '../components/ModelAssist'
-import PitchLines from '../components/Pitch'
-import Section from '../components/Section'
 import { api, pollJob } from '../api'
 import { useFixtureLookup, useStore } from '../store'
 import { Radar, VIZ, VIZ_NEUTRAL as VIZ_MUTED } from '../charts'
@@ -280,7 +278,7 @@ export default function Planner() {
       <GwBar draft={draft} gwIdx={gwIdx} setGwIdx={setGwIdx} evs={evs} deltas={deltas}
         plan={plan} nMoves={nMoves} updateDraft={updateDraft} undo={undo} canUndo={undoN > 0} />
       <div className="planner-grid">
-        <div className="planner-main">
+        <div>
           {planIsPast && (
             <div className="past-gw-note">
               {status?.gw_in_progress && plan.gw === status?.next_gw
@@ -303,6 +301,10 @@ export default function Planner() {
             </div>
           )}
           {plan && (
+            <ModelAssist draft={draft} gwIdx={gwIdx} plan={plan} posOf={posOf}
+              updateDraft={updateDraft} setToast={setToast} />
+          )}
+          {plan && (
             <PitchView plan={plan} draft={draft} sel={sel} setSel={setSel}
               setStatPid={setStatPid} posOf={posOf} armed={armed} setArmed={setArmed}
               applyTransfer={applyTransfer}
@@ -312,40 +314,21 @@ export default function Planner() {
             <ChangesStrip moves={manualMoves} plan={plan} draft={draft} gwIdx={gwIdx}
               byId={byId} proj={proj} undoTransfer={undoTransfer} />
           )}
+          {plan && (
+            <TeamDna plan={plan} draft={draft} gwIdx={gwIdx} byId={byId} proj={proj} />
+          )}
         </div>
-
-        {/* One column, read top to bottom: which route am I on, what does the
-            model say to do about it, and only then the tools. Everything below
-            the first two folds away, because the complaint was never that a
-            control was missing — it was that they were all shouting at once. */}
-        <aside className="planner-rail">
+        <div>
+          <AddPlayerPanel plan={plan} players={players} byId={byId} proj={proj}
+            posOf={posOf} armed={armed} setArmed={setArmed} />
+          <ChipAdvisor draft={draft} proj={proj} byId={byId} players={players}
+            posOf={posOf} updateDraft={updateDraft} entryChips={entry?.chips} />
           <DraftsPanel drafts={drafts} setDrafts={setDrafts} proj={proj}
             activeDraftId={draft.id} setActiveDraftId={setActiveDraftId}
             gwIdx={gwIdx} setGwIdx={setGwIdx} createFromEntry={createFromEntry}
             entry={entry} />
-          {plan && (
-            <ModelAssist draft={draft} gwIdx={gwIdx} plan={plan} posOf={posOf}
-              updateDraft={updateDraft} setToast={setToast} />
-          )}
-          <Section id="add" title="Add a player"
-            hint="search, then click who he replaces"
-            badge={armed ? armed.web_name : null} defaultOpen={!!armed}>
-            <AddPlayerPanel plan={plan} players={players} byId={byId} proj={proj}
-              posOf={posOf} armed={armed} setArmed={setArmed} />
-          </Section>
-          <Section id="chips" title="Chip advisor" hint="where a chip looks worth playing">
-            <ChipAdvisor draft={draft} proj={proj} byId={byId} players={players}
-              posOf={posOf} updateDraft={updateDraft} entryChips={entry?.chips} />
-          </Section>
-          <Section id="path" title="Transfer path" hint={`every move in ${draft.label}`}>
-            <PathsPanel draft={draft} byId={byId} />
-          </Section>
-          {plan && (
-            <Section id="dna" title="Team DNA" hint="the shape of the squad, not its total">
-              <TeamDna plan={plan} draft={draft} gwIdx={gwIdx} byId={byId} proj={proj} />
-            </Section>
-          )}
-        </aside>
+          <PathsPanel draft={draft} byId={byId} />
+        </div>
       </div>
       {statPid && plan && (
         <PlayerModal pid={statPid} draft={draft} plan={plan}
@@ -563,18 +546,15 @@ function PitchView({ plan, sel, setSel, setStatPid, posOf, updateDraft, gwIdx, s
         </div>
       )}
       <div className="pitch">
-        <PitchLines />
-        <div className="pitch-rows">
-          {['GK', 'DEF', 'MID', 'FWD'].map((pp) => (
-            <div className="pitch-row" key={pp}>
-              {rows[pp].map((pid) => (
-                <Card key={pid} pid={pid} plan={plan} sel={sel}
-                  onClick={onCardClick} posOf={posOf}
-                  dim={armed && posOf(pid) !== armed.position} delta={armedDelta(pid)} />
-              ))}
-            </div>
-          ))}
-        </div>
+        {['GK', 'DEF', 'MID', 'FWD'].map((pp) => (
+          <div className="pitch-row" key={pp}>
+            {rows[pp].map((pid) => (
+              <Card key={pid} pid={pid} plan={plan} sel={sel}
+                onClick={onCardClick} posOf={posOf}
+                dim={armed && posOf(pid) !== armed.position} delta={armedDelta(pid)} />
+            ))}
+          </div>
+        ))}
       </div>
       <div className="bench">
         {bench.map((s) => (
@@ -711,8 +691,9 @@ function TeamDna({ plan, draft, gwIdx, byId, proj }) {
 
   if (!series) return null
   return (
-    <div className="dna-panel">
-      <Radar axes={DNA_AXES} series={series} size={290} />
+    <div className="panel dna-panel">
+      <div className="panel-head">Team DNA — GW{plan.gw}</div>
+      <Radar axes={DNA_AXES} series={series} size={300} />
       <p className="viz-note">
         {DNA_AXES.map((a) => a.label + ' = ' + a.hint).join(' · ')}
       </p>
@@ -738,16 +719,19 @@ function AddPlayerPanel({ plan, players, byId, proj, posOf, armed, setArmed }) {
   }, [players, q, pos, gw, proj, plan])
   if (!plan) return null
   return (
-    <>
-      <div className="add-controls">
-        <div className="search" style={{ minWidth: 0, flex: 1 }}>
-          🔍<input placeholder="Search players…" value={q} onChange={(e) => setQ(e.target.value)} />
-        </div>
-        <span style={{ display: 'flex', gap: 4 }}>
+    <div className="panel" style={{ marginBottom: 16 }}>
+      <div className="panel-head">
+        Add player
+        <span style={{ marginLeft: 'auto', display: 'flex', gap: 4 }}>
           {['ALL', 'GK', 'DEF', 'MID', 'FWD'].map((v) => (
             <button key={v} className={`mode-pill ${pos === v ? 'on' : ''}`} onClick={() => setPos(v)}>{v}</button>
           ))}
         </span>
+      </div>
+      <div style={{ padding: '10px 12px 4px' }}>
+        <div className="search" style={{ minWidth: 0 }}>
+          🔍<input placeholder="Search players…" value={q} onChange={(e) => setQ(e.target.value)} />
+        </div>
       </div>
       <div className="addlist">
         {opts.map((p) => (
@@ -763,9 +747,10 @@ function AddPlayerPanel({ plan, players, byId, proj, posOf, armed, setArmed }) {
         ))}
         {!opts.length && <div className="ml-note">No players match.</div>}
       </div>
-      <div className="fold-note">Click a player to pick him up, then click the
-        man he replaces on the pitch.</div>
-    </>
+      <div style={{ padding: '6px 12px 10px', fontSize: 11, color: 'var(--muted-2)' }}>
+        Click a player to arm him, then click who he replaces on the pitch.
+      </div>
+    </div>
   )
 }
 
@@ -833,9 +818,12 @@ function ChipAdvisor({ draft, proj, byId, players, posOf, updateDraft, entryChip
   })
   const active = new Set(draft.gws.filter((p) => p.chip).map((p) => `${p.chip}@${p.gw}`))
   return (
-    <>
-      <div className="fold-note">Hints from this draft's own projections — the
-        Solver is the authority that prices a chip exactly.</div>
+    <div className="panel" style={{ marginBottom: 16 }}>
+      <div className="panel-head">Chip advisor
+        <span style={{ marginLeft: 'auto', fontSize: 10, letterSpacing: 0, textTransform: 'none', color: 'var(--muted-2)' }}>
+          hints from this draft · Solver decides exactly
+        </span>
+      </div>
       {hints.map((h) => (
         <div key={h.chip}>
           <div className={`advice ${h.strong ? 'strong' : ''}`}>
@@ -878,8 +866,8 @@ function ChipAdvisor({ draft, proj, byId, players, posOf, updateDraft, entryChip
           )}
         </div>
       ))}
-      {!hints.length && <div className="ml-note">Nothing worth a chip in this draft's gameweeks.</div>}
-    </>
+      {!hints.length && <div className="ml-note">No projections yet.</div>}
+    </div>
   )
 }
 
@@ -987,29 +975,19 @@ function DraftsPanel({ drafts, setDrafts, proj, activeDraftId, setActiveDraftId,
   const bestTot = totals.length ? Math.max(...totals) : 0
   const activeTot = totals[drafts.findIndex((d) => d.id === activeDraftId)] ?? 0
 
-  const active = drafts.find((d) => d.id === activeDraftId) || drafts[0]
-
   return (
-    <div className="panel drafts-panel">
+    <div className="panel" style={{ marginBottom: 16 }}>
       <div className="panel-head">
-        Drafts
-        <span className="dp-actions">
-          <button className="pill-btn" onClick={() => branch(active)}
-            disabled={!active}
-            title="Keep this plan up to the gameweek you are looking at, then try a different route from there">
-            ⑂ Branch from GW{active?.gws?.[gwIdx]?.gw ?? '?'}
-          </button>
+        Routes
+        <span style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
           {entry?.squad && (
-            <button className="pill-btn accent" onClick={createFromEntry}
-              title="Start a fresh plan from the fifteen you own right now">
-              + New draft
-            </button>
+            <button className="pill-btn" onClick={createFromEntry}>+ from squad</button>
           )}
         </span>
       </div>
       {drafts.length > 1 && (
         <div className="routes-verdict">
-          Best draft projects <b>{fmt1(bestTot)}</b>
+          Best route projects <b>{fmt1(bestTot)}</b>
           {Math.abs(bestTot - activeTot) >= 0.05 ? (
             <> — the one you are editing is <span className="down">
               {fmt1(activeTot - bestTot)}</span> behind it.</>
@@ -1059,20 +1037,21 @@ function DraftsPanel({ drafts, setDrafts, proj, activeDraftId, setActiveDraftId,
                   ? `${fmt1(tot - bestTot)}` : `${d.gws.length} gws`}
               </div>
             </div>
-            <div className="draft-tools">
-              <button title={`Branch a new draft from GW${d.gws[d.id === activeDraftId ? gwIdx : 0]?.gw ?? ''}`}
-                onClick={(e) => { e.stopPropagation(); branch(d) }}>⑂</button>
-              <button title="Duplicate this draft"
-                onClick={(e) => { e.stopPropagation(); duplicate(d) }}>⧉</button>
-              <button className="danger" title="Delete this draft"
-                onClick={(e) => { e.stopPropagation(); remove(d) }}>✕</button>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <button title={`branch a new route from GW${d.gws[d.id === activeDraftId ? gwIdx : 0]?.gw ?? ''}`}
+                style={{ color: 'var(--muted-2)', fontSize: 12 }}
+                onClick={() => branch(d)}>⑂</button>
+              <button title="duplicate" style={{ color: 'var(--muted-2)', fontSize: 12 }}
+                onClick={() => duplicate(d)}>⧉</button>
+              <button title="delete" style={{ color: 'var(--muted-2)', fontSize: 12 }}
+                onClick={() => remove(d)}>✕</button>
             </div>
           </div>
         )
       })}
-      <div className="drafts-foot">
-        <span>Saved automatically · double-click a name to rename</span>
-        <button className="pill-btn"
+      <div style={{ display: 'flex', alignItems: 'center', padding: '9px 12px' }}>
+        <span style={{ fontSize: 11, color: 'var(--muted-2)' }}>autosave on</span>
+        <button className="pill-btn" style={{ marginLeft: 'auto' }}
           onClick={() => { if (confirm('Delete ALL drafts?')) setDrafts([]) }}>
           Reset all
         </button>
@@ -1086,7 +1065,8 @@ function DraftsPanel({ drafts, setDrafts, proj, activeDraftId, setActiveDraftId,
 function PathsPanel({ draft, byId }) {
   const nm = (pid) => byId.get(pid)?.web_name || pid
   return (
-    <>
+    <div className="panel">
+      <div className="panel-head">↗ Expand paths — {draft.label}</div>
       {draft.gws.map((p, i) => (
         <div className="path-gw" key={p.gw}>
           <div className="path-step">{i + 1}</div>
@@ -1109,6 +1089,6 @@ function PathsPanel({ draft, byId }) {
           </div>
         </div>
       ))}
-    </>
+    </div>
   )
 }

@@ -39,7 +39,7 @@ FPL_BASE = "https://fantasy.premierleague.com/api"
 _TTL = 600.0
 # bumped whenever the API contract changes; the frontend compares it with
 # its own build so a stale `python -m app` process is flagged, not puzzling
-API_VERSION = "2026-09-16.1"
+API_VERSION = "2026-09-11.1"
 
 _mem: dict[str, tuple[float, object]] = {}
 _bundle = None
@@ -1117,12 +1117,6 @@ def build_projections(job_id: str | None, gws: list[int], *,
                         None if xm is None else round(xm, 1))
                     rec["xmins"] = xm          # kept: older callers read this
                     rec["ep"][str(g)] = round(float(getattr(r, f"ep_gw{g}")), 3)
-                    # the lumpy half of that projection (goals, assists and
-                    # the bonus they attract) — what the solver's playstyles
-                    # lean on, and nothing else reads
-                    ex = getattr(r, f"ex_gw{g}", None)
-                    if ex is not None and not pd.isna(ex):
-                        rec.setdefault("ex", {})[str(g)] = round(float(ex), 3)
                 _price_in_rumours(conn, season, g, cache)
                 _attach_market(conn, season, g, cache)
                 cache["gws"][str(g)] = {"built_at": time.time()}
@@ -1178,38 +1172,10 @@ def _proj_frame(cache: dict, gws: list[int], decay: float) -> pd.DataFrame:
         for i, g in enumerate(gws):
             v = eps[g] or 0.0
             row[f"ep_gw{g}"] = v
-            row[f"ex_gw{g}"] = rec.get("ex", {}).get(str(g)) or 0.0
             total += (decay ** i) * v
         row["ep_total"] = total
         rows.append(row)
     return pd.DataFrame(rows)
-
-
-def _price_points(player_ids, gws_from: int) -> dict[int, float]:
-    """What each player's expected price move is worth, in points.
-
-    Round 7 measured the exchange rate rather than inventing one: budget is
-    worth ~0.163 points per £1m per gameweek, a rise is realised only on sale
-    and FPL returns half the profit. The strongest riser in a week comes out
-    at ~0.2 points, which is why it enters the solve as a style-weighted
-    tie-breaker and is reported at full size on the Prices tab.
-
-    Never fails a solve: an untrained price model or an empty panel simply
-    means no tie-breaker.
-    """
-    try:
-        with db.connect() as conn:
-            d = price_model.predict(conn, config.CURRENT_SEASON)
-    except Exception:                                    # noqa: BLE001
-        return {}
-    if d is None or d.empty:
-        return {}
-    left = max(0, 38 - int(gws_from) + 1)
-    if not left:
-        return {}
-    want = set(int(x) for x in player_ids)
-    return {int(r.player_id): price_model.points_value(float(r.e_delta), left)
-            for r in d.itertuples() if int(r.player_id) in want}
 
 
 # --------------------------------------------------------------------------
@@ -1328,8 +1294,6 @@ def run_solve(job_id: str, params: dict, principal: str = "") -> dict:
     proj = _proj_frame(cache, gws, decay)
     if proj.empty:
         raise RuntimeError("No projections available — run a data pull first.")
-    pts = _price_points(proj["player_id"], gws[0])
-    proj["price_points"] = proj["player_id"].map(pts).fillna(0.0)
 
     jobs.progress(job_id, "Fetching entry state…", pct=0.68)
     entry_id = params.get("entry")
@@ -1423,7 +1387,6 @@ def run_solve(job_id: str, params: dict, principal: str = "") -> dict:
         "plans": [{"objective": p.objective, "status": p.status,
                    "per_gw": p.per_gw, "style": p.style,
                    "style_label": p.style_label, "style_note": p.style_note,
-                   "style_detail": getattr(p, "style_detail", ""),
                    "total_ep": p.total_ep} for p in plans],
     }
 
@@ -1617,11 +1580,6 @@ def adopt_legacy(principal: str) -> list[str]:
     return adopted
 
 
-def _live_window(deadlines: dict) -> dict:
-    from . import live
-    return live.window({str(k): v for k, v in (deadlines or {}).items()})
-
-
 def status_payload() -> dict:
     season = config.CURRENT_SEASON
     conn = db.connect(config.DB_PATH)
@@ -1659,9 +1617,6 @@ def status_payload() -> dict:
             "editable_gw": open_gw,
             "gw_in_progress": bool(open_gw and gw and open_gw > gw),
             "deadlines": {str(k): v for k, v in deadlines.items()},
-            # whether the Live desk is on air. Imported here rather than at
-            # module scope because app.live reads this payload back.
-            "live": _live_window(deadlines),
             "api_version": API_VERSION,
             "db_ready": bool(n_players),
             "projected_gws": sorted(int(g) for g in cache.get("gws", {})),
@@ -1674,11 +1629,6 @@ def status_payload() -> dict:
             "google_login": auth.google_enabled(),
             "cookie_import": os.environ.get("FPLABS_ALLOW_COOKIE_IMPORT") == "1",
             "plans_enforced": plans.enforced(),
-            # one source of truth for the solver's strategies: the UI renders
-            # whatever the engine defines rather than keeping its own copy
-            "playstyles": [{"key": k, "label": v["label"], "note": v["note"],
-                            "detail": v.get("detail", "")}
-                           for k, v in chips.PLAYSTYLES.items()],
             "brand": {"name": "FPLabs", "by": "KoalaaDev"}}
 
 

@@ -26,7 +26,6 @@ from dataclasses import dataclass, field
 import pandas as pd
 import pulp
 
-from . import style
 from .milp import (MAX_FREE_TRANSFERS, MAX_PER_CLUB, POSITION_QUOTA, SQUAD_SIZE,
                    XI_MAX, XI_MIN, XI_SIZE)
 
@@ -34,52 +33,30 @@ from .milp import (MAX_FREE_TRANSFERS, MAX_PER_CLUB, POSITION_QUOTA, SQUAD_SIZE,
 # --- playstyles -------------------------------------------------------------
 # Three strategies a manager actually chooses between, not three near-identical
 # optima. Each varies only *preferences* (how far ahead to look, how much a
-# banked transfer is worth, whether hits are acceptable at all, what KIND of
-# points it wants — see optimise/style.py) — never the
+# banked transfer is worth, whether hits are acceptable at all) — never the
 # rules: the -4 is always priced at -4, and "no hits" forbids them outright
 # rather than pretending they are cheap.
 PLAYSTYLES: dict[str, dict] = {
     "aggressive": {
-        "label": "Aggressive",
-        "note": "Short-term upside. Chases the next gameweek or two, prefers "
-                "players who score in bursts, and pays a hit to get them.",
-        "detail": "Weights the next two gameweeks hardest, values a point that "
-                  "arrives as a goal or assist above one that arrives as an "
-                  "appearance, and will take a -4. Higher ceiling, higher "
-                  "variance — it is the rank-chasing setting.",
-        "params": {"decay": 0.62, "ft_value": 0.25, "allow_hits": True,
-                   "bench_weight": 0.05,
-                   # a point from a goal is worth ~1.15 of a point from a
-                   # clean sheet TO THIS STYLE; not a claim about the world
-                   "upside": 0.15, "price": 0.5},
+        "label": "Win now",
+        "note": "Chases the next gameweek or two and will pay a hit to do it.",
+        "params": {"decay": 0.70, "ft_value": 0.5, "allow_hits": True,
+                   "bench_weight": 0.05},
     },
     "balanced": {
         "label": "Balanced",
-        "note": "The model's own answer. Takes a hit only when it clearly "
-                "pays, and weights the horizon evenly.",
-        "detail": "Maximises expected points with no preference for how they "
-                  "arrive — the objective every backtest in this repo was "
-                  "measured on. Price moves break ties between equals.",
+        "note": "Takes a hit only when it clearly pays; even weight across the horizon.",
         "params": {"decay": 0.85, "ft_value": 1.5, "allow_hits": True,
-                   "bench_weight": 0.10,
-                   "upside": 0.0, "price": 1.0},
+                   "bench_weight": 0.10},
     },
-    "conservative": {
-        "label": "Conservative",
-        "note": "The long game. Never takes a hit, banks free transfers, and "
-                "prefers players who return every week to ones who explode.",
-        "detail": "Weights the whole horizon almost equally, values steady "
-                  "returns (minutes, clean sheets, DefCon) above lumpy ones, "
-                  "and leans on rising prices because it holds players "
-                  "longer. Lower ceiling, far fewer blanks.",
-        "params": {"decay": 0.97, "ft_value": 2.5, "allow_hits": False,
-                   "bench_weight": 0.15,
-                   "upside": -0.12, "price": 1.5},
+    "patient": {
+        "label": "Patient",
+        "note": "Never takes a hit; banks free transfers and plans the long game.",
+        "params": {"decay": 0.95, "ft_value": 2.5, "allow_hits": False,
+                   "bench_weight": 0.15},
     },
 }
-# the old key, kept so a saved preference or an older client still resolves
-PLAYSTYLE_ALIASES = {"patient": "conservative"}
-DEFAULT_PLAYSTYLES = ["aggressive", "balanced", "conservative"]
+DEFAULT_PLAYSTYLES = ["aggressive", "balanced", "patient"]
 
 
 def optimise_playstyles(proj, gws: list[int], *, styles: list[str] | None = None,
@@ -93,27 +70,20 @@ def optimise_playstyles(proj, gws: list[int], *, styles: list[str] | None = None
     ``style``/``style_label``/``style_note``. Compare them on ``total_ep``,
     never on ``objective`` (the styles weight gameweeks differently).
     """
-    styles = [PLAYSTYLE_ALIASES.get(s, s) for s in (styles or DEFAULT_PLAYSTYLES)]
-    styles = [s for s in dict.fromkeys(styles) if s in PLAYSTYLES]
+    styles = [s for s in (styles or DEFAULT_PLAYSTYLES) if s in PLAYSTYLES]
     out: list[ChipPlan] = []
     for i, key in enumerate(styles):
         spec = PLAYSTYLES[key]
         if on_progress:
             on_progress(f"Solving {spec['label']} plan ({i + 1}/{len(styles)})…")
         params = {**kw, **spec["params"], "n_plans": 1}
-        # the tilt is a property of the projections, not of the MILP, so it is
-        # applied to the frame and the solver never learns about playstyles
-        tilt = {"upside": params.pop("upside", 0.0),
-                "price": params.pop("price", 0.0)}
-        frame = style.tilt_projection(proj, gws, **tilt)
-        plans = optimise_with_chips(frame, gws, on_progress=None, **params)
+        plans = optimise_with_chips(proj, gws, on_progress=None, **params)
         if not plans:
             continue
         plan = plans[0]
         plan.style = key
         plan.style_label = spec["label"]
         plan.style_note = spec["note"]
-        plan.style_detail = spec.get("detail")
         out.append(plan)
     return out
 
@@ -206,7 +176,6 @@ class ChipPlan:
     style: str = ""            # playstyle key, when produced by a preset
     style_label: str = ""      # human-readable name for the UI
     style_note: str = ""       # one line on what this style optimises for
-    style_detail: str = ""     # what the preference actually does, for the UI
 
     @property
     def total_ep(self) -> float:

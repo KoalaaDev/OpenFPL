@@ -261,7 +261,7 @@ export default function Projections() {
           value={sub} onChange={(e) => setSub(e.target.value)}
           title="Secondary info shown in each GW cell">
           <option value="none">Secondary: none</option>
-          <option value="opp">Secondary: opponent + venue</option>
+          <option value="opp">Secondary: opponent</option>
           <option value="xmins">Secondary: xMins</option>
         </select>
         <select className="pill-btn" style={{ background: 'var(--panel)', appearance: 'auto' }}
@@ -336,17 +336,10 @@ export default function Projections() {
                 <td className="num" style={{ color: 'var(--muted)' }}>£{r.price.toFixed(1)}m</td>
                 {shown.map((g) => {
                   const fs = fixCells(r.team_id, g)
-                  // Home/away used to be carried by letter case alone (ARS vs
-                  // ars), which nobody reads as a venue. It is spelled out.
-                  const opp = fs.length ? fs.map((f, k) => {
-                    const sh = teams[String(f.opp)]?.short || '?'
-                    return (
-                      <span key={k} className="ep-opp">
-                        {k > 0 && <i className="ep-opp-sep">+</i>}
-                        {sh}<b className={f.home ? 'h' : 'a'}>{f.home ? 'H' : 'A'}</b>
-                      </span>
-                    )
-                  }) : null
+                  const opp = fs.map((f) => {
+                    const s = teams[String(f.opp)]?.short || '?'
+                    return f.home ? s : s.toLowerCase()
+                  }).join(',')
                   // average difficulty across a double gameweek, as the
                   // Fixtures heatmap does, so the two tabs never disagree
                   const dv = fs.length

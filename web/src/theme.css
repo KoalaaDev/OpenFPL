@@ -143,42 +143,33 @@ input, select { font-family: inherit; color: inherit; }
 .stat .k { font-size: 10.5px; font-weight: 700; letter-spacing: 0.1em; color: var(--muted-2); text-transform: uppercase; }
 .stat .v { font-family: var(--mono); font-weight: 700; font-size: 15px; }
 
-/* pitch — drawn as a real one (components/Pitch.jsx supplies the markings) */
-.pitch-wrap { padding: 14px 14px 12px; }
+/* pitch */
+.pitch-wrap { padding: 18px 18px 14px; }
 .pitch {
-  position: relative; border-radius: 14px; padding: 22px 10px 16px;
-  /* mown stripes, then the turf itself */
+  position: relative; border-radius: 12px; padding: 26px 12px 18px;
   background:
-    repeating-linear-gradient(180deg,
-      rgba(255,255,255,0.035) 0 7.14%, rgba(0,0,0,0.035) 7.14% 14.28%),
-    radial-gradient(ellipse 80% 55% at 50% 42%, #1f6b46 0%, #17563a 55%, #114430 100%);
-  border: 1px solid #0d3826;
-  box-shadow: var(--shadow), inset 0 0 90px rgba(0,0,0,0.38);
+    radial-gradient(ellipse 60% 34% at 50% 0%, rgba(255,255,255,0.05), transparent 70%),
+    linear-gradient(180deg, #2b3054 0%, #262b4c 55%, #232848 100%);
+  border: 1px solid #3a4066;
+  box-shadow: var(--shadow);
   overflow: hidden;
 }
-.pitch-lines {
-  position: absolute; inset: 0; width: 100%; height: 100%;
-  pointer-events: none; z-index: 0;
-  fill: none; stroke: rgba(255,255,255,0.30); stroke-width: 0.45;
-  vector-effect: non-scaling-stroke;
+.pitch::before {
+  content: ''; position: absolute; inset: 14px; border: 1.5px solid rgba(255,255,255,0.07);
+  border-radius: 8px; pointer-events: none;
 }
-.pitch-lines .spot { fill: rgba(255,255,255,0.42); stroke: none; }
-.pitch-lines .goal { stroke: rgba(255,255,255,0.5); stroke-width: 0.8; }
-.pitch-rows { position: relative; z-index: 1; }
+.pitch::after {
+  content: ''; position: absolute; left: 50%; top: -70px; transform: translateX(-50%);
+  width: 260px; height: 140px; border: 1.5px solid rgba(255,255,255,0.07);
+  border-radius: 0 0 12px 12px; pointer-events: none;
+}
 .pitch-row { display: flex; justify-content: center; gap: 3.5%; margin: 10px 0 16px; position: relative; }
-.pitch-row:last-child { margin-bottom: 4px; }
 
 .bench {
-  display: flex; justify-content: center; gap: 3.5%; align-items: flex-start;
+  display: flex; justify-content: center; gap: 3.5%;
   background: var(--bg-deep); border: 1px solid var(--line-soft);
-  border-radius: 12px; margin-top: 10px; padding: 12px 10px 10px;
-  position: relative;
+  border-radius: 10px; margin-top: 12px; padding: 14px 10px 10px;
 }
-.bench::before {
-  content: 'BENCH'; position: absolute; top: 5px; left: 12px;
-  font-size: 9px; font-weight: 800; letter-spacing: 0.16em; color: var(--muted-2);
-}
-.bench .pcard .pname { font-size: 10.5px; }
 
 /* player card */
 .pcard { width: 96px; text-align: center; position: relative; cursor: pointer; user-select: none; z-index: 1; }
@@ -239,18 +230,17 @@ input, select { font-family: inherit; color: inherit; }
 
 /* drafts panel */
 .draft-row {
-  display: grid; grid-template-columns: 88px minmax(0, 1fr) 58px 24px;
-  align-items: center;
+  display: grid; grid-template-columns: 92px 1fr 64px 22px; align-items: center;
   border-bottom: 1px solid var(--line-soft); padding: 7px 10px; gap: 8px;
 }
 .draft-row:hover { background: var(--panel-2); }
 .draft-row.active { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); }
 .draft-name { font-weight: 700; font-size: 13px; cursor: pointer; }
 .draft-name .sub { font-size: 10px; color: var(--muted-2); font-weight: 600; }
-.draft-cells { display: flex; flex-wrap: nowrap; gap: 4px; overflow-x: auto; }
+.draft-cells { display: flex; gap: 5px; overflow-x: auto; }
 .draft-cell {
-  min-width: 44px; flex: none; border-radius: 6px; text-align: center;
-  padding: 3px 4px; background: var(--panel-3); cursor: pointer;
+  min-width: 56px; border-radius: 6px; text-align: center; padding: 3px 5px;
+  background: var(--panel-3); cursor: pointer;
 }
 .draft-cell.cur { outline: 1.5px solid var(--accent); }
 .draft-cell .ev { font-family: var(--mono); font-weight: 700; font-size: 12.5px; }
@@ -458,15 +448,6 @@ input[type='range'] { accent-color: var(--accent); flex: 1; }
   display: block; font-size: 9px; font-weight: 600; opacity: 0.75;
   letter-spacing: 0.02em; margin-top: 1px;
 }
-/* the venue, said rather than implied by letter case */
-.ep-opp { white-space: nowrap; }
-.ep-opp b {
-  font-weight: 800; margin-left: 1px; padding: 0 1.5px;
-  border-radius: 2px; font-size: 8.5px; vertical-align: 1px;
-}
-.ep-opp b.h { background: rgba(61, 220, 151, 0.22); color: #7df0bd; }
-.ep-opp b.a { background: rgba(255, 255, 255, 0.12); }
-.ep-opp-sep { font-style: normal; opacity: 0.5; margin: 0 1px; }
 
 /* ---------- player stats modal ---------- */
 .pmodal-overlay {
@@ -845,93 +826,27 @@ input[type='range'] { accent-color: var(--accent); flex: 1; }
            font-variant-numeric: tabular-nums; }
 .lbx b { text-align: right; color: var(--text); font-variant-numeric: tabular-nums; }
 
-/* ---- model assist (Planner rail) --------------------------------------- */
-.assist { margin-bottom: 14px; }
-.assist .panel-head .assist-gw {
-  margin-left: auto; font-family: var(--mono); color: var(--muted-2);
-  letter-spacing: 0; font-size: 11px;
+/* ---- model assist bar (Planner) ---------------------------------------- */
+.assist {
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: 10px; padding: 11px 13px 10px; margin-bottom: 12px;
 }
-.assist-list { padding: 8px; display: flex; flex-direction: column; gap: 7px; }
-.assist-card {
-  display: flex; gap: 10px; align-items: center;
-  padding: 9px 10px; border-radius: 9px;
-  background: var(--panel-2); border: 1px solid var(--line-soft);
+.assist-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 12px; flex-wrap: wrap; margin-bottom: 9px;
 }
-/* the one with points on the table reads as the recommendation */
-.assist-card.hot { border-color: var(--accent); background: rgba(139, 123, 255, 0.10); }
-.assist-card.on { border-color: var(--gold); }
-.assist-card.off { opacity: 0.55; }
-.assist-card .ac-icon {
-  width: 26px; height: 26px; flex: none; display: grid; place-items: center;
-  font-size: 14px; border-radius: 7px; background: var(--bg-deep);
-}
-.assist-card .ac-text { min-width: 0; flex: 1; }
-.assist-card .ac-title {
-  font-size: 12.5px; font-weight: 700; line-height: 1.35;
-  display: flex; gap: 6px; align-items: baseline;
-}
-.assist-card .ac-val {
-  font-family: var(--mono); font-size: 11.5px; font-weight: 800; color: var(--accent);
-}
-.assist-card .ac-body {
-  font-size: 11px; line-height: 1.45; color: var(--muted-2); margin-top: 2px;
-}
-.assist-card .pill-btn { flex: none; }
+.assist-gap { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.assist-gap b { color: var(--text); }
+.assist-gap .up { color: var(--accent); font-weight: 700; margin-left: 4px; }
+.assist-gap .ok { color: var(--muted-2); }
+.assist-row { display: flex; gap: 7px; flex-wrap: wrap; }
 .assist-note {
-  margin: 0 12px 11px; font-size: 11.5px; color: var(--muted);
+  margin-top: 9px; font-size: 11.5px; color: var(--muted);
   display: flex; align-items: center; gap: 7px;
 }
-
-/* ---- planner columns ---------------------------------------------------- */
-.planner-main { min-width: 0; }
-.planner-rail { min-width: 0; display: flex; flex-direction: column; }
-
-/* ---- foldable rail sections -------------------------------------------- */
-.fold {
-  background: var(--panel); border: 1px solid var(--line);
-  border-radius: 10px; margin-bottom: 8px; overflow: hidden;
+.assist-hint {
+  margin: 9px 0 0; font-size: 11px; line-height: 1.5; color: var(--muted-2);
 }
-.fold-head {
-  display: flex; align-items: center; gap: 8px; width: 100%;
-  padding: 10px 12px; text-align: left; color: var(--text);
-}
-.fold-head:hover { background: var(--panel-2); }
-.fold-caret {
-  color: var(--muted-2); font-size: 14px; line-height: 1;
-  transition: transform 0.12s ease; flex: none;
-}
-.fold.open .fold-caret { transform: rotate(90deg); color: var(--accent); }
-.fold-title { font-size: 12.5px; font-weight: 700; flex: none; }
-.fold-hint {
-  font-size: 11px; color: var(--muted-2); overflow: hidden;
-  text-overflow: ellipsis; white-space: nowrap;
-}
-.fold-badge {
-  margin-left: auto; flex: none; font-size: 10.5px; font-weight: 700;
-  background: var(--accent); color: #12122a; border-radius: 20px; padding: 2px 8px;
-}
-.fold-body { border-top: 1px solid var(--line); padding: 10px 12px 12px; }
-.fold-note {
-  font-size: 11px; line-height: 1.5; color: var(--muted-2); margin-top: 8px;
-}
-.add-controls { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; flex-wrap: wrap; }
-
-/* ---- drafts panel ------------------------------------------------------- */
-.drafts-panel { margin-bottom: 14px; }
-.dp-actions { margin-left: auto; display: flex; gap: 6px; }
-.dp-actions .pill-btn { font-size: 11px; padding: 5px 9px; }
-.draft-tools { display: flex; flex-direction: column; gap: 2px; }
-.draft-tools button {
-  color: var(--muted-2); font-size: 12px; line-height: 1;
-  padding: 3px 5px; border-radius: 5px;
-}
-.draft-tools button:hover { background: var(--panel-2); color: var(--text); }
-.draft-tools button.danger:hover { color: var(--red); }
-.drafts-foot {
-  display: flex; align-items: center; gap: 10px; padding: 8px 12px;
-  border-top: 1px solid var(--line); font-size: 11px; color: var(--muted-2);
-}
-.drafts-foot .pill-btn { margin-left: auto; }
 
 /* ---- routes (drafts) verdict ------------------------------------------- */
 .routes-verdict {

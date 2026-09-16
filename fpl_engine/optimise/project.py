@@ -24,11 +24,6 @@ PRESEASON_BLEND_MAX = 0.5
 PRESEASON_BLEND_GWS = 3
 PRIOR_SHRINK_MINS = 450.0      # minutes of position-mean rate mixed into each player
 
-# Fallback share of a projection that arrives as goals/assists/bonus, used
-# only when the component engine is not in the blend and so cannot say.
-# Rough league averages; the real number comes from `c_*` per player per gw.
-EXPLOSIVE_SHARE = {"GK": 0.08, "DEF": 0.22, "MID": 0.45, "FWD": 0.62}
-
 
 def preseason_weight(n_played: int) -> float:
     """Weight on the last-season prior after ``n_played`` finished gameweeks."""
@@ -145,14 +140,6 @@ def horizon_projections(conn, season: str, gws: list[int], *, bundle=None,
 
     from .. import progress
     ep_by_gw: dict[int, dict[int, float]] = {}
-    # The lumpy half of a projection: points that arrive as goals, assists and
-    # the bonus they attract, as opposed to appearance points, clean sheets,
-    # saves and DefCon, which turn up almost every week a player starts. Two
-    # players on the same expected points are not the same bet, and the solver
-    # playstyles are the place that distinction is allowed to matter (see
-    # optimise/style.py). Only the component engine can supply it, so a
-    # pure-OpenFPL run falls back to a per-position share.
-    ex_by_gw: dict[int, dict[int, float]] = {}
     for g in gws:
         progress.log(f"    projecting GW{g}…")
         try:
@@ -182,12 +169,6 @@ def horizon_projections(conn, season: str, gws: list[int], *, bundle=None,
             if not xdf.empty:
                 xmap = dict(zip(xdf["player_id"].astype(int),
                                 xdf["prediction"].astype(float)))
-                ex_cols = [c for c in ("c_goals", "c_assists", "c_bonus")
-                           if c in xdf.columns]
-                if ex_cols:
-                    ex_by_gw[g] = dict(zip(
-                        xdf["player_id"].astype(int),
-                        xdf[ex_cols].sum(axis=1).astype(float)))
                 ep_by_gw[g] = {
                     pid: (1 - xpts_w) * v + xpts_w * xmap.get(pid, v)
                     for pid, v in ep_by_gw[g].items()}
@@ -219,19 +200,11 @@ def horizon_projections(conn, season: str, gws: list[int], *, bundle=None,
         factor = prof["factor"] if prof else avail
         prior = priors.get(pid)
         vals = {}
-        ex_vals = {}
         for g in gws:
             v = eps[g]
             if np.isnan(v):
                 vals[g] = 0.0
-                ex_vals[g] = 0.0
                 continue
-            # the explosive SHARE survives every scaling below (availability,
-            # press-conference factors and the pre-season prior all scale the
-            # whole projection), so it is captured before them and re-applied
-            raw_ex = ex_by_gw.get(g, {}).get(pid)
-            share = (max(0.0, min(1.0, raw_ex / v)) if raw_ex is not None and v > 0
-                     else EXPLOSIVE_SHARE.get(a["position"], 0.4))
             v = v * factor
             pr = presser.get(g, {}).get(pid)
             if pr:
@@ -239,7 +212,6 @@ def horizon_projections(conn, season: str, gws: list[int], *, bundle=None,
             if prior is not None and prior_w > 0:
                 v = (1.0 - prior_w) * v + prior_w * prior
             vals[g] = v
-            ex_vals[g] = v * share
         total = sum((decay ** i) * vals[g] for i, g in enumerate(gws)
                     if not np.isnan(eps[g]))
         row = {
@@ -255,7 +227,6 @@ def horizon_projections(conn, season: str, gws: list[int], *, bundle=None,
         }
         for g in gws:
             row[f"ep_gw{g}"] = vals[g]
-            row[f"ex_gw{g}"] = ex_vals[g]
         rows.append(row)
 
     proj = pd.DataFrame(rows)
