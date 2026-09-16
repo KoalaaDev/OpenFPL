@@ -832,3 +832,4 @@
 {"chance_next": 0.25, "code": 232653, "news": "Thigh injury - 25% chance of playing", "news_added": "2026-09-15T09:00:08.191022Z", "observed_utc": "2026-09-15T09:30:27.798838+00:00", "player_id": 456, "season": "2026-27", "status": "d", "web_name": "J.Ramsey"}
 {"chance_next": 1.0, "code": 463067, "news": null, "news_added": "2026-08-26T16:00:07.608056Z", "observed_utc": "2026-09-15T15:06:39.760309+00:00", "player_id": 125, "season": "2026-27", "status": "a", "web_name": "Georginio"}
 {"chance_next": 0.75, "code": 198869, "news": "Muscular injury - 75% chance of playing", "news_added": "2026-09-15T19:30:09.494382Z", "observed_utc": "2026-09-15T19:44:14.084901+00:00", "player_id": 10, "season": "2026-27", "status": "d", "web_name": "White"}
+{"chance_next": 1.0, "code": 171287, "news": null, "news_added": "2026-07-26T08:30:10.078473Z", "observed_utc": "2026-09-16T15:04:11.450281+00:00", "player_id": 359, "season": "2026-27", "status": "a", "web_name": "Gomez"}
