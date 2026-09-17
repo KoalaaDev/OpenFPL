@@ -428,3 +428,58 @@ observed_utc,gw,source,team_abbr,opponent_abbr,status,formation,row,slot,player,
 2026-09-17T09:32:58.199214+00:00,5,sportsgambler,SUN,MCI,predicted,4-2-3-1,4,9,Enzo Le Fée,,Sunday 20 September 06:00
 2026-09-17T09:32:58.199214+00:00,5,sportsgambler,SUN,MCI,predicted,4-2-3-1,4,10,Nilson Angulo,,Sunday 20 September 06:00
 2026-09-17T09:32:58.199214+00:00,5,sportsgambler,SUN,MCI,predicted,4-2-3-1,5,11,Brian Brobbey,,Sunday 20 September 06:00
+2026-09-17T15:06:33.844688+00:00,5,sportsgambler,BOU,LIV,predicted,4-2-3-1,1,1,Djordje Petrovic,,Sunday 20 September 09:00
+2026-09-17T15:06:33.844688+00:00,5,sportsgambler,BOU,LIV,predicted,4-2-3-1,2,2,Adam Smith,,Sunday 20 September 09:00
+2026-09-17T15:06:33.844688+00:00,5,sportsgambler,BOU,LIV,predicted,4-2-3-1,2,3,James Hill,,Sunday 20 September 09:00
+2026-09-17T15:06:33.844688+00:00,5,sportsgambler,BOU,LIV,predicted,4-2-3-1,2,4,Antonio Silva,,Sunday 20 September 09:00
+2026-09-17T15:06:33.844688+00:00,5,sportsgambler,BOU,LIV,predicted,4-2-3-1,2,5,Adrien Truffert,,Sunday 20 September 09:00
+2026-09-17T15:06:33.844688+00:00,5,sportsgambler,BOU,LIV,predicted,4-2-3-1,3,6,Lewis Cook,,Sunday 20 September 09:00
+2026-09-17T15:06:33.844688+00:00,5,sportsgambler,BOU,LIV,predicted,4-2-3-1,3,7,Alex Scott,,Sunday 20 September 09:00
+2026-09-17T15:06:33.844688+00:00,5,sportsgambler,BOU,LIV,predicted,4-2-3-1,4,8,Rayan,,Sunday 20 September 09:00
+2026-09-17T15:06:33.844688+00:00,5,sportsgambler,BOU,LIV,predicted,4-2-3-1,4,9,Justin Kluivert,,Sunday 20 September 09:00
+2026-09-17T15:06:33.844688+00:00,5,sportsgambler,BOU,LIV,predicted,4-2-3-1,4,10,Marcus Tavernier,,Sunday 20 September 09:00
+2026-09-17T15:06:33.844688+00:00,5,sportsgambler,BOU,LIV,predicted,4-2-3-1,5,11,Evanilson,,Sunday 20 September 09:00
+2026-09-17T15:06:33.844688+00:00,5,sportsgambler,LIV,BOU,predicted,4-2-3-1,1,1,Alisson Becker,,Sunday 20 September 09:00
+2026-09-17T15:06:33.844688+00:00,5,sportsgambler,LIV,BOU,predicted,4-2-3-1,2,2,Ronald Araujo,,Sunday 20 September 09:00
+2026-09-17T15:06:33.844688+00:00,5,sportsgambler,LIV,BOU,predicted,4-2-3-1,2,3,Jeremy Jacquet,,Sunday 20 September 09:00
+2026-09-17T15:06:33.844688+00:00,5,sportsgambler,LIV,BOU,predicted,4-2-3-1,2,4,Virgil van Dijk,,Sunday 20 September 09:00
+2026-09-17T15:06:33.844688+00:00,5,sportsgambler,LIV,BOU,predicted,4-2-3-1,2,5,K. Tsimikas,,Sunday 20 September 09:00
+2026-09-17T15:06:33.844688+00:00,5,sportsgambler,LIV,BOU,predicted,4-2-3-1,3,6,Dominik Szoboszlai,,Sunday 20 September 09:00
+2026-09-17T15:06:33.844688+00:00,5,sportsgambler,LIV,BOU,predicted,4-2-3-1,3,7,Ryan Gravenberch,,Sunday 20 September 09:00
+2026-09-17T15:06:33.844688+00:00,5,sportsgambler,LIV,BOU,predicted,4-2-3-1,4,8,Victor Munoz,,Sunday 20 September 09:00
+2026-09-17T15:06:33.844688+00:00,5,sportsgambler,LIV,BOU,predicted,4-2-3-1,4,9,Florian Wirtz,,Sunday 20 September 09:00
+2026-09-17T15:06:33.844688+00:00,5,sportsgambler,LIV,BOU,predicted,4-2-3-1,4,10,Bradley Barcola,,Sunday 20 September 09:00
+2026-09-17T15:06:33.844688+00:00,5,sportsgambler,LIV,BOU,predicted,4-2-3-1,5,11,Alexander Isak,,Sunday 20 September 09:00
+2026-09-17T15:06:33.844688+00:00,5,sportsgambler,CRY,LEE,predicted,3-4-2-1,1,1,Walter Benitez,,Sunday 20 September 09:00
+2026-09-17T15:06:33.844688+00:00,5,sportsgambler,CRY,LEE,predicted,3-4-2-1,2,2,Chris Richards,,Sunday 20 September 09:00
+2026-09-17T15:06:33.844688+00:00,5,sportsgambler,CRY,LEE,predicted,3-4-2-1,2,3,Takehiro Tomiyasu,,Sunday 20 September 09:00
+2026-09-17T15:06:33.844688+00:00,5,sportsgambler,CRY,LEE,predicted,3-4-2-1,2,4,Honest Ahanor,,Sunday 20 September 09:00
+2026-09-17T15:06:33.844688+00:00,5,sportsgambler,CRY,LEE,predicted,3-4-2-1,3,5,Anan Khalaili,,Sunday 20 September 09:00
+2026-09-17T15:06:33.844688+00:00,5,sportsgambler,CRY,LEE,predicted,3-4-2-1,3,6,Quinten Timber,,Sunday 20 September 09:00
+2026-09-17T15:06:33.844688+00:00,5,sportsgambler,CRY,LEE,predicted,3-4-2-1,3,7,Adam Wharton,,Sunday 20 September 09:00
+2026-09-17T15:06:33.844688+00:00,5,sportsgambler,CRY,LEE,predicted,3-4-2-1,3,8,Tyrick Mitchell,,Sunday 20 September 09:00
+2026-09-17T15:06:33.844688+00:00,5,sportsgambler,CRY,LEE,predicted,3-4-2-1,4,9,Daichi Kamada,,Sunday 20 September 09:00
+2026-09-17T15:06:33.844688+00:00,5,sportsgambler,CRY,LEE,predicted,3-4-2-1,4,10,Yeremy Pino,,Sunday 20 September 09:00
+2026-09-17T15:06:33.844688+00:00,5,sportsgambler,CRY,LEE,predicted,3-4-2-1,5,11,J. Strand Larsen,,Sunday 20 September 09:00
+2026-09-17T15:06:33.844688+00:00,5,sportsgambler,MCI,SUN,predicted,4-1-4-1,1,1,Gianluigi Donnarumma,,Sunday 20 September 09:00
+2026-09-17T15:06:33.844688+00:00,5,sportsgambler,MCI,SUN,predicted,4-1-4-1,2,2,Matheus Nunes,,Sunday 20 September 09:00
+2026-09-17T15:06:33.844688+00:00,5,sportsgambler,MCI,SUN,predicted,4-1-4-1,2,3,Marc Guehi,,Sunday 20 September 09:00
+2026-09-17T15:06:33.844688+00:00,5,sportsgambler,MCI,SUN,predicted,4-1-4-1,2,4,Ruben Dias,,Sunday 20 September 09:00
+2026-09-17T15:06:33.844688+00:00,5,sportsgambler,MCI,SUN,predicted,4-1-4-1,2,5,Josko Gvardiol,,Sunday 20 September 09:00
+2026-09-17T15:06:33.844688+00:00,5,sportsgambler,MCI,SUN,predicted,4-1-4-1,3,6,Elliot Anderson,,Sunday 20 September 09:00
+2026-09-17T15:06:33.844688+00:00,5,sportsgambler,MCI,SUN,predicted,4-1-4-1,4,7,Iliman Ndiaye,,Sunday 20 September 09:00
+2026-09-17T15:06:33.844688+00:00,5,sportsgambler,MCI,SUN,predicted,4-1-4-1,4,8,Rayan Cherki,,Sunday 20 September 09:00
+2026-09-17T15:06:33.844688+00:00,5,sportsgambler,MCI,SUN,predicted,4-1-4-1,4,9,Enzo Fernandez,,Sunday 20 September 09:00
+2026-09-17T15:06:33.844688+00:00,5,sportsgambler,MCI,SUN,predicted,4-1-4-1,4,10,Antoine Semenyo,,Sunday 20 September 09:00
+2026-09-17T15:06:33.844688+00:00,5,sportsgambler,MCI,SUN,predicted,4-1-4-1,5,11,Erling Haaland,,Sunday 20 September 09:00
+2026-09-17T15:06:33.844688+00:00,5,sportsgambler,SUN,MCI,predicted,4-2-3-1,1,1,Robin Roefs,,Sunday 20 September 09:00
+2026-09-17T15:06:33.844688+00:00,5,sportsgambler,SUN,MCI,predicted,4-2-3-1,2,2,Nordi Mukiele,,Sunday 20 September 09:00
+2026-09-17T15:06:33.844688+00:00,5,sportsgambler,SUN,MCI,predicted,4-2-3-1,2,3,Kevin Danso,,Sunday 20 September 09:00
+2026-09-17T15:06:33.844688+00:00,5,sportsgambler,SUN,MCI,predicted,4-2-3-1,2,4,Daniel Ballard,,Sunday 20 September 09:00
+2026-09-17T15:06:33.844688+00:00,5,sportsgambler,SUN,MCI,predicted,4-2-3-1,2,5,Dayann Methalie,,Sunday 20 September 09:00
+2026-09-17T15:06:33.844688+00:00,5,sportsgambler,SUN,MCI,predicted,4-2-3-1,3,6,Granit Xhaka,,Sunday 20 September 09:00
+2026-09-17T15:06:33.844688+00:00,5,sportsgambler,SUN,MCI,predicted,4-2-3-1,3,7,Noah Sadiki,,Sunday 20 September 09:00
+2026-09-17T15:06:33.844688+00:00,5,sportsgambler,SUN,MCI,predicted,4-2-3-1,4,8,Thomas Meunier,,Sunday 20 September 09:00
+2026-09-17T15:06:33.844688+00:00,5,sportsgambler,SUN,MCI,predicted,4-2-3-1,4,9,Enzo Le Fee,,Sunday 20 September 09:00
+2026-09-17T15:06:33.844688+00:00,5,sportsgambler,SUN,MCI,predicted,4-2-3-1,4,10,Nilson Angulo,,Sunday 20 September 09:00
+2026-09-17T15:06:33.844688+00:00,5,sportsgambler,SUN,MCI,predicted,4-2-3-1,5,11,Brian Brobbey,,Sunday 20 September 09:00
