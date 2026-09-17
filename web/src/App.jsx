@@ -63,19 +63,31 @@ export default function App() {
     window.history.replaceState({}, '', window.location.pathname)
   }, [setToast])
 
+  /* Whatever tab is current must be mounted. `visited` is seeded on the first
+     render with the DEFAULT tab, before the visitor's saved prefs arrive; when
+     they did and named another tab, that tab was never marked visited and the
+     page stayed blank until a click mounted it — on every reload. */
   useEffect(() => {
-    if (tab === 'Live' && !liveOn) setTab('Planner')
-  }, [tab, liveOn])                  // eslint-disable-line react-hooks/exhaustive-deps
+    setVisited((v) => (v[tab] ? v : { ...v, [tab]: true }))
+  }, [tab])
+
+  // a remembered tab that is not available any more (an admin tab after
+  // signing out, Live outside its window) falls back instead of rendering
+  // nothing
+  useEffect(() => {
+    if (!booted || !status) return
+    if (!tabs.some(([t]) => t === tab)) setTab('Planner')
+  }, [tab, booted, status, isAdmin, liveOn])   // eslint-disable-line react-hooks/exhaustive-deps
 
   const doRefresh = async () => {
     if (refreshing) return
     setRefreshing(true)
-    setToast({ kind: 'info', msg: 'Refreshing data and re-running the model…' })
+    setToast({ kind: 'info', busy: true, msg: 'Refreshing data and re-running the model…' })
     try {
       const { job_id } = await api.refresh()
       await pollJob(job_id, (j) => {
         const last = j.progress[j.progress.length - 1]
-        if (last) setToast({ kind: 'info', msg: last.msg })
+        if (last) setToast({ kind: 'info', busy: true, msg: last.msg })
       })
       setToast({ kind: 'ok', msg: 'Data refreshed and projections rebuilt.' })
       api.status().then(setStatus)
@@ -86,6 +98,18 @@ export default function App() {
       setRefreshing(false)
     }
   }
+
+  /* Toasts dismiss themselves. A confirmation or a notice is read in a couple
+     of seconds and then only covers the page; an error stays longer because
+     it may need acting on. The one exception is a toast for a job still
+     running (`busy`), which keeps its spinner until the job reports again or
+     finishes — the next setToast restarts the clock. */
+  useEffect(() => {
+    if (!toast || toast.busy) return undefined
+    const ms = toast.kind === 'err' ? 9000 : toast.kind === 'ok' ? 3500 : 5000
+    const t = setTimeout(() => setToast((cur) => (cur === toast ? null : cur)), ms)
+    return () => clearTimeout(t)
+  }, [toast, setToast])
 
   const stale = status && status.api_version !== API_VERSION
   const autoBusy = (status?.jobs_running || []).includes('refresh')
@@ -175,7 +199,9 @@ export default function App() {
         <div className="toast">
           {toast.kind === 'ok' && <span className="ok">✓</span>}
           {toast.kind === 'err' && <span style={{ color: 'var(--red)', fontWeight: 800 }}>✕</span>}
-          {toast.kind === 'info' && <span className="spinner" />}
+          {toast.kind === 'info' && (toast.busy
+            ? <span className="spinner" />
+            : <span className="toast-i" aria-hidden="true">i</span>)}
           <span>{toast.msg}</span>
           <button className="close" onClick={() => setToast(null)}>×</button>
         </div>

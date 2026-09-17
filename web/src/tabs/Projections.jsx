@@ -155,12 +155,12 @@ export default function Projections() {
       return
     }
     setBuilding(true)
-    setToast({ kind: 'info', msg: `Building projections for GW${gws[0]}–${gws[gws.length - 1]}…` })
+    setToast({ kind: 'info', busy: true, msg: `Building projections for GW${gws[0]}–${gws[gws.length - 1]}…` })
     try {
       const { job_id } = await api.buildProjections(gws)
       await pollJob(job_id, (j) => {
         const last = j.progress[j.progress.length - 1]
-        if (last) { setToast({ kind: 'info', msg: last.msg }); setBuildMsg(last.msg) }
+        if (last) { setToast({ kind: 'info', busy: true, msg: last.msg }); setBuildMsg(last.msg) }
       })
       setBuildMsg(null)
       setToast({ kind: 'ok', msg: 'Projections built.' })

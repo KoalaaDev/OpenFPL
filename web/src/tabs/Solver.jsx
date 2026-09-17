@@ -3,6 +3,7 @@ import { api, pollJob } from '../api'
 import { useStore, usePersisted } from '../store'
 import RadarLoader from '../components/RadarLoader'
 import SolverOutput from '../components/SolverOutput'
+import { useDialog } from '../components/Dialog'
 import { CHIP_NAME, CHIP_SHORT, chipAvailability, chipNote, fmt1, money,
          planToDraft, withBaseline } from '../util'
 
@@ -11,6 +12,7 @@ const CHIP_DEFS = [
 ]
 
 export default function Solver({ goPlanner }) {
+  const { form } = useDialog()
   const { status, entryId, entry, players, teams, byId, setDrafts,
           setActiveDraftId, setToast, refreshProjections } = useStore()
 
@@ -33,6 +35,15 @@ export default function Solver({ goPlanner }) {
   const [useEntry, setUseEntry] = usePersisted('solver.useEntry', true)
 
   const [chips, setChips] = usePersisted('solver.chips', {})       // name -> {enabled, force}
+  // Whether the solve may play chips at all, and how keen it is. Chips used to
+  // be opt-in one by one and defaulted to OFF, so an untouched solve never
+  // played one and read as a solver that ignores chips.
+  //   worth  — every chip you hold, played only when it beats its keep-value
+  //   always — every chip you hold, played whenever it adds points this horizon
+  //   off    — none (a chip already activated on FPL is still honoured)
+  const [chipMode, setChipMode] = usePersisted('solver.chipMode', 'worth')
+  const [chipSkip, setChipSkip] = usePersisted('solver.chipSkip', {})   // name -> true
+  const bars = status?.chip_reserve_now || null
   const [locked, setLocked] = usePersisted('solver.locked', [])
   const [avoid, setAvoid] = usePersisted('solver.avoid', [])
   const [banned, setBanned] = usePersisted('solver.banned', [])
@@ -73,9 +84,17 @@ export default function Solver({ goPlanner }) {
     setResult(null)
     setJob({ progress: [], pct: 0 })
     const chipParams = {}
+    const reserve = {}
     for (const [name] of CHIP_DEFS) {
-      const c = chips[name]
-      if (c?.enabled) chipParams[name] = { enabled: true, force: c.force || null }
+      const c = chips[name] || {}
+      const a = avail[name]
+      if (!a?.usable) continue
+      const live = activeChip === name
+      const pinned = !!(c.enabled && c.force)
+      const auto = chipMode !== 'off' && !chipSkip[name]
+      if (!(auto || pinned || live)) continue
+      chipParams[name] = { enabled: true, force: live ? gws[0] : (pinned ? c.force : null) }
+      if (chipMode === 'always') reserve[name] = 0
     }
     try {
       const { job_id } = await api.solve({
@@ -88,6 +107,7 @@ export default function Solver({ goPlanner }) {
         n_plans: Math.max(1, styles.length),
         free_transfers: ftOverride === '' ? null : Number(ftOverride),
         chips: chipParams,
+        chip_reserve: reserve,
         locked, avoid, banned_teams: banned, sell_teams: sellTeams,
         min_ft: Object.fromEntries(minFt.map((m) => [m.gw, m.n])),
       })
@@ -196,26 +216,47 @@ export default function Solver({ goPlanner }) {
         </div>
 
         <div className="panel" style={{ padding: 16 }}>
-          <div className="section-label" style={{ color: 'var(--accent)', marginBottom: 12 }}>Chip plan</div>
+          <div className="section-label" style={{ color: 'var(--accent)', marginBottom: 10 }}>Chips</div>
+          <div className="chip-mode" role="radiogroup" aria-label="chip use">
+            {[
+              ['off', 'Don’t use chips', 'plan transfers only'],
+              ['worth', 'When worth it', 'only if it beats saving the chip'],
+              ['always', 'Whenever it helps', 'play any chip that adds points'],
+            ].map(([k, l, sub]) => (
+              <button key={k} role="radio" aria-checked={chipMode === k}
+                className={`cm-opt ${chipMode === k ? 'on' : ''}`} onClick={() => setChipMode(k)}>
+                <b>{l}{k === 'worth' ? <em> recommended</em> : null}</b>
+                <span>{sub}</span>
+              </button>
+            ))}
+          </div>
           <div className="chipplan">
             {CHIP_DEFS.map(([name, short]) => {
               const c = chips[name] || {}
               const a = avail[name]
-              const locked = a?.active
+              const live = a?.active
+              const pin = c.enabled && c.force ? c.force : null   // a stale force from old settings is not a pin
+              const included = a?.usable && (live || pin || (chipMode !== 'off' && !chipSkip[name]))
               return (
                 <span key={name}
-                  className={`chip-btn ${c.enabled ? 'on' : ''} ${!a?.usable ? 'spent' : ''}`}
-                  title={chipNote(a, CHIP_NAME[name])}>
-                  <button disabled={!a?.usable || locked}
-                    onClick={() => setChips((s) => ({ ...s, [name]: { ...c, enabled: !c.enabled } }))}>
+                  className={`chip-btn ${included ? 'on' : ''} ${!a?.usable ? 'spent' : ''}`}
+                  title={!a?.usable ? chipNote(a, CHIP_NAME[name])
+                    : live ? 'activated on your FPL team — pinned to this gameweek'
+                      : chipMode === 'off' ? 'pin a gameweek to force this chip even with chips off'
+                        : included ? 'the solver may play this — click to leave it out' : 'left out — click to include'}>
+                  <button disabled={!a?.usable || live || chipMode === 'off'}
+                    onClick={() => setChipSkip((sk) => ({ ...sk, [name]: !sk[name] }))}>
                     ⚡ {short}
-                    {locked && <em> live</em>}
-                    {!a?.usable && a?.played?.length ? <em> GW{a.played[a.played.length - 1]}</em> : null}
+                    {live && <em> live</em>}
+                    {!a?.usable && a?.played?.length ? <em> used GW{a.played[a.played.length - 1]}</em> : null}
                   </button>
-                  {c.enabled && !locked && (
-                    <select value={c.force || ''}
-                      onChange={(e) => setChips((s) => ({ ...s, [name]: { ...c, force: e.target.value ? Number(e.target.value) : null } }))}>
-                      <option value="">free</option>
+                  {a?.usable && !live && (
+                    <select value={pin || ''} title="force it into a specific gameweek"
+                      onChange={(e) => {
+                        const gw = e.target.value ? Number(e.target.value) : null
+                        setChips((st) => ({ ...st, [name]: { ...c, enabled: !!gw, force: gw } }))
+                      }}>
+                      <option value="">{chipMode === 'off' ? 'off' : 'any GW'}</option>
                       {gws.filter((g) => !a?.known
                         || a.windows.some(([x, y]) => g >= x && g <= y))
                         .map((g) => <option key={g} value={g}>GW{g}</option>)}
@@ -225,18 +266,27 @@ export default function Solver({ goPlanner }) {
               )
             })}
           </div>
-          <div style={{ fontSize: 11, color: 'var(--muted-2)', marginTop: 10 }}>
+          <div className="chip-explain">
             {activeChip ? (
-              <>
-                <b style={{ color: 'var(--accent)' }}>{CHIP_NAME[activeChip]} is live</b> on
-                your FPL team for GW{chipState?.next_gw ?? gws[0]} — it is pinned there and
-                costs nothing to “save”, so the solve plans around it.{' '}
-              </>
+              <p><b>{CHIP_NAME[activeChip]} is live</b> on your FPL team for
+                GW{chipState?.next_gw ?? gws[0]} — it is pinned there whatever you pick.</p>
             ) : null}
-            Enabled chips are available to the optimiser within the horizon;
-            “free” lets it pick the week, or pin one. Chips you have already
-            played are greyed out{chipState?.source === 'public'
-              ? ' — import your team to see one activated for this deadline.' : '.'}
+            {chipMode === 'worth' && (
+              <p>A chip is only played when this gameweek&apos;s gain beats what the chip
+                is worth <i>kept</i> for a better week later
+                {bars ? <> — right now about <b>+{bars.triple_captain}</b> for Triple Captain,
+                  <b> +{bars.bench_boost}</b> for Bench Boost, <b>+{bars.freehit}</b> for Free Hit
+                  and <b>+{bars.wildcard}</b> for Wildcard</> : null}.
+                The bar falls as the season runs out. The results say why each chip was held.</p>
+            )}
+            {chipMode === 'always' && (
+              <p>Any chip that adds points inside the horizon gets played — usually the
+                first decent week. That spends chips you would likely get more from
+                later; use it to see what a chip is worth now.</p>
+            )}
+            {chipMode === 'off' && (
+              <p>Transfers only. Pick a gameweek on a chip to force it anyway.</p>
+            )}
           </div>
         </div>
       </div>
@@ -309,10 +359,23 @@ export default function Solver({ goPlanner }) {
                   <button onClick={() => setMinFt((l) => l.filter((_, k) => k !== i))}>×</button>
                 </span>
               ))}
-              <button className="pill-btn" onClick={() => {
-                const gw = Number(prompt(`Gameweek (${gws[0]}–${gws[gws.length - 1]})`, gws[0]))
-                const n = Number(prompt('Minimum FTs to hold after that GW', '2'))
-                if (gw && n) setMinFt((l) => [...l, { gw, n }])
+              <button className="pill-btn" onClick={async () => {
+                const v = await form({
+                  title: 'Hold free transfers', confirmLabel: 'Add target',
+                  body: 'The solver will keep at least this many free transfers banked after the gameweek\u2019s moves.',
+                  fields: [
+                    { name: 'gw', label: 'Gameweek', type: 'number', value: String(gws[0] ?? ''),
+                      min: gws[0], max: gws[gws.length - 1], hint: `GW${gws[0]}–GW${gws[gws.length - 1]}` },
+                    { name: 'n', label: 'Minimum free transfers', type: 'number', value: '2', min: 1, max: 5 },
+                  ],
+                  validate: (x) => {
+                    const g = Number(x.gw), n = Number(x.n)
+                    if (!gws.includes(g)) return `Pick a gameweek between ${gws[0]} and ${gws[gws.length - 1]}.`
+                    if (!(n >= 1 && n <= 5)) return 'Between 1 and 5 free transfers.'
+                    return null
+                  },
+                })
+                if (v) setMinFt((l) => [...l, { gw: Number(v.gw), n: Number(v.n) }])
               }}>+ add target</button>
             </div>
           </div>

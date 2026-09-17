@@ -156,23 +156,15 @@ export default function PlayerModal({ pid, draft, plan, actions, close }) {
               </div>
             )}
           </div>
-          <div className="pm-head-tools">
-            <button className={`pill-btn ${cmpId ? 'accent' : ''}`}
-              title="Put another player of the same position beside this one"
-              onClick={() => { setCmpId(cmpId ? null : 'pick'); setCmpQ('') }}>
-              ⇆ {cmpId ? 'Stop comparing' : 'Compare'}
-            </button>
-            <button className="close" onClick={close}>✕</button>
-          </div>
+          <button className="close" onClick={close} aria-label="close">✕</button>
         </div>
 
-        {cmpId && (
-          <ComparePicker p={p} players={players} cmpId={cmpId} setCmpId={setCmpId}
-            q={cmpQ} setQ={setCmpQ} byId={byId} teams={teams} proj={proj} gws={gws} />
-        )}
-
-        {actions && (
-          <div className="actions">
+        {/* Compare lives with the other actions, not in the header: over the
+            hero it covered the player's face. The comparison opens BELOW the
+            buttons, so the card's identity stays in view while you use it. */}
+        <div className="actions">
+          {actions && (
+            <>
             {inXi && <button className="pill-btn" onClick={actions.captain}>Ⓒ Captain</button>}
             {inXi && <button className="pill-btn" onClick={actions.vice}>Ⓥ Vice</button>}
             <button className="pill-btn" onClick={actions.swap}>⇄ Switch</button>
@@ -182,7 +174,19 @@ export default function PlayerModal({ pid, draft, plan, actions, close }) {
               <button className="pill-btn" style={{ color: 'var(--gold)' }}
                 onClick={actions.undo}>↶ Undo transfer</button>
             )}
-          </div>
+            </>
+          )}
+          <button className={`pill-btn pm-compare-btn ${cmpId ? 'accent' : ''}`}
+            title="Put another player of the same position beside this one"
+            aria-expanded={!!cmpId}
+            onClick={() => { setCmpId(cmpId ? null : 'pick'); setCmpQ('') }}>
+            ⇆ {cmpId ? 'Close comparison' : 'Compare'}
+          </button>
+        </div>
+
+        {cmpId && (
+          <ComparePicker p={p} players={players} cmpId={cmpId} setCmpId={setCmpId}
+            q={cmpQ} setQ={setCmpQ} byId={byId} teams={teams} proj={proj} gws={gws} />
         )}
 
         <div className="pd-grid">
@@ -361,9 +365,9 @@ function ComparePicker({ p, players, cmpId, setCmpId, q, setQ, byId, teams, proj
 
   if (!other) {
     return (
-      <div className="pm-compare pick">
+      <div className="pm-compare pmc-choosing">
         <div className="pmc-head">
-          Compare <b>{p.web_name}</b> with another {p.position}
+          <span className="pmc-title">Compare <b>{p.web_name}</b> with another {p.position}</span>
           <span className="muted">same position only — the rates and percentiles below
             are only comparable within one</span>
         </div>
@@ -373,9 +377,11 @@ function ComparePicker({ p, players, cmpId, setCmpId, q, setQ, byId, teams, proj
         <div className="pmc-opts">
           {opts.map((x) => (
             <button key={x.id} className="pmc-opt" onClick={() => setCmpId(x.id)}>
-              <b>{x.web_name}</b>
-              <span className="muted">{teams[String(x.team_id)]?.short || '???'} · {money(x.price)}</span>
-              <span className="num">{fmt1(x.ep)}</span>
+              <span className="pmc-opt-id">
+                <b>{x.web_name}</b>
+                <span className="muted">{teams[String(x.team_id)]?.short || '???'} · {money(x.price)}</span>
+              </span>
+              <span className="num" title={`projected over ${gws.length} gameweeks`}>{fmt1(x.ep)}</span>
             </button>
           ))}
           {!opts.length && <div className="muted" style={{ padding: 8 }}>No players match.</div>}

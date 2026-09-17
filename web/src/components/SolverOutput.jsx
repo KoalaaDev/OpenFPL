@@ -122,6 +122,56 @@ function Meta({ g, freeFirst, first }) {
   )
 }
 
+const CHIP_ABBR = { wildcard: 'WC', freehit: 'FH', bench_boost: 'BB', triple_captain: 'TC' }
+
+/* Why a chip the solve was ALLOWED to use was, or was not, played.
+
+   A chip is played only when its gain this week beats what it is worth kept
+   for a better week later (`chip_reserve`: measured by simulation for Triple
+   Captain and Bench Boost, a heuristic for Free Hit and Wildcard). Without
+   saying so, a plan that holds every chip reads as a solver that ignores
+   them. Triple Captain's gain is the captain's projection and Bench Boost's
+   is the bench's, both read straight off the plan; a Free Hit's or
+   Wildcard's is a whole different squad, so only the bar is shown. */
+function chipVerdicts(plan, allowed, reserve) {
+  const played = {}
+  for (const g of plan.per_gw) if (g.chip) played[g.chip] = g.gw
+  return (allowed || []).map((c) => {
+    if (played[c]) return { c, played: played[c] }
+    let best = null
+    for (const g of plan.per_gw) {
+      if (g.chip) continue
+      let gain = null
+      if (c === 'triple_captain') gain = g.squad.find((p) => p.is_captain)?.ep ?? null
+      if (c === 'bench_boost') gain = g.squad.filter((p) => !p.in_xi).reduce((a, p) => a + (p.ep || 0), 0)
+      if (gain != null && (!best || gain > best.gain)) best = { gw: g.gw, gain }
+    }
+    return { c, best, bar: reserve?.[c] }
+  })
+}
+
+function ChipVerdicts({ plan, result }) {
+  const v = chipVerdicts(plan, result?.chips_allowed, result?.chip_reserve)
+  if (!v.length) return <div className="so-chips muted">chips not allowed in this solve</div>
+  return (
+    <div className="so-chips">
+      {v.map((x) => (x.played ? (
+        <span key={x.c} className="so-chip played" title="played in this plan">
+          {CHIP_ABBR[x.c]} <b>GW{x.played}</b>
+        </span>
+      ) : (
+        <span key={x.c} className="so-chip held"
+          title={x.best
+            ? `held: its best week here is GW${x.best.gw} at +${x.best.gain.toFixed(1)}, below the ${x.bar} it is worth kept for later`
+            : `held: needs more than +${x.bar} in a week to beat keeping it`}>
+          {CHIP_ABBR[x.c]} held
+          <i>{x.best ? `+${x.best.gain.toFixed(1)} < ${x.bar}` : `needs +${x.bar}`}</i>
+        </span>
+      )))}
+    </div>
+  )
+}
+
 export default function SolverOutput({ result, close, addDraft, draftLabel }) {
   const { teams, byId } = useStore()
   const plans = result?.plans || []
@@ -197,6 +247,7 @@ export default function SolverOutput({ result, close, addDraft, draftLabel }) {
                       ? <span className="so-tag best">best</span>
                       : <span className="so-delta">{fmt1(p.total_ep - best)}</span>}
                   </div>
+                  <ChipVerdicts plan={p} result={result} />
                   <button className="so-apply"
                     onClick={() => addDraft(p, i)}>
                     Apply <span>to {draftLabel || 'a new draft'}</span> →

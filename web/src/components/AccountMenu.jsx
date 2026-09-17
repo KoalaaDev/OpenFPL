@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { api } from '../api'
 import { useStore } from '../store'
+import { useDialog } from './Dialog'
 
 /* Sign in with Google, or the signed-in account: plan badge, team id, sign
    out. Anonymous visitors lose nothing by not signing in — their drafts and
@@ -9,6 +10,7 @@ import { useStore } from '../store'
    a planner is how you lose the visitor. */
 export default function AccountMenu() {
   const { auth, user, plan, entryId, setEntryId, signOut, setToast, status } = useStore()
+  const { confirm } = useDialog()
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
 
@@ -69,9 +71,15 @@ export default function AccountMenu() {
               {user.is_admin && <div className="acct-row muted">admin · can refresh data by hand</div>}
               <div className="acct-row">
                 <button className="pill-btn" onClick={() => { setOpen(false); signOut() }}>Sign out</button>
-                <button className="link danger" onClick={() => {
-                  if (window.confirm('Delete your FPLabs account and everything saved under it? This cannot be undone.')) {
-                    setOpen(false); signOut({ deleteAccount: true })
+                <button className="link danger" onClick={async () => {
+                  setOpen(false)
+                  const ok = await confirm({
+                    title: 'Delete your FPLabs account?',
+                    body: 'Your drafts, saved squad, transfer watch and settings are deleted with it. This cannot be undone.',
+                    confirmLabel: 'Delete account', danger: true,
+                  })
+                  if (ok) {
+                    signOut({ deleteAccount: true })
                     setToast({ kind: 'ok', msg: 'Account deleted.' })
                   }
                 }}>Delete account</button>

@@ -4,6 +4,7 @@ import PlayerModal from '../components/PlayerModal'
 import ModelAssist from '../components/ModelAssist'
 import PitchLines from '../components/Pitch'
 import Section from '../components/Section'
+import { useDialog } from '../components/Dialog'
 import { api, pollJob } from '../api'
 import { useFixtureLookup, usePersisted, useStore } from '../store'
 import { Radar, VIZ, VIZ_NEUTRAL as VIZ_MUTED } from '../charts'
@@ -60,12 +61,12 @@ export default function Planner() {
   const buildHorizon = async () => {
     if (building || !draft?.gws?.length) return
     setBuilding(true)
-    setToast({ kind: 'info', msg: 'Building projections…' })
+    setToast({ kind: 'info', busy: true, msg: 'Building projections…' })
     try {
       const { job_id } = await api.buildProjections(draft.gws.map((g) => g.gw))
       await pollJob(job_id, (j) => {
         const last = j.progress[j.progress.length - 1]
-        if (last) setToast({ kind: 'info', msg: last.msg })
+        if (last) setToast({ kind: 'info', busy: true, msg: last.msg })
       })
       refreshProjections()
       setToast({ kind: 'ok', msg: 'Projections built.' })
@@ -337,16 +338,6 @@ export default function Planner() {
               rail: it is the answer the whole tab exists to produce */}
           <PathsPanel draft={draft} byId={byId} gwIdx={gwIdx} setGwIdx={setGwIdx}
             proj={proj} />
-          {/* The search belongs beside the pitch it acts on, not across the
-              page from it: you pick a player here and then click the man he
-              replaces, and having those two things in different columns made
-              a two-step action feel like two unrelated ones. */}
-          <Section id="add" title="Add a player"
-            hint="search, then click who he replaces on the pitch"
-            badge={armed ? armed.web_name : null} defaultOpen={!!armed}>
-            <AddPlayerPanel plan={plan} players={players} byId={byId} proj={proj}
-              posOf={posOf} armed={armed} setArmed={setArmed} />
-          </Section>
         </div>
 
         {/* One column, read top to bottom: which route am I on, and what does
@@ -368,6 +359,28 @@ export default function Planner() {
               <TeamDna plan={plan} draft={draft} gwIdx={gwIdx} byId={byId} proj={proj} />
             </Section>
           )}
+        </aside>
+
+        {/* Add a player. On a wide screen it is a column of its own to the
+            LEFT of the pitch, open and as tall as the page, so the search, the
+            pitch it acts on, the plan and the drafts are all on screen at once
+            — tucked under the plan it cost a scroll for every transfer. Below
+            that width it folds under the plan as before (`.planner-add`
+            placement is all CSS; the DOM order is the phone's reading order). */}
+        <aside className="planner-add">
+          <div className="panel add-col">
+            <div className="panel-head">Add a player
+              {armed && <span className="fold-badge">{armed.web_name}</span>}
+            </div>
+            <AddPlayerPanel plan={plan} players={players} byId={byId} proj={proj}
+              posOf={posOf} armed={armed} setArmed={setArmed} />
+          </div>
+          <Section id="add" title="Add a player"
+            hint="search, then click who he replaces on the pitch"
+            badge={armed ? armed.web_name : null} defaultOpen={!!armed}>
+            <AddPlayerPanel plan={plan} players={players} byId={byId} proj={proj}
+              posOf={posOf} armed={armed} setArmed={setArmed} />
+          </Section>
         </aside>
       </div>
       {statPid && plan && (
@@ -869,6 +882,7 @@ function PlayerRow({ p, armed, onClick, right }) {
 // Heuristic chip hints from this draft's own projections. The Solver is the
 // authority (it evaluates chips exactly); these flag where a chip looks valuable.
 function ChipAdvisor({ draft, proj, byId, players, posOf, updateDraft, entryChips }) {
+  const { status } = useStore()
   const stats = useMemo(() => draft.gws.map((p) => {
     const xiEp = p.xi.reduce((a, id) => a + epOf(proj, id, p.gw), 0)
     const cap = p.xi.reduce((best, id) => {
@@ -916,6 +930,16 @@ function ChipAdvisor({ draft, proj, byId, players, posOf, updateDraft, entryChip
   // A chip you have already played is not advice, it is noise: drop the hint
   // rather than let the panel recommend something FPL will not let you do.
   const usable = chipAvailability(entryChips, draft.gws.map((p) => p.gw))
+  /* Judge every hint against the SAME bar the Solver uses: what the chip is
+     worth kept for a better week later. The advisor used its own thresholds,
+     so it could say "play Triple Captain in GW7" while the Solver, correctly,
+     held it — and the two tabs read as disagreeing about the same chip. A
+     hint below the bar is still shown, marked as "worth keeping". */
+  const bars = status?.chip_reserve_now || {}
+  hints = hints.map((h) => {
+    const bar = bars[h.chip]
+    return { ...h, bar, beats: bar == null ? h.strong : h.gain > bar, strong: bar == null ? h.strong : h.gain > bar }
+  })
   hints = hints.filter((h) => usable[h.chip]?.usable
     && (!usable[h.chip].known
         || usable[h.chip].windows.some(([x, y]) => h.gw >= x && h.gw <= y)))
@@ -929,14 +953,22 @@ function ChipAdvisor({ draft, proj, byId, players, posOf, updateDraft, entryChip
   const active = new Set(draft.gws.filter((p) => p.chip).map((p) => `${p.chip}@${p.gw}`))
   return (
     <>
-      <div className="fold-note">Hints from this draft's own projections — the
-        Solver is the authority that prices a chip exactly.</div>
+      <div className="fold-note">Hints from this draft&apos;s own projections, judged
+        against the same bar the Solver uses: a chip is worth playing only when it
+        beats what it would be worth kept for a better week later.</div>
       {hints.map((h) => (
         <div key={h.chip}>
           <div className={`advice ${h.strong ? 'strong' : ''}`}>
             <span className="chip gold">{CHIP_SHORT[h.chip]}</span>
             <span className="num" style={{ fontWeight: 800 }}>GW{h.gw}</span>
-            <span className="txt">{h.text}</span>
+            <span className="txt">{h.text}
+              {h.bar != null && (
+                <em className={`bar ${h.beats ? 'beats' : ''}`}>
+                  {h.beats ? ` · beats the +${h.bar} it is worth kept — play it`
+                    : ` · below the +${h.bar} it is worth kept — hold it`}
+                </em>
+              )}
+            </span>
             {h.xi?.length > 0 && (
               <button className="pill-btn" onClick={() => setShowXi(showXi === h.chip ? null : h.chip)}>
                 {showXi === h.chip ? 'hide XI' : 'show XI'}
@@ -1040,14 +1072,33 @@ function TransferModal({ draft, gwIdx, outId, byId, proj, posOf, close, applyTra
 
 function DraftsPanel({ drafts, setDrafts, proj, activeDraftId, setActiveDraftId,
                        gwIdx, setGwIdx, createFromEntry, entry }) {
-  const rename = (d) => {
-    const name = prompt('Draft name', d.label)
-    if (name) setDrafts((ds) => ds.map((x) => (x.id === d.id ? { ...x, label: name } : x)))
+  const { confirm, form } = useDialog()
+  const rename = async (d) => {
+    const v = await form({
+      title: 'Rename draft', confirmLabel: 'Rename',
+      fields: [{ name: 'label', label: 'Name', value: d.label, maxLength: 40 }],
+      validate: (x) => (x.label.trim() ? null : 'A draft needs a name.'),
+    })
+    if (v) setDrafts((ds) => ds.map((x) => (x.id === d.id ? { ...x, label: v.label.trim() } : x)))
   }
-  const remove = (d) => {
-    if (!confirm(`Delete ${d.label}?`)) return
+  const remove = async (d) => {
+    const ok = await confirm({
+      title: `Delete ${d.label}?`,
+      body: <>Its {d.gws?.length || 0} gameweeks of transfers, chips and captains
+        go with it. This cannot be undone.</>,
+      confirmLabel: 'Delete draft', danger: true,
+    })
+    if (!ok) return
     setDrafts((ds) => ds.filter((x) => x.id !== d.id))
     if (activeDraftId === d.id) setActiveDraftId(drafts.find((x) => x.id !== d.id)?.id || null)
+  }
+  const resetAll = async () => {
+    const ok = await confirm({
+      title: `Delete all ${drafts.length} drafts?`,
+      body: 'Every plan on this page is removed. This cannot be undone.',
+      confirmLabel: 'Delete all', danger: true,
+    })
+    if (ok) setDrafts([])
   }
   const duplicate = (d) => {
     const copy = structuredClone(d)
@@ -1169,7 +1220,7 @@ function DraftsPanel({ drafts, setDrafts, proj, activeDraftId, setActiveDraftId,
       <div className="drafts-foot">
         <span>Saved automatically · double-click a name to rename</span>
         <button className="pill-btn"
-          onClick={() => { if (confirm('Delete ALL drafts?')) setDrafts([]) }}>
+          onClick={resetAll}>
           Reset all
         </button>
       </div>

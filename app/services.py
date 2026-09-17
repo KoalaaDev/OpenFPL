@@ -1451,6 +1451,12 @@ def run_solve(job_id: str, params: dict, principal: str = "") -> dict:
     return {
         "mode": "optimise-transfers" if initial else "build-from-scratch",
         "entry_id": entry_id, "gws": gws,
+        # the bar each chip had to clear to be played rather than saved, so the
+        # page can say WHY a chip it was allowed to use was held
+        "chip_reserve": {c: round(float(v), 1) for c, v in {
+            **chips.default_reserve(max(0, 38 - max(gws)) + len(gws) if gws else None),
+            **reserve}.items() if c in chip_gws},
+        "chips_allowed": sorted(chip_gws),
         "state": {"bank": bank, "free_transfers": fts,
                   "unlimited_transfers": unlimited,
                   "chips": chip_state, "chips_dropped": dropped,
@@ -1653,6 +1659,15 @@ def adopt_legacy(principal: str) -> list[str]:
     return adopted
 
 
+def _chip_bars(first_gw: int | None) -> dict | None:
+    if not first_gw:
+        return None
+    horizon = SOLVE_BOUNDS["horizon"][2]
+    last = min(38, int(first_gw) + horizon - 1)
+    left = max(0, 38 - last) + (last - int(first_gw) + 1)
+    return {c: round(v) for c, v in chips.default_reserve(left).items()}
+
+
 def _live_window(deadlines: dict) -> dict:
     from . import live
     return live.window({str(k): v for k, v in (deadlines or {}).items()})
@@ -1715,6 +1730,9 @@ def status_payload() -> dict:
             "playstyles": [{"key": k, "label": v["label"], "note": v["note"],
                             "detail": v.get("detail", "")}
                            for k, v in chips.PLAYSTYLES.items()],
+            # what each chip must beat to be played rather than kept, for a
+            # default-horizon solve starting now — the Solver quotes it
+            "chip_reserve_now": _chip_bars(open_gw or gw),
             "brand": {"name": "FPLabs", "by": "KoalaaDev"}}
 
 
