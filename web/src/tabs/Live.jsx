@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { api } from '../api'
 import { useStore } from '../store'
 import { Empty, Loading } from '../components/States'
-import { badgeUrl, fmt1, money } from '../util'
+import { badgeUrl, fmt1, money, shirtUrl } from '../util'
 import PitchLines from '../components/Pitch'
 
 /* Live deadline coverage.
@@ -54,25 +54,34 @@ export default function Live() {
   const left = win.deadline * 1000 - now
   const since = now - win.deadline * 1000
 
+  /* On a desktop the desk is a dashboard that fits the screen: the model's
+     answer on the left (its best XI, then who is moving price), the reasoning
+     in the middle (which fixtures are favourable and who to own there), the
+     live feed on the right. Every panel scrolls inside itself, so nothing
+     pushes the rest below the fold. Narrower screens stack the same panels in
+     reading order. */
   return (
     <div className="live">
       <LiveHero gw={d.gw} open={open} preview={preview} left={left} since={since}
         deadline={win.deadline} built={d.built_at} projected={d.proj_updated_at} />
 
-      <Fixtures rows={d.fixtures || []} />
-
-      <div className="live-grid">
-        <TeamNews rows={d.news || []} />
-        <Pressers rows={d.pressers || []} gw={d.gw} />
-      </div>
-
-      <div className="live-grid">
-        <Movers m={d.movers || { rows: [] }} />
-        <PriceWatch p={d.prices} open={open} />
+      <div className="live-dash">
+        <section className="ld-col ld-a">
+          <BestXI xi={d.best_xi} ready={d.components} />
+          <PriceWatch p={d.prices} open={open} />
+        </section>
+        <section className="ld-col ld-b">
+          <FixturePicks clubs={d.fixture_picks || []} ready={d.components} gw={d.gw} />
+        </section>
+        <section className="ld-col ld-c">
+          <Fixtures rows={d.fixtures || []} />
+          <TeamNews rows={d.news || []} />
+          <Pressers rows={d.pressers || []} gw={d.gw} />
+          <Movers m={d.movers || { rows: [] }} />
+        </section>
       </div>
 
       <Lineups l={d.lineups || { clubs: [] }} />
-      <Picks rows={d.picks || []} gw={d.gw} />
     </div>
   )
 }
@@ -82,33 +91,30 @@ export default function Live() {
 function LiveHero({ gw, open, preview, left, since, deadline, built, projected }) {
   // the run-up as a bar: empty a day out, full at the deadline
   const gone = open ? Math.max(0, Math.min(1, 1 - left / (24 * 3600 * 1000))) : 1
+  /* One line, not a banner. The clock is the headline; everything else on
+     the old hero was a caption that cost 200px of the screen. */
   return (
     <div className={`live-hero ${open ? 'open' : 'over'}`}>
-      <div className="lh-top">
-        <span className={`live-badge ${preview ? 'over' : open ? '' : 'over'}`}>
-          <i className="dot" aria-hidden="true" />
-          {preview ? 'PREVIEW · OPENS 24 H OUT' : open ? 'LIVE' : 'DEADLINE PASSED'}
+      <span className={`live-badge ${preview || !open ? 'over' : ''}`}>
+        <i className="dot" aria-hidden="true" />
+        {preview ? 'PREVIEW' : open ? 'LIVE' : 'DEADLINE PASSED'}
+      </span>
+      <div className="lh-title">
+        <b>Gameweek {gw}</b>
+        <span>
+          {!open ? 'under way — nothing can be changed now'
+            : preview ? 'goes on air for everyone 24 h before the deadline'
+              : 'until transfers, captain and chips lock'}
         </span>
-        <span className="lh-gw">Gameweek {gw}</span>
-        <span className="lh-when">{new Date(deadline * 1000).toLocaleString(undefined,
-          { weekday: 'long', hour: '2-digit', minute: '2-digit' })}</span>
       </div>
-
       <div className="lh-clock">{open ? <Countdown ms={left} /> : <Elapsed ms={since} />}</div>
-      <div className="lh-sub">
-        {!open
-          ? 'the gameweek is under way — nothing can be changed now'
-          : preview
-            ? 'until the deadline. This desk goes on air for everyone with a day to go.'
-            : 'until transfers, captain and chips lock for this gameweek'}
+      <div className="lh-meta">
+        <span>deadline {new Date(deadline * 1000).toLocaleString(undefined,
+          { weekday: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+        {projected ? <span>model {ago(projected)}</span> : null}
+        {built ? <span>refreshed {ago(built)}</span> : null}
       </div>
-
       {open && <div className="lh-bar"><div style={{ width: `${gone * 100}%` }} /></div>}
-
-      <div className="lh-foot">
-        {projected ? <span>Projections rebuilt {ago(projected)}</span> : null}
-        {built ? <span>Refreshed {ago(built)} · updates every minute</span> : null}
-      </div>
     </div>
   )
 }
@@ -142,42 +148,33 @@ function Elapsed({ ms }) {
 function Fixtures({ rows }) {
   const { teams } = useStore()
   if (!rows.length) return null
-  // grouped by kick-off slot, which is how a gameweek actually reads
+  // grouped by kick-off, one line per match, crest first
   const groups = []
   for (const r of rows) {
-    const key = r.kickoff ? new Date(r.kickoff).toLocaleString(undefined,
-      { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'TBC'
+    const d = r.kickoff ? new Date(r.kickoff) : null
+    const key = d ? d.toLocaleString(undefined, { weekday: 'short', day: 'numeric', month: 'short' }) : 'TBC'
     const g = groups.find((x) => x.key === key)
-    if (g) g.rows.push(r)
-    else groups.push({ key, rows: [r] })
+    const row = { ...r, time: d ? d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) : '' }
+    if (g) g.rows.push(row)
+    else groups.push({ key, rows: [row] })
   }
-  /* A scoreboard line per side, crest first: you find your club by its badge
-     long before you read its name, and a fixed left edge makes a slot of
-     three matches scan as a list. */
-  const Side = ({ id, short, score, won }) => {
-    const t = teams[String(id)]
-    return (
-      <div className={`fx-side ${won ? 'won' : ''}`}>
-        <img className="fx-crest" src={badgeUrl(t?.code)} alt="" loading="lazy"
-          onError={(e) => { e.currentTarget.style.visibility = 'hidden' }} />
-        <span className="fx-name">{t?.name || short}</span>
-        {score != null && <span className="fx-score">{score}</span>}
-      </div>
-    )
-  }
+  const Crest = ({ id }) => (
+    <img className="fx-crest" src={badgeUrl(teams[String(id)]?.code)} alt="" loading="lazy"
+      onError={(e) => { e.currentTarget.style.visibility = 'hidden' }} />
+  )
   return (
-    <div className="panel">
+    <div className="panel ld-fixtures">
       <div className="panel-head">Fixtures <span className="chip dim num">{rows.length}</span></div>
-      <div className="fx-slots">
+      <div className="ld-scroll fx-list">
         {groups.map((g) => (
-          <div className="fx-slot" key={g.key}>
-            <div className="fx-when">{g.key}</div>
+          <div key={g.key}>
+            <div className="fx-day">{g.key}</div>
             {g.rows.map((r) => (
-              <div className={`fx-match ${r.finished ? 'done' : ''}`} key={r.fixture_id}>
-                <Side id={r.home_id} short={r.home} score={r.score?.[0]}
-                  won={r.score && r.score[0] > r.score[1]} />
-                <Side id={r.away_id} short={r.away} score={r.score?.[1]}
-                  won={r.score && r.score[1] > r.score[0]} />
+              <div className={`fx-line ${r.finished ? 'done' : ''}`} key={r.fixture_id}>
+                <span className="fx-time">{r.score ? 'FT' : r.time}</span>
+                <span className="fx-home"><Crest id={r.home_id} />{teams[String(r.home_id)]?.short || r.home}</span>
+                <span className="fx-vs">{r.score ? `${r.score[0]}–${r.score[1]}` : 'v'}</span>
+                <span className="fx-away">{teams[String(r.away_id)]?.short || r.away}<Crest id={r.away_id} /></span>
               </div>
             ))}
           </div>
@@ -187,12 +184,170 @@ function Fixtures({ rows }) {
   )
 }
 
+/* ------------------------------------------------------------------ */
+
+const TAG = {
+  ATT: { label: 'Attack', title: 'most of his projection is goals and assists' },
+  DEFCON: { label: 'DefCon', title: 'most of his projection is crossing the defensive-contribution threshold' },
+  CS: { label: 'Clean sheet', title: 'most of his projection is a clean sheet' },
+  SAVES: { label: 'Saves', title: 'most of his projection is save points' },
+}
+const pct = (v) => `${Math.round((v || 0) * 100)}%`
+
+/* The model's best legal XI for the gameweek: a keeper, 3-5 defenders, 2-5
+   midfielders, 1-3 forwards, no more than three from a club, captain counted
+   twice. It is "who the model would start", not a squad it could afford —
+   the Planner and Solver are where money is. */
+function BestXI({ xi, ready }) {
+  const { teams } = useStore()
+  return (
+    <div className="panel ld-xi">
+      <div className="panel-head">Model&apos;s best XI
+        {xi && <span className="bx-meta">{xi.formation} · <b>{fmt1(xi.points)}</b> pts · {money(xi.cost)}</span>}
+      </div>
+      {!xi ? (
+        <div className="dd-empty">
+          {ready === false
+            ? 'The component breakdown is built on the next projection refresh.'
+            : 'No legal XI could be built from the current projections.'}
+        </div>
+      ) : (
+        <div className="bx-pitch">
+          <PitchLines />
+          <div className="bx-rows">
+            {xi.rows.map((row, i) => (
+              <div className="bx-row" key={i}>
+                {row.map((p) => {
+                  const t = teams[String(p.team_id)]
+                  return (
+                    <div className="bx-p" key={p.player_id}
+                      title={`${p.name} · ${t?.short || ''} · ${money(p.price)} · ${TAG[p.tag]?.title || ''}`}>
+                      {(p.captain || p.vice) && (
+                        <span className={`bx-arm ${p.vice ? 'vice' : ''}`}>{p.captain ? 'C' : 'V'}</span>
+                      )}
+                      <img className="bx-shirt" alt="" loading="lazy"
+                        src={shirtUrl(t?.code, p.pos === 'GK')}
+                        onError={(e) => { e.currentTarget.style.visibility = 'hidden' }} />
+                      <span className="bx-name">{p.name}</span>
+                      <span className="bx-line">
+                        <b>{fmt1(p.captain ? p.ep * 2 : p.ep)}</b>
+                        <i className={`bx-tag t-${p.tag.toLowerCase()}`}>{p.tag === 'DEFCON' ? 'DC' : p.tag === 'ATT' ? 'ATT' : p.tag === 'CS' ? 'CS' : 'SV'}</i>
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* Where to look this gameweek. Clubs are ranked by the market's expected goal
+   difference for their fixture — the favourable ones first — and inside each
+   club the attacking picks come before the DefCon and clean-sheet ones,
+   because an attacking return is the bigger swing. Each player carries the
+   one or two numbers that say WHY he is on the list. */
+function FixturePicks({ clubs, ready, gw }) {
+  const { teams } = useStore()
+  return (
+    <div className="panel ld-picks">
+      <div className="panel-head">Picks by fixture — GW{gw}
+        <span className="panel-sub">most favourable first · attack, then DefCon</span></div>
+      {!clubs.length ? (
+        <div className="dd-empty">
+          {ready === false
+            ? 'The component breakdown is built on the next projection refresh.'
+            : 'No priced fixtures for this gameweek yet.'}
+        </div>
+      ) : (
+        <div className="ld-scroll fp-list">
+          {clubs.map((c, i) => {
+            const t = teams[String(c.team_id)]
+            return (
+              <div className="fp-club" key={c.team_id}>
+                <div className="fp-head">
+                  <span className="fp-rank">{i + 1}</span>
+                  <img className="fx-crest" src={badgeUrl(t?.code)} alt="" loading="lazy"
+                    onError={(e) => { e.currentTarget.style.visibility = 'hidden' }} />
+                  <b>{t?.name || c.team_id}</b>
+                  <span className="fp-opp">
+                    {c.fixtures.map((f, k) => (
+                      <span key={k} className="ep-opp">
+                        {k > 0 && <i className="ep-opp-sep">+</i>}
+                        {teams[String(f.opp)]?.short || '?'}<b className={f.home ? 'h' : 'a'}>{f.home ? 'H' : 'A'}</b>
+                      </span>
+                    ))}
+                  </span>
+                  <span className="fp-stats" title={c.priced ? 'bookmaker-implied' : "no market price — the model's own estimate"}>
+                    <span>xG <b>{c.xg.toFixed(2)}</b></span>
+                    <span>xGA <b>{c.xga.toFixed(2)}</b></span>
+                    <span>CS <b>{pct(c.p_cs)}</b></span>
+                  </span>
+                </div>
+                <PickGroup label="Attack" rows={c.attack} kind="att" />
+                <PickGroup label="DefCon & clean sheet" rows={c.defence} kind="def" />
+                {c.keeper && (
+                  <div className="fp-keeper">
+                    Keeper <b>{c.keeper.name}</b> {money(c.keeper.price)} · {fmt1(c.keeper.ep)} pts
+                    · CS {pct(c.keeper.p_cs)}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+      <div className="fold-note fp-note">
+        Attack: <b>xGI</b> = the model&apos;s expected goals + assists this gameweek.
+        DefCon: the chance he crosses the threshold (10 actions for a defender, 12
+        for a midfielder), worth 2 points. CS: chance of a clean sheet while he is on.
+      </div>
+    </div>
+  )
+}
+
+function PickGroup({ label, rows, kind }) {
+  if (!rows?.length) return null
+  return (
+    <div className={`fp-group ${kind}`}>
+      <div className="fp-glabel">{label}</div>
+      {rows.map((p) => (
+        <div className="fp-row" key={p.player_id}>
+          <span className="fp-name">
+            <b>{p.name}</b>
+            <span className="muted">{p.pos} · {money(p.price)}{p.own != null ? ` · ${p.own}%` : ''}</span>
+          </span>
+          <span className="fp-chips">
+            {kind === 'att' ? (
+              <>
+                <i className="fp-chip att" title="expected goals + assists this gameweek">xGI {p.xgi.toFixed(2)}</i>
+                {p.pk && <i className="fp-chip pk" title="on penalties">PEN</i>}
+              </>
+            ) : (
+              <>
+                {p.p_defcon >= 0.15 && (
+                  <i className="fp-chip dc" title="chance he crosses the DefCon threshold">DefCon {pct(p.p_defcon)}</i>
+                )}
+                <i className="fp-chip cs" title="chance of a clean sheet while he is on">CS {pct(p.p_cs)}</i>
+              </>
+            )}
+          </span>
+          <span className="fp-ep">{fmt1(p.ep)}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function TeamNews({ rows }) {
   return (
-    <div className="panel">
+    <div className={`panel ld-news ${rows.length ? '' : 'is-empty'}`}>
       <div className="panel-head">Team news <span className="chip dim num">{rows.length}</span>
         <span className="panel-sub">FPL&apos;s own feed, newest first</span></div>
-      <div className="live-list">
+      <div className="live-list ld-scroll">
         {!rows.length && <div className="dd-empty">No status changes in the last week.</div>}
         {rows.map((n) => (
           <div key={n.player_id} className="live-row">
@@ -214,10 +369,10 @@ function TeamNews({ rows }) {
 
 function Pressers({ rows, gw }) {
   return (
-    <div className="panel">
+    <div className={`panel ld-pressers ${rows.length ? '' : 'is-empty'}`}>
       <div className="panel-head">Managers said <span className="chip dim num">{rows.length}</span>
         <span className="panel-sub">Friday press conferences (BBC)</span></div>
-      <div className="live-list">
+      <div className="live-list ld-scroll">
         {!rows.length && (
           <div className="dd-empty">Nothing archived for GW{gw} yet — the Friday
             page is collected on the pre-deadline refresh.</div>
@@ -243,10 +398,10 @@ function Movers({ m }) {
   // which reads as "the model has gone quiet" only if you know to ignore it
   const rows = (m.rows || []).filter((p) => Math.abs(p.delta) >= 0.05)
   return (
-    <div className="panel">
+    <div className={`panel ld-movers ${rows.length ? '' : 'is-empty'}`}>
       <div className="panel-head">The model changed its mind
         <span className="panel-sub">since the previous build</span></div>
-      <div className="live-list">
+      <div className="live-list ld-scroll">
         {!m.rows.length && <div className="dd-empty">Needs two builds to compare.</div>}
         {m.rows.length > 0 && !rows.length && (
           <div className="dd-empty">Nothing moved by more than 0.05 points since
@@ -292,10 +447,10 @@ function PriceWatch({ p, open }) {
     )
   }
   return (
-    <div className="panel">
+    <div className="panel ld-prices">
       <div className="panel-head">Price watch
         <span className="panel-sub">{open ? 'before tonight' : 'this gameweek'}</span></div>
-      <div className="live-two">
+      <div className="live-two ld-scroll">
         <div>
           <div className="lt-head up">Most likely to rise</div>
           {p.risers.slice(0, 6).map((r) => row(r, 'up'))}
@@ -415,33 +570,6 @@ function XiCard({ c, team }) {
           ))}
         </div>
       )}
-    </div>
-  )
-}
-
-function Picks({ rows, gw }) {
-  if (!rows.length) return null
-  return (
-    <div className="panel">
-      <div className="panel-head">The model&apos;s board — GW{gw}
-        <span className="panel-sub">highest projected points</span></div>
-      <div className="pick-grid">
-        {rows.map((r, i) => (
-          <div className={`pick ${i === 0 ? 'cap' : ''}`} key={r.player_id}>
-            <span className="pk-rank">{i === 0 ? 'C' : i + 1}</span>
-            <div className="pk-text">
-              <b>{r.name}</b>
-              <span className="muted">{r.team} · {r.pos} · {money(r.price)}</span>
-            </div>
-            <span className="pk-ep">{fmt1(r.ep)}</span>
-          </div>
-        ))}
-      </div>
-      <div className="fold-note" style={{ padding: '0 12px 12px' }}>
-        Captaining the model&apos;s top pick was worth about +0.7 to +1.1 points a
-        week over the crowd&apos;s choice across two replayed seasons. {rows[0].name} is
-        this gameweek&apos;s.
-      </div>
     </div>
   )
 }

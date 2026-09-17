@@ -2551,6 +2551,44 @@ wide), `.xi-pitch`, `.xi-row` and `.xi-name`, and reusing them squeezed every
 club into a strip — the second class collision in a day after `.advice`. Grep
 for a class name before introducing one.
 
+**On a desktop the desk is a dashboard sized to the screen.** At 1280px and up
+it is three columns inside `calc(100vh - header - hero)`, every panel
+scrolling inside itself: the model's answer on the left (best XI, then price
+watch), the reasoning in the middle (picks by fixture), the live feed on the
+right (fixtures one line a match, team news, quotes, model moves). Line-ups
+sit below. Measured at 1920x1080 and 1440x900: the grid ends 4px inside the
+viewport, nothing scrolls sideways. The hero is one line (the clock is the
+headline; the old banner cost 200px), the page uses the wide container, and an
+empty feed panel takes its own height rather than a share of the column.
+Below 1280px the columns dissolve (`display: contents` + `order`) into
+reading order.
+
+**Model's best XI** (`live.best_xi`): the best LEGAL eleven for the gameweek,
+solved exactly with PuLP — 1 GK, 3-5 DEF, 2-5 MID, 1-3 FWD, at most three per
+club, captain counted twice. A greedy top-eleven takes six from the best club.
+No budget: it is who the model would start, not a squad it can afford.
+
+**Picks by fixture** (`live.fixture_picks`) replaced the top-12-by-points
+board, which said who scores most and nothing about why. Clubs are ranked by
+the market's expected goal difference for their fixture (bookmaker xG / xGA,
+with P(CS) = exp(-xGA)); inside each club the ATTACKING picks come first, then
+DefCon and clean-sheet picks, then the keeper. A player's label comes from the
+engine's own components, not his position — a defender whose projection is
+mostly goals is an attacking pick, a midfielder whose projection is mostly
+DefCon is a DefCon pick. Quick stats: xGI (expected goals + assists this
+gameweek), PEN (first-choice taker only — `_pk_share` gives second and third
+choices a share too, and flagging all three said nothing), DefCon % (E[DefCon
+points] / 2, the chance he crosses 10 or 12 actions) and CS %.
+
+That needed the breakdown stored: `project.horizon_projections` now carries
+each player's per-gameweek components (`comp_gw{g}`: goals, assists, bonus,
+cs, defcon, saves, appearance, plus e_goals / e_assists / p_cs), scaled by the
+same exposure factor as the projection so the parts still add up, and the
+cache keeps them under `comp`. **`projections_payload` strips `comp`** — the
+desk reads it server-side, and shipping it would roughly double what every
+visitor downloads. Nothing downstream of the solver reads it.
+`tests/test_live_picks.py`.
+
 The admin **Deadline** tab stopped duplicating those feeds and became what only
 an operator can act on: three health checks (scheduled refresh, projections,
 market coverage) that are green or not and say why, the serving model, market

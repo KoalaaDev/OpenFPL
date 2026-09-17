@@ -29,6 +29,10 @@ PRIOR_SHRINK_MINS = 450.0      # minutes of position-mean rate mixed into each p
 # Rough league averages; the real number comes from `c_*` per player per gw.
 EXPLOSIVE_SHARE = {"GK": 0.08, "DEF": 0.22, "MID": 0.45, "FWD": 0.62}
 
+# the engine's per-component points (xpts/engine.py `c_*`), carried for display
+COMPONENTS = ("goals", "assists", "bonus", "cs", "defcon", "saves",
+              "appearance", "conceded", "cards")
+
 
 def preseason_weight(n_played: int) -> float:
     """Weight on the last-season prior after ``n_played`` finished gameweeks."""
@@ -153,6 +157,11 @@ def horizon_projections(conn, season: str, gws: list[int], *, bundle=None,
     # optimise/style.py). Only the component engine can supply it, so a
     # pure-OpenFPL run falls back to a per-position share.
     ex_by_gw: dict[int, dict[int, float]] = {}
+    # The whole breakdown, for display: what KIND of player a projection is
+    # (an attacking return, a clean sheet, a DefCon crossing) and the raw
+    # expectations behind it. Nothing downstream of the solver reads these;
+    # the Live desk does, to say why a player is a pick.
+    comp_by_gw: dict[int, dict[int, dict]] = {}
     for g in gws:
         progress.log(f"    projecting GW{g}…")
         try:
@@ -188,6 +197,15 @@ def horizon_projections(conn, season: str, gws: list[int], *, bundle=None,
                     ex_by_gw[g] = dict(zip(
                         xdf["player_id"].astype(int),
                         xdf[ex_cols].sum(axis=1).astype(float)))
+                comp_by_gw[g] = {
+                    int(r["player_id"]): {
+                        "pred": float(r.get("prediction") or 0.0),
+                        **{k: float(r.get(f"c_{k}") or 0.0) for k in COMPONENTS},
+                        "eg": float(r.get("e_goals") or 0.0),
+                        "ea": float(r.get("e_assists") or 0.0),
+                        "pcs": float(r.get("p_cs") or 0.0),
+                    }
+                    for r in xdf.to_dict("records")}
                 ep_by_gw[g] = {
                     pid: (1 - xpts_w) * v + xpts_w * xmap.get(pid, v)
                     for pid, v in ep_by_gw[g].items()}
@@ -220,6 +238,7 @@ def horizon_projections(conn, season: str, gws: list[int], *, bundle=None,
         prior = priors.get(pid)
         vals = {}
         ex_vals = {}
+        comp_vals = {}
         for g in gws:
             v = eps[g]
             if np.isnan(v):
@@ -240,6 +259,16 @@ def horizon_projections(conn, season: str, gws: list[int], *, bundle=None,
                 v = (1.0 - prior_w) * v + prior_w * prior
             vals[g] = v
             ex_vals[g] = v * share
+            # every component takes the same exposure scaling the projection
+            # took (availability, press-conference factor, pre-season prior),
+            # so the parts still add up to the whole
+            raw = comp_by_gw.get(g, {}).get(pid)
+            if raw is not None and raw["pred"] > 0:
+                k = v / raw["pred"]
+                comp_vals[g] = {
+                    **{c: round(raw[c] * k, 3) for c in COMPONENTS},
+                    "eg": round(raw["eg"] * k, 3), "ea": round(raw["ea"] * k, 3),
+                    "pcs": round(min(1.0, raw["pcs"] * k), 3)}
         total = sum((decay ** i) * vals[g] for i, g in enumerate(gws)
                     if not np.isnan(eps[g]))
         row = {
@@ -256,6 +285,7 @@ def horizon_projections(conn, season: str, gws: list[int], *, bundle=None,
         for g in gws:
             row[f"ep_gw{g}"] = vals[g]
             row[f"ex_gw{g}"] = ex_vals[g]
+            row[f"comp_gw{g}"] = comp_vals.get(g)
         rows.append(row)
 
     proj = pd.DataFrame(rows)

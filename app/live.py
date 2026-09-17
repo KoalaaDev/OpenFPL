@@ -15,6 +15,7 @@ model's own biggest changes of mind — and none of it changes a projection.
 """
 from __future__ import annotations
 
+import math
 import time
 from datetime import datetime, timezone
 
@@ -84,19 +85,162 @@ def _fixtures(conn, season: str, gw: int, tm: dict) -> list[dict]:
     return out
 
 
-def _top_picks(gw: int, pl: dict, tm: dict, limit: int = 12) -> list[dict]:
-    """The model's own board for this gameweek — what it would captain."""
+# ---------------------------------------------------------------- picks --
+#
+# Two sections replace the old "top 12 by projected points" board, which
+# answered "who scores most" and nothing about WHY: a striker against the worst
+# defence and a centre-back who crosses the DefCon threshold every week sat in
+# one list with no way to tell them apart.
+
+POINTS_PER_DEFCON = 2       # scoring_rules: defensive_contribution.points
+LEAGUE_GOALS_PER_TEAM = 1.4  # fallback goals-against for an unpriced fixture
+
+
+def _tag(pos: str, c: dict) -> str:
+    """What kind of pick a projection is, from the engine's own components:
+    an attacking return, a DefCon crossing, a clean sheet, or (keepers) saves."""
+    att = c.get("goals", 0) + c.get("assists", 0)
+    options = {"ATT": att, "DEFCON": c.get("defcon", 0), "CS": c.get("cs", 0)}
+    if pos == "GK":
+        options = {"CS": c.get("cs", 0), "SAVES": c.get("saves", 0)}
+    return max(options, key=options.get)
+
+
+def _pool(gw: int, pl: dict) -> list[dict]:
+    """Every player with a projection AND a component breakdown for `gw`.
+    A cache built before the breakdown existed yields an empty pool, which the
+    page reports rather than guessing at a split."""
     cache = services._load_proj_cache()
-    rows = []
+    try:
+        extra = {p["id"]: p for p in services.players_payload().get("players", [])}
+    except Exception:  # noqa: BLE001 - the live bootstrap is a nicety here
+        extra = {}
+    out = []
     for rec in cache.get("players", {}).values():
         ep = (rec.get("ep") or {}).get(str(gw))
-        if ep is None:
+        comp = (rec.get("comp") or {}).get(str(gw))
+        if ep is None or not comp or rec.get("position") not in ("GK", "DEF", "MID", "FWD"):
             continue
-        rows.append({"player_id": int(rec["player_id"]), "name": rec["player"],
-                     "team": rec.get("team"), "pos": rec.get("position"),
-                     "price": rec.get("price"), "ep": round(float(ep), 2)})
-    rows.sort(key=lambda r: -r["ep"])
-    return rows[:limit]
+        pid = int(rec["player_id"])
+        x = extra.get(pid, {})
+        out.append({
+            "player_id": pid, "name": (pl.get(pid) or {}).get("name") or rec.get("player"),
+            "team_id": int(rec["team_id"]), "pos": rec["position"],
+            "price": rec.get("price"), "ep": round(float(ep), 2),
+            "xmins": (rec.get("xm") or {}).get(str(gw)),
+            # first-choice taker only: _pk_share gives second and third choices
+            # their (small) share too, and flagging them all said nothing
+            "own": x.get("own"), "pk": (x.get("pk_share") or 0) >= 0.5,
+            "status": x.get("status"), "chance": x.get("chance"),
+            "tag": _tag(rec["position"], comp),
+            "att": round(comp.get("goals", 0) + comp.get("assists", 0), 2),
+            "xgi": round(comp.get("eg", 0) + comp.get("ea", 0), 2),
+            "eg": comp.get("eg", 0), "ea": comp.get("ea", 0),
+            "defcon": comp.get("defcon", 0),
+            # E[DefCon points] / 2 is the chance he crosses the threshold in a
+            # single fixture; capped because a double gameweek can exceed one
+            "p_defcon": round(min(1.0, comp.get("defcon", 0) / POINTS_PER_DEFCON), 2),
+            "cs_pts": comp.get("cs", 0), "p_cs": comp.get("pcs", 0),
+            "bonus": comp.get("bonus", 0), "saves": comp.get("saves", 0),
+        })
+    return out
+
+
+def best_xi(pool: list[dict]) -> dict | None:
+    """The best legal XI the model can see for the gameweek.
+
+    Legal the way FPL means it: one keeper, 3-5 defenders, 2-5 midfielders,
+    1-3 forwards, at most three from a club, and the captain counted twice.
+    Solved exactly (it is 600-odd binaries) rather than greedily — a greedy
+    pick takes the fourth-best Man City player and then cannot fit the fifth.
+    No budget: this is "who would the model start", not a squad it can afford;
+    the Planner and Solver are where money is.
+    """
+    import pulp
+    ps = [p for p in pool if p["ep"] > 0]
+    if len(ps) < 11:
+        return None
+    prob = pulp.LpProblem("best_xi", pulp.LpMaximize)
+    x = {p["player_id"]: pulp.LpVariable(f"x{p['player_id']}", cat="Binary") for p in ps}
+    c = {p["player_id"]: pulp.LpVariable(f"c{p['player_id']}", cat="Binary") for p in ps}
+    prob += pulp.lpSum(p["ep"] * (x[p["player_id"]] + c[p["player_id"]]) for p in ps)
+    prob += pulp.lpSum(x.values()) == 11
+    prob += pulp.lpSum(c.values()) == 1
+    for p in ps:
+        prob += c[p["player_id"]] <= x[p["player_id"]]
+    for pos, lo, hi in (("GK", 1, 1), ("DEF", 3, 5), ("MID", 2, 5), ("FWD", 1, 3)):
+        n = pulp.lpSum(x[p["player_id"]] for p in ps if p["pos"] == pos)
+        prob += n >= lo
+        prob += n <= hi
+    for club in {p["team_id"] for p in ps}:
+        prob += pulp.lpSum(x[p["player_id"]] for p in ps if p["team_id"] == club) <= 3
+    prob.solve(pulp.PULP_CBC_CMD(msg=False, timeLimit=10))
+    if pulp.LpStatus[prob.status] != "Optimal":
+        return None
+    xi = [p for p in ps if x[p["player_id"]].value() > 0.5]
+    cap = next(p for p in ps if c[p["player_id"]].value() > 0.5)
+    vice = max((p for p in xi if p is not cap), key=lambda p: p["ep"])
+    order = {"GK": 0, "DEF": 1, "MID": 2, "FWD": 3}
+    xi.sort(key=lambda p: (order[p["pos"]], -p["ep"]))
+    rows = [[{**p, "captain": p is cap, "vice": p is vice} for p in xi if p["pos"] == pos]
+            for pos in ("GK", "DEF", "MID", "FWD")]
+    return {"rows": rows,
+            "formation": "-".join(str(len(r)) for r in rows[1:]),
+            "points": round(sum(p["ep"] for p in xi) + cap["ep"], 1),
+            "cost": round(sum(p["price"] or 0 for p in xi), 1),
+            "captain": cap["name"]}
+
+
+def fixture_picks(gw: int, pool: list[dict], limit_teams: int = 8) -> list[dict]:
+    """Clubs ranked by how favourable their fixture is, and who to own there.
+
+    Favourability is the MARKET's read of the fixture — expected goals for and
+    against, from the bookmaker (or prediction-market) price the model already
+    blends in — ranked by expected goal difference. Inside each club, attacking
+    picks come first, then DefCon and clean-sheet picks: an attacking return is
+    the bigger swing, and the owner asked for them on top.
+    """
+    try:
+        grid = services.fixtures_payload().get("grid", {})
+    except Exception:  # noqa: BLE001
+        grid = {}
+    by_team: dict[int, list] = {}
+    for p in pool:
+        by_team.setdefault(p["team_id"], []).append(p)
+    clubs = []
+    for tid, players in by_team.items():
+        cells = grid.get(str(tid), {}).get(str(gw)) or []
+        if not cells:
+            continue                          # a blank gameweek: nothing to pick
+        xg = xga = cs = 0.0
+        priced = True
+        for f in cells:
+            o = f.get("odds") or {}
+            if o.get("xg") is not None:
+                gf, ga = o["xg"], o["xg_against"]
+            else:
+                # no bookmaker price: the club's own expected goals from the
+                # engine, and a league-average goals-against
+                priced = False
+                gf = sum(q["eg"] for q in players) / max(1, len(cells))
+                ga = LEAGUE_GOALS_PER_TEAM
+            xg += gf
+            xga += ga
+            cs += math.exp(-ga)               # P(clean sheet) per fixture
+        start = [q for q in players if (q["xmins"] or 0) >= 45 and q["ep"] >= 2.0]
+        attack = sorted((q for q in start if q["tag"] == "ATT"), key=lambda q: -q["ep"])[:3]
+        defence = sorted((q for q in start if q["tag"] in ("DEFCON", "CS") and q["pos"] != "GK"),
+                         key=lambda q: -q["ep"])[:2]
+        keeper = max((q for q in start if q["pos"] == "GK"), key=lambda q: q["ep"], default=None)
+        clubs.append({
+            "team_id": tid,
+            "fixtures": [{"opp": f.get("opp"), "home": f.get("home")} for f in cells],
+            "xg": round(xg, 2), "xga": round(xga, 2),
+            "p_cs": round(min(1.0, cs), 2), "priced": priced,
+            "attack": attack, "defence": defence, "keeper": keeper,
+        })
+    clubs.sort(key=lambda c: -(c["xg"] - c["xga"]))
+    return clubs[:limit_teams]
 
 
 def _price_pressure(limit: int = 8) -> dict:
@@ -125,6 +269,7 @@ def payload(force: bool = False) -> dict:
     try:
         pl, tm = dd._names(conn, season)
         start_p = services._model_start_probs(season)
+        pool = _pool(gw, pl)
         out = {
             "season": season,
             "window": win,
@@ -137,7 +282,9 @@ def payload(force: bool = False) -> dict:
             "pressers": dd._pressers(conn, season, gw, pl, tm)[:40],
             "lineups": dd._lineups(conn, season, gw, pl, tm, start_p),
             "movers": dd._movers(gw, pl, tm),
-            "picks": _top_picks(gw, pl, tm),
+            "best_xi": best_xi(pool),
+            "fixture_picks": fixture_picks(gw, pool),
+            "components": bool(pool),
             "prices": _price_pressure(),
             "proj_updated_at": status.get("proj_updated_at"),
             "built_at": now,

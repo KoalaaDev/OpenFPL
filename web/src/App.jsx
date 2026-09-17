@@ -139,7 +139,7 @@ export default function App() {
         </div>
       </header>
 
-      <main className={`page ${tab === 'Mini League' ? 'wide' : ''}`}>
+      <main className={`page ${tab === 'Mini League' || tab === 'Live' ? 'wide' : ''}`}>
         {/* the prompt belongs where a squad is needed, not on a read-only or
             operator tab */}
         {!entryId && !['Fixtures', 'Prices', 'Live', 'Deadline', 'Model'].includes(tab) && (

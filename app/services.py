@@ -1070,8 +1070,15 @@ def _get_bundle():
 
 
 def projections_payload() -> dict:
+    """The projection cache as the browser needs it.
+
+    The per-component breakdown (`comp`) is read server-side by the Live desk
+    and would roughly double what every visitor downloads, so it stays home.
+    """
     cache = _load_proj_cache()
-    return cache
+    players = {pid: {k: v for k, v in rec.items() if k != "comp"}
+               for pid, rec in (cache.get("players") or {}).items()}
+    return {**cache, "players": players}
 
 
 def build_projections(job_id: str | None, gws: list[int], *,
@@ -1149,6 +1156,9 @@ def build_projections(job_id: str | None, gws: list[int], *,
                     ex = getattr(r, f"ex_gw{g}", None)
                     if ex is not None and not pd.isna(ex):
                         rec.setdefault("ex", {})[str(g)] = round(float(ex), 3)
+                    comp = getattr(r, f"comp_gw{g}", None)
+                    if isinstance(comp, dict):
+                        rec.setdefault("comp", {})[str(g)] = comp
                 _price_in_rumours(conn, season, g, cache)
                 _attach_market(conn, season, g, cache)
                 cache["gws"][str(g)] = {"built_at": time.time()}
