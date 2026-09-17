@@ -2460,6 +2460,29 @@ one plain sentence and the operator note shows to admins only. On a phone the
 Fixtures team column was half the screen, leaving four gameweeks; it is now a
 sticky three-letter column.
 
+### Team news is polled, not left to a hand-run command
+
+The availability change log (`acq_player_availability`) feeds the Live desk's
+news and the model record's point-in-time replays. **Nothing in the app wrote
+it**: the full refresh overwrites each player's CURRENT status in `player`, but
+the log only grew when someone ran `python -m acquire pull --source fpl`, last
+on 2026-09-10 — so the desk read "6 d ago" while FPL had news that morning.
+The GitHub collector's `data/collected/availability.jsonl` kept going to
+09-15 but was never imported.
+
+`scheduler.pull_team_news` now runs on its own thread every
+`FPLABS_NEWS_MINUTES` (default 15, floor 5): one bootstrap request, a row only
+for a player whose state changed, the desk's cache cleared when something did.
+The full refresh calls it too. The desk shows and sorts by FPL's own
+`news_added`, not when a row was recorded, and the Deadline tab has a Team news
+health check (red after 45 minutes without a successful poll). The gap was
+backfilled with `actions.import_collected` plus a live pull.
+
+**Not changed, and worth knowing:** projections still take a status change only
+at the next model refresh (daily, and 2 h before the deadline). News that
+breaks in between is on the desk within 15 minutes but not in the numbers
+until then. `tests/test_team_news.py`.
+
 ### The model's season record (admin Model tab)
 
 `app/modelrecord.py` writes `data/model_record_<season>.json`: for every

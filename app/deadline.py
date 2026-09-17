@@ -113,6 +113,9 @@ def _news(conn, season: str, pl: dict, tm: dict, days: float = 7.0) -> list[dict
         out.append({"player_id": int(pid), "name": p["name"], "team": tm.get(p["team_id"]),
                     "pos": p["pos"], "status": status, "chance": chance, "news": news,
                     "observed": obs, "published": pub})
+    # FPL's own news_added is when the news broke; a row observed late (a
+    # backfill, a poll that missed a window) must not jump the queue
+    out.sort(key=lambda r: r["published"] or r["observed"] or "", reverse=True)
     return out[:80]
 
 

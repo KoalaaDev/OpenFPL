@@ -359,7 +359,11 @@ function TeamNews({ rows }) {
               <b>{n.name}</b> <span className="muted">{n.team} · {n.pos}</span>
               <div className="lr-note">{n.news || 'no note'}</div>
             </div>
-            <span className="dd-when">{ago(Date.parse(n.observed) / 1000)}</span>
+            <span className="dd-when"
+              title={`added by FPL ${new Date(n.published || n.observed).toLocaleString()}`
+                + (n.published && n.observed ? ` · recorded ${new Date(n.observed).toLocaleString()}` : '')}>
+              {ago(Date.parse(n.published || n.observed) / 1000)}
+            </span>
           </div>
         ))}
       </div>

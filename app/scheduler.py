@@ -108,6 +108,8 @@ def _refresh(job_id: str, *, understat: bool = True) -> dict:
     from fpl_engine.pipeline import next_gw
 
     out = services.run_pull(job_id, understat)
+    jobs.progress(job_id, "Recording FPL team news…", pct=0.5)
+    pull_team_news()
     # Friday's press conferences (BBC) -> player-level availability
     # observations for the coming gameweek; the engine's live path applies
     # them on top of FPL's own status (Round 18). Never fatal.
@@ -293,14 +295,76 @@ def _loop(startup_delay: float) -> None:
                 return
 
 
+# ------------------------------------------------------------- team news --
+#
+# FPL's team news — status, chance of playing, the text and FPL's own
+# `news_added` — is recorded as a change log (`acq_player_availability`) that
+# the Live desk's feed and the model record's point-in-time replays read.
+# NOTHING in the app wrote it: the full refresh overwrites each player's
+# current status, but the log only grew when someone ran
+# `python -m acquire pull --source fpl` by hand, which last happened on
+# 2026-09-10. So the desk showed "6 d ago" while FPL had news from that
+# morning.
+#
+# Polling it is one bootstrap request and writes only the players whose state
+# changed, so it runs far more often than the model does.
+
+def news_minutes() -> float:
+    try:
+        return max(5.0, float(os.environ.get("FPLABS_NEWS_MINUTES", 15)))
+    except ValueError:
+        return 15.0
+
+
+def pull_team_news() -> dict:
+    """Record any FPL availability changes since the last pull. Never raises."""
+    from fpl_engine import config
+    try:
+        from acquire import storage as _st
+        from acquire.sources import fpl_availability as _fa
+        with _st.connect(config.DB_PATH) as conn:
+            _st.init(conn)
+            out = _fa.pull(conn, season=config.CURRENT_SEASON)
+        with _lock:
+            _state["news_last_run"] = time.time()
+            _state["news_last_changes"] = out.get("changes")
+            _state["news_last_error"] = out.get("error")
+        if out.get("changes"):
+            try:
+                from . import live            # the desk caches for a minute
+                live._cache["v"] = None
+            except Exception:  # noqa: BLE001
+                pass
+        return out
+    except Exception as exc:  # noqa: BLE001 - a news poll must never take the app down
+        with _lock:
+            _state["news_last_error"] = str(exc)
+        return {"error": str(exc)}
+
+
+def _news_loop(startup_delay: float) -> None:
+    if _stop.wait(startup_delay):
+        return
+    while not _stop.is_set():
+        pull_team_news()
+        if _stop.wait(news_minutes() * 60.0):
+            return
+
+
+_news_thread: threading.Thread | None = None
+
+
 def start(startup_delay: float = 20.0) -> bool:
-    global _thread
+    global _thread, _news_thread
     if not enabled() or (_thread and _thread.is_alive()):
         return False
     _stop.clear()
     _thread = threading.Thread(target=_loop, args=(startup_delay,),
                                daemon=True, name="fplabs-refresh")
     _thread.start()
+    _news_thread = threading.Thread(target=_news_loop, args=(startup_delay,),
+                                    daemon=True, name="fplabs-news")
+    _news_thread.start()
     return True
 
 

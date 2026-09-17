@@ -62,6 +62,16 @@ export default function Deadline() {
       detail: `gameweeks ${(r.projected_gws || []).join(', ') || 'none'}`,
     },
     {
+      key: 'news',
+      label: 'Team news',
+      // polled every 15 minutes; it went a week without a write once, and the
+      // only symptom was a news feed quietly saying "6 d ago"
+      ok: !r.news_last_error && r.news_last_run && (Date.now() / 1000 - r.news_last_run) < 45 * 60,
+      value: r.news_last_run ? `polled ${ago(r.news_last_run)}` : 'never polled',
+      detail: r.news_last_error ? String(r.news_last_error).slice(0, 160)
+        : r.news_last_changes != null ? `${r.news_last_changes} change${r.news_last_changes === 1 ? '' : 's'} on the last poll` : '',
+    },
+    {
       key: 'market',
       label: 'Market prices',
       // a rejected odds key is skipped silently by the pull: this is the row
