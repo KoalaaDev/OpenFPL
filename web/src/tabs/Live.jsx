@@ -328,6 +328,14 @@ function Lineups({ l }) {
           onClick={() => setOpen((o) => !o)}>{open ? 'hide' : 'show'}</button>
       </div>
       {l.note && <div className="dd-empty">{l.note}</div>}
+      {clubs.some((c) => c.shape_change) && (
+        <div className="lu-changes">
+          Predicted to change shape:{' '}
+          {clubs.filter((c) => c.shape_change).map((c) => (
+            <b key={c.team}>{c.team} {c.last_formation} → {c.formation}</b>
+          ))}
+        </div>
+      )}
       {open ? (
         <>
           <div className="lu-legend">
@@ -350,20 +358,18 @@ function Lineups({ l }) {
   )
 }
 
-/* One club's predicted eleven, drawn in the shape the feed says they line up
-   in — its own pitch positions (DL, DMC, AMR…), not FPL's four labels, which
-   would flatten every 4-2-3-1 with an attacking winger into a 4-5-1. Keeper at
-   the top, as on the Planner. The model's P(start) sits under each name, and
-   anyone the model rates as a likely starter but the feed left out is listed
-   underneath, because that is the disagreement worth an eye. */
+/* One club's expected eleven, drawn in the formation the feed STATES, row by
+   row as the feed lists it. (RotoWire's per-player positions looked like a
+   formation but were a template — five patterns across 239 lineups — so they
+   no longer draw anything.) Most clubs play the same shape every week, so the
+   useful signal is a predicted CHANGE from what the club last played, which
+   is called out in gold. The model's P(start) sits under each name, and
+   anyone it rates as a likely starter that the feed left out is listed
+   underneath. */
 function XiCard({ c, team }) {
-  const bands = []
-  for (const x of c.xi || []) {
-    (bands[x.band] = bands[x.band] || []).push(x)
-  }
   const omitted = (c.rows || []).filter((r) => !r.predicted && r.disagree)
   return (
-    <div className="lu-card">
+    <div className={`lu-card ${c.shape_change ? 'changed' : ''}`}>
       <div className="lu-head">
         <img className="fx-crest" src={badgeUrl(team?.code)} alt="" loading="lazy"
           onError={(e) => { e.currentTarget.style.visibility = 'hidden' }} />
@@ -371,16 +377,26 @@ function XiCard({ c, team }) {
         {c.formation && <span className="lu-form">{c.formation}</span>}
         <span className="lu-when">{ago(Date.parse(c.observed) / 1000)}</span>
       </div>
+      <div className="lu-sub">
+        {c.shape_change ? (
+          <span className="lu-change">shape change · last played {c.last_formation}</span>
+        ) : c.last_formation ? (
+          <span>same shape as last match</span>
+        ) : (
+          <span>no previous match on record</span>
+        )}
+        <span className="lu-src">{c.status === 'confirmed' ? 'confirmed' : 'predicted'} · {c.source}</span>
+      </div>
       <div className="lu-pitch">
         <PitchLines />
         <div className="lu-rows">
-          {bands.filter(Boolean).map((row, i) => (
+          {(c.xi_rows || []).map((row, i) => (
             <div className="lu-row" key={i}>
-              {row.map((x) => (
-                <div key={`${x.full_name}-${x.slot}`}
+              {row.map((x, j) => (
+                <div key={`${x.full_name}-${j}`}
                   className={`lu-p ${x.disagree ? 'dis' : ''} ${x.resolved ? '' : 'unk'}`}
-                  title={`${x.full_name} · ${x.position}${x.p_start != null
-                    ? ` · model P(start) ${Math.round(x.p_start * 100)}%` : ''}`}>
+                  title={`${x.full_name}${x.p_start != null
+                    ? ` · model P(start) ${Math.round(x.p_start * 100)}%` : ' · not matched to an FPL player'}`}>
                   <span className="lu-name">{x.name}</span>
                   <span className="lu-ps">
                     {x.p_start != null ? `${Math.round(x.p_start * 100)}%` : '—'}

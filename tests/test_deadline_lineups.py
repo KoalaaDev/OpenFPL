@@ -42,11 +42,6 @@ def test_an_unmatched_name_is_reported_not_dropped():
     assert unresolved == [("ARS", "Nobody At All")]
 
 
-def test_forecasts_names_strips_the_timestamp():
-    f = {"ARS": ("2026-09-18T09:00:00+00:00", {"Raya", "Saka"})}
-    assert deadline.forecasts_names(f) == {"ARS": {"Raya", "Saka"}}
-
-
 def test_the_desk_frame_carries_every_column_resolve_reads():
     """Pins the exact SELECT the desk runs against what the resolver touches,
     so a future trim of either side fails here instead of in production."""
@@ -56,31 +51,73 @@ def test_the_desk_frame_carries_every_column_resolve_reads():
         assert col in src, col
 
 
-def test_formation_uses_the_feeds_positions_not_fpls_labels():
-    """FPL calls a winger a MID, so a 4-2-3-1 drawn from FPL labels reads as
-    4-5-1. The feed's own pitch positions give the real shape."""
-    archive = pd.DataFrame([
-        {"gw": 5, "team_abbr": "ARS", "status": "predicted", "observed": pd.Timestamp("2026-09-16T05:00Z"),
-         "player": n, "position": pos, "slot": str(i + 1)}
-        for i, (n, pos) in enumerate([
-            ("David Raya", "GK"), ("Left Back", "DL"), ("Centre One", "DC"), ("Centre Two", "DC"),
-            ("Right Back", "DR"), ("Holder One", "DMC"), ("Holder Two", "DMC"),
-            ("Left Wing", "AML"), ("Ten", "AMC"), ("Bukayo Saka", "AMR"), ("Striker", "FW")])])
-    names = set(archive["player"])
-    xi, formation = deadline._formation(
-        archive, 5, "ARS", "2026-09-16T05:00:00+00:00", names,
-        {("ARS", "David Raya"): 1}, {1: {"p_start": 0.91, "disagree": False}},
-        {1: {"name": "Raya"}})
-    assert formation == "4-2-3-1"
-    assert len(xi) == 11
-    raya = next(x for x in xi if x["full_name"] == "David Raya")
-    assert raya["name"] == "Raya" and raya["p_start"] == 0.91 and raya["resolved"]
-    # an unmatched name still stands in the XI, with no model number
-    saka = next(x for x in xi if x["full_name"] == "Bukayo Saka")
-    assert saka["resolved"] is False and saka["p_start"] is None and saka["name"] == "Saka"
-    # left to right across a band
-    band4 = [x["position"] for x in xi if x["band"] == 4]
-    assert band4 == ["AML", "AMC", "AMR"]
+def _write_feed(tmp_path, src, rows):
+    d = tmp_path / "collected" / f"lineups_{src}"
+    d.mkdir(parents=True, exist_ok=True)
+    pd.DataFrame(rows).to_csv(d / "2026-27.csv", index=False)
+
+
+def _rows(team, formation, players, observed="2026-09-16T05:00:00+00:00", status="predicted"):
+    out, slot = [], 0
+    for row, names in enumerate(players, start=1):
+        for n in names:
+            slot += 1
+            out.append({"observed_utc": observed, "gw": 5, "source": "x", "team_abbr": team,
+                        "opponent_abbr": "", "status": status, "formation": formation,
+                        "row": row, "slot": slot, "player": n, "short": "", "kickoff_text": ""})
+    return out
+
+
+LEEDS = [["Trafford"], ["Justin", "Elvedi", "Muharemovic"],
+         ["Bogle", "Stach", "Ampadu", "Tanaka", "Gudmundsson"], ["Calvert-Lewin", "Okafor"]]
+
+
+def test_the_formation_is_the_one_the_feed_states(tmp_path, monkeypatch):
+    """RotoWire's positions were a template (five patterns across 239 XIs), so
+    the shape now comes from a feed that STATES one, drawn by its own rows."""
+    from fpl_engine import config
+    monkeypatch.setattr(config, "DATA_DIR", str(tmp_path))
+    _write_feed(tmp_path, "sportsgambler", _rows("LEE", "3-5-2", LEEDS))
+    out = deadline._feed_xis("2026-27", 5, pd.Timestamp("2026-09-17", tz="UTC"))
+    assert out["LEE"]["formation"] == "3-5-2"
+    assert [len(r) for r in out["LEE"]["rows"]] == [1, 3, 5, 2]
+    assert out["LEE"]["source"] == "sportsgambler"
+
+
+def test_sportsgambler_wins_and_ffscout_only_fills_gaps(tmp_path, monkeypatch):
+    from fpl_engine import config
+    monkeypatch.setattr(config, "DATA_DIR", str(tmp_path))
+    _write_feed(tmp_path, "sportsgambler", _rows("LEE", "3-5-2", LEEDS))
+    _write_feed(tmp_path, "ffscout", _rows("LEE", "3-4-3", LEEDS[:2] + [LEEDS[2][:4], LEEDS[3] + ["X"]])
+                + _rows("HUL", "5-4-1", [["K"], list("abcde"), list("fghi"), ["j"]]))
+    out = deadline._feed_xis("2026-27", 5, pd.Timestamp("2026-09-17", tz="UTC"))
+    assert out["LEE"]["source"] == "sportsgambler" and out["LEE"]["formation"] == "3-5-2"
+    assert out["HUL"]["source"] == "ffscout"
+
+
+def test_a_snapshot_taken_after_now_is_not_used(tmp_path, monkeypatch):
+    """The desk shows what was known; a later observation must not leak in."""
+    from fpl_engine import config
+    monkeypatch.setattr(config, "DATA_DIR", str(tmp_path))
+    _write_feed(tmp_path, "sportsgambler",
+                _rows("LEE", "3-5-2", LEEDS, observed="2026-09-16T05:00:00+00:00")
+                + _rows("LEE", "4-4-2", [["T"], list("abcd"), list("efgh"), ["i", "j"]],
+                        observed="2026-09-18T05:00:00+00:00"))
+    out = deadline._feed_xis("2026-27", 5, pd.Timestamp("2026-09-17", tz="UTC"))
+    assert out["LEE"]["formation"] == "3-5-2"
+
+
+def test_a_short_eleven_is_not_drawn(tmp_path, monkeypatch):
+    from fpl_engine import config
+    monkeypatch.setattr(config, "DATA_DIR", str(tmp_path))
+    _write_feed(tmp_path, "sportsgambler", _rows("LEE", "3-5-2", [["Trafford"], ["Justin"]]))
+    assert deadline._feed_xis("2026-27", 5, pd.Timestamp("2026-09-17", tz="UTC")) == {}
+
+
+def test_rotowire_does_not_draw_the_shape():
+    """It remains the scored feed; it must not come back as a formation source."""
+    assert "rotowire" not in deadline.FORMATION_FEEDS
+    assert deadline.FORMATION_FEEDS[0] == "sportsgambler"
 
 
 def test_the_lineup_classes_do_not_reuse_the_mini_league_names():

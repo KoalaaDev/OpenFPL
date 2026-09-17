@@ -2521,18 +2521,35 @@ directly gets only `{"window": …, "preview_only": true}`, and `force` (a cache
 bypass) is honoured for admins only. Inside the window everyone gets the desk.
 `tests/test_live_window.py`.
 
-**Predicted XIs are drawn as formations**, from the feed's OWN pitch positions
-(`GK · DL DC DC DR · DMC DMC · AML AMC AMR · FW`), not FPL's four labels —
-FPL calls a winger a MID, so a 4-2-3-1 drawn from FPL labels reads 4-5-1.
-`deadline._formation` bands and orders them left to right and builds the
-string (all 20 clubs: 4-2-3-1, 3-4-2-1, 5-4-1). The eleven come from the feed,
-so a name the resolver cannot match still stands in the XI, marked, with no
-model number; the model's P(start) is an annotation, and anyone it rates as a
-likely starter the feed left out is listed under the pitch. **The classes are
-`lu-*`**: the Mini League already owns `.xi-card` (68px wide), `.xi-pitch`,
-`.xi-row` and `.xi-name`, and reusing them squeezed every club into a strip —
-the second class collision this round after `.advice`. Grep for a class name
-before introducing one.
+**Predicted XIs are drawn as formations — from a feed that STATES one.** The
+first version built the shape from RotoWire's per-player positions (`DL`,
+`DMC`, `AMR`…) and was wrong in a way that looked right: those positions are a
+**template**, not a forecast. Across 239 predicted XIs this season RotoWire
+used five position sequences in total, 18 of 20 clubs never changed shape, and
+its implied shape matched what was actually played **85%** of the time against
+**92%** for simply repeating each club's last formation (80 club-matches of
+BBC team sheets). It had Chelsea and Leeds at 3-4-2-1 for GW5; they last
+played 4-2-3-1 and 3-5-2. The check that would have caught it is "does it
+ever vary, and does it beat the naive baseline" — not "does it look plausible".
+
+The shape now comes from `deadline.FORMATION_FEEDS`: **SportsGambler** (states a
+formation per fixture, lists the eleven by row, every club's rows sum to its
+stated shape, and its GW5 formations matched each club's most recent played
+shape 19/20 times, the odd ones included), then **FFScout** as fallback (its
+vocabulary differs — "3-4-3" where BBC/Opta say 3-4-2-1). RotoWire remains the
+SCORED feed in `lineup_feed.py`; it just no longer draws anything. Each club
+also carries `last_formation` from BBC's archived team sheets, and a predicted
+**change** of shape is flagged in gold — the useful signal, since 71% of this
+season's club-matches were 4-2-3-1 and most boards will genuinely look alike.
+Rows are drawn as the feed lists them (right to left across the pitch, which
+with the keeper at the top is left to right on screen). An unmatched name
+still stands in its row, marked; anyone the model rates a likely starter the
+feed left out is listed under the pitch. **Unscored so far**: SportsGambler has
+one gameweek on file; its formation hit rate against BBC is the next thing to
+measure. **The classes are `lu-*`**: the Mini League owns `.xi-card` (68px
+wide), `.xi-pitch`, `.xi-row` and `.xi-name`, and reusing them squeezed every
+club into a strip — the second class collision in a day after `.advice`. Grep
+for a class name before introducing one.
 
 The admin **Deadline** tab stopped duplicating those feeds and became what only
 an operator can act on: three health checks (scheduled refresh, projections,

@@ -137,148 +137,166 @@ def _pressers(conn, season: str, gw: int, pl: dict, tm: dict) -> list[dict]:
     return out[:120]
 
 
-def _lineups(conn, season: str, gw: int, pl: dict, tm: dict, start_p: dict) -> dict:
-    """RotoWire's latest predicted XI per club against the model's P(start).
+# The predicted-lineup feeds that state a FORMATION, in order of trust.
+#
+# RotoWire is not one of them. Its per-player position is a template: across
+# 239 predicted XIs this season it used five position sequences in total, 18 of
+# 20 clubs never changed shape, and its implied shape matched what was played
+# 85% of the time -- worse than simply repeating each club's last formation
+# (92%). It had Chelsea and Leeds at 3-4-2-1 for GW5; they last played 4-2-3-1
+# and 3-5-2.
+#
+# SportsGambler states a formation per fixture and lists the eleven by row, and
+# every club's rows add up to its stated shape; for GW5 its formation matched
+# each club's most recent played shape 19/20 times, the odd ones included.
+# FFScout states one too but in its own vocabulary ("3-4-3" where the match
+# data says 3-4-2-1), so it is the fallback. RotoWire stays the SCORED feed in
+# lineup_feed.py -- its XI names are what that scorecard prices -- it just does
+# not get to draw the shape.
+FORMATION_FEEDS = ("sportsgambler", "ffscout")
 
-    `lineup_feed.resolve` wants the same frame the backtest gives it —
-    full_name, web_name and the club's short_name — and returns a TRIPLE
-    (resolved, unresolved, mismatched) keyed by (team, name). Feeding it the
-    trimmed frame this desk had built raised KeyError on the first line and
-    the bare `except` turned that into "0 resolved" for every club, which then
-    read as though the feed disagreed with the model about 175 players. An
-    entity-resolution failure must never be able to present itself as a
-    finding — so the note now says which it is.
+
+def _feed_xis(season: str, gw: int, now) -> dict:
+    """{club: {source, formation, status, observed, rows: [[name, ...], ...]}}
+    -- the latest snapshot per club strictly before `now`, best feed first."""
+    from fpl_engine import lineup_feed as lf
+    out: dict = {}
+    for src in FORMATION_FEEDS:
+        path = os.path.join(config.DATA_DIR, "collected", f"lineups_{src}", f"{season}.csv")
+        try:
+            d = pd.read_csv(path)
+        except (OSError, ValueError):
+            continue
+        d = d[(d["gw"] == gw) & d["formation"].notna() & d["player"].notna()]
+        if d.empty:
+            continue
+        d = d.assign(observed=pd.to_datetime(d["observed_utc"], utc=True, format="ISO8601"))
+        d = d[d["observed"] < now]
+        for abbr, g in d.groupby("team_abbr"):
+            club = lf.ABBR.get(abbr, abbr)
+            if club in out:
+                continue                      # a better feed already has it
+            g = g[g["observed"] == g["observed"].max()]
+            rows = [[str(n) for n in r.sort_values("slot")["player"]]
+                    for _, r in g.groupby("row", sort=True)]
+            if sum(len(r) for r in rows) < 10:
+                continue
+            out[club] = {"source": src, "formation": str(g["formation"].iloc[0]),
+                         "status": str(g["status"].iloc[0]),
+                         "observed": g["observed"].max().isoformat(), "rows": rows}
+    return out
+
+
+def _last_played(conn, season: str, tm: dict, now) -> dict:
+    """{club: formation} -- the shape each club actually lined up in last time,
+    from BBC's archived team sheets. The reference a forecast is read against:
+    a feed predicting a CHANGE of shape is the thing on this panel worth
+    stopping for, because most clubs play the same way every week (71% of this
+    season's club-matches were 4-2-3-1)."""
+    from fpl_engine.ingest.odds import resolve_team
+    try:
+        rows = conn.execute(
+            "SELECT m.kickoff_utc, l.team, l.formation FROM acq_bbc_lineup l "
+            "JOIN acq_bbc_match m ON m.event_urn = l.event_urn "
+            "WHERE m.season = ? AND l.is_starter = 1 AND l.formation IS NOT NULL "
+            "AND m.kickoff_utc < ? GROUP BY m.event_urn, l.team "
+            "ORDER BY m.kickoff_utc", (season, now.isoformat())).fetchall()
+        names = {r[0]: r[1] for r in conn.execute(
+            "SELECT name, short_name FROM team WHERE season = ?", (season,))}
+    except Exception:  # noqa: BLE001 - no BBC archive: no reference, not an error
+        return {}
+    out: dict = {}
+    for _kick, team, formation in rows:
+        try:
+            out[names[resolve_team(team, list(names))]] = formation
+        except (KeyError, ValueError):
+            continue                          # later matches overwrite earlier
+    return out
+
+
+def _lineups(conn, season: str, gw: int, pl: dict, tm: dict, start_p: dict) -> dict:
+    """Each club's expected XI, in the formation a feed actually states, with
+    the model's P(start) on every player.
+
+    `lineup_feed.resolve` wants the same frame the backtest gives it --
+    full_name, web_name and the club's short_name -- and returns a TRIPLE
+    (resolved, unresolved, mismatched) keyed by (team, name). A resolution
+    failure must never be able to present itself as a finding, so a miss is
+    reported in `note` and marked on the player.
     """
     from fpl_engine import lineup_feed as lf
-    try:
-        archive = lf.load_archive(season)
-    except Exception:  # noqa: BLE001
-        return {"clubs": [], "note": "no lineup archive"}
-    if archive.empty:
-        return {"clubs": [], "note": "no lineup archive yet"}
-    forecasts = lf.pre_deadline_forecasts(archive, gw, pd.Timestamp.now(tz="UTC"))
-    if not forecasts:
+    now = pd.Timestamp.now(tz="UTC")
+    feeds = _feed_xis(season, gw, now)
+    if not feeds:
         return {"clubs": [], "gw": gw,
-                "note": f"no predicted XI archived for GW{gw} yet"}
+                "note": f"no predicted XI with a formation archived for GW{gw} yet"}
     players = pd.DataFrame([dict(r) for r in conn.execute(
         "SELECT p.player_id, p.full_name, p.web_name, p.team_id, p.position, t.short_name "
         "FROM player p JOIN team t ON t.team_id = p.team_id AND t.season = p.season "
         "WHERE p.season = ?", (season,))])
     if players.empty:
         return {"clubs": [], "gw": gw, "note": "no players loaded"}
+    names_by_club = {c: {n for row in f["rows"] for n in row} for c, f in feeds.items()}
     try:
-        resolved, unresolved, _ = lf.resolve(forecasts_names(forecasts), players)
+        resolved, unresolved, _ = lf.resolve(names_by_club, players)
     except Exception as exc:  # noqa: BLE001
         return {"clubs": [], "gw": gw, "note": f"could not resolve names: {exc}"}
+    last = _last_played(conn, season, tm, now)
 
     abbr_to_team = {v: k for k, v in tm.items()}
     clubs = []
-    for abbr, (when, names) in sorted(forecasts.items()):
+    for abbr, f in sorted(feeds.items()):
+        names = names_by_club[abbr]
         ids = {resolved[(abbr, n)] for n in names if (abbr, n) in resolved}
-        tid = abbr_to_team.get(lf.ABBR.get(abbr, abbr))
+        tid = abbr_to_team.get(abbr)
         squad = players[players["team_id"] == tid] if tid is not None else players.iloc[0:0]
-        rows = []
+        model: dict = {}
         for _, srow in squad.iterrows():
             pid = int(srow["player_id"])
             ps = start_p.get(pid)
             in_xi = pid in ids
             if in_xi or (ps is not None and ps >= 0.3):
-                rows.append({"player_id": pid, "name": srow["web_name"],
-                             # the desk draws the predicted XI as a formation
-                             "pos": srow["position"],
-                             "predicted": in_xi,
-                             "p_start": None if ps is None else round(float(ps), 2),
-                             # only meaningful once the club's XI actually
-                             # resolved: with nothing resolved every starter
-                             # looks omitted
-                             "disagree": len(ids) >= 8 and (
-                                 (in_xi and ps is not None and ps < 0.5)
-                                 or ((not in_xi) and ps is not None and ps >= 0.6))})
-        rows.sort(key=lambda r: (not r["predicted"], -(r["p_start"] or 0)))
-        xi, formation = _formation(archive, gw, abbr, when, names, resolved,
-                                   {r["player_id"]: r for r in rows}, pl)
-        clubs.append({"team": abbr, "team_id": tid, "observed": when,
-                      "n_named": len(names),
-                      "n_resolved": len(ids), "rows": rows,
-                      "xi": xi, "formation": formation,
+                model[pid] = {
+                    "player_id": pid, "name": srow["web_name"], "pos": srow["position"],
+                    "predicted": in_xi,
+                    "p_start": None if ps is None else round(float(ps), 2),
+                    # only meaningful once the club's XI actually resolved:
+                    # with nothing resolved every starter looks omitted
+                    "disagree": len(ids) >= 8 and (
+                        (in_xi and ps is not None and ps < 0.5)
+                        or ((not in_xi) and ps is not None and ps >= 0.6))}
+        # the feed's rows, keeper first, each row as the feed lists it --
+        # right to left across the pitch, which with the keeper drawn at the
+        # TOP is left to right on screen
+        xi_rows = []
+        for row in f["rows"]:
+            cells = []
+            for n in row:
+                pid = resolved.get((abbr, n))
+                m = model.get(pid) if pid is not None else None
+                cells.append({"player_id": pid, "full_name": n,
+                              "name": ((pl.get(pid) or {}).get("name") if pid is not None
+                                       else n.split()[-1]),
+                              "p_start": m["p_start"] if m else None,
+                              "disagree": bool(m and m["disagree"]),
+                              "resolved": pid is not None})
+            xi_rows.append(cells)
+        rows = sorted(model.values(), key=lambda r: (not r["predicted"], -(r["p_start"] or 0)))
+        prev = last.get(abbr)
+        clubs.append({"team": abbr, "team_id": tid, "observed": f["observed"],
+                      "source": f["source"], "status": f["status"],
+                      "formation": f["formation"], "last_formation": prev,
+                      # the part worth an eye: a predicted change of shape
+                      "shape_change": bool(prev and prev != f["formation"]),
+                      "xi_rows": xi_rows,
+                      "n_named": len(names), "n_resolved": len(ids), "rows": rows,
                       "disagreements": sum(1 for r in rows if r["disagree"])})
     note = None
     if unresolved:
         note = (f"{len(unresolved)} named players could not be matched to an "
                 f"FPL id (e.g. {', '.join(n for _, n in unresolved[:3])})")
-    return {"clubs": clubs, "gw": gw, "note": note}
-
-
-# RotoWire's pitch positions, not FPL's four labels. FPL calls Saka a "MID", so
-# Arsenal's 4-2-3-1 drawn from FPL positions reads as 4-5-1; the feed says
-# where each man actually stands. Bands run from the keeper forward, and a
-# position's L/C/R suffix orders it across the pitch.
-_BANDS = [
-    ("GK", {"GK"}),
-    ("DEF", {"DL", "DC", "DR", "WBL", "WBR", "D"}),
-    ("DM", {"DML", "DMC", "DMR", "DM"}),
-    ("MID", {"ML", "MC", "MR", "M"}),
-    ("AM", {"AML", "AMC", "AMR", "AM"}),
-    ("FWD", {"FWL", "FW", "FWR", "F"}),
-]
-
-
-def _band(position: str | None) -> int:
-    p = (position or "").upper()
-    for i, (_name, codes) in enumerate(_BANDS):
-        if p in codes:
-            return i
-    return 3                              # unknown: park it in midfield
-
-
-def _side(position: str | None) -> int:
-    p = (position or "").upper()
-    return 0 if p.endswith("L") else 2 if p.endswith("R") else 1
-
-
-def _formation(archive, gw, abbr, when, names, resolved, model_rows, pl):
-    """The feed's predicted XI as rows on a pitch, and its formation string.
-
-    Built from the FEED's own eleven — a name the resolver could not match
-    still stands in the XI (with no model number) rather than leaving a gap,
-    because the formation is the feed's forecast and the model's P(start) is
-    only an annotation on it.
-    """
-    try:
-        d = archive[(archive["gw"] == gw) & (archive["team_abbr"] == abbr)
-                    & (archive["status"] == "predicted")
-                    & (archive["observed"] == pd.Timestamp(when))]
-    except Exception:  # noqa: BLE001
-        return [], None
-    xi = []
-    for r in d.itertuples():
-        if r.player not in names:
-            continue
-        pid = resolved.get((abbr, r.player))
-        m = model_rows.get(pid) if pid is not None else None
-        slot = pd.to_numeric(r.slot, errors="coerce")
-        xi.append({
-            "player_id": pid,
-            "name": (pl.get(pid) or {}).get("name") if pid is not None
-                    else str(r.player).split()[-1],
-            "full_name": r.player,
-            "position": r.position,
-            "band": _band(r.position),
-            "side": _side(r.position),
-            "slot": None if pd.isna(slot) else int(slot),
-            "p_start": m["p_start"] if m else None,
-            "disagree": bool(m and m["disagree"]),
-            "resolved": pid is not None,
-        })
-    xi.sort(key=lambda x: (x["band"], x["side"], x["slot"] or 0))
-    counts = [sum(1 for x in xi if x["band"] == b) for b in range(1, len(_BANDS))]
-    formation = "-".join(str(c) for c in counts if c) or None
-    return xi, formation
-
-
-def forecasts_names(forecasts: dict) -> dict:
-    """{team: (observed, names)} -> {team: names}, the shape `resolve` takes."""
-    return {t: names for t, (_when, names) in forecasts.items()}
+    return {"clubs": clubs, "gw": gw, "note": note,
+            "sources": sorted({c["source"] for c in clubs})}
 
 
 def _movers(gw: int, pl: dict, tm: dict) -> dict:
