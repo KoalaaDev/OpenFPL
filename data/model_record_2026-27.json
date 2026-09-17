@@ -1,0 +1,3567 @@
+{
+ "season": "2026-27",
+ "version": 2,
+ "gws": {
+  "1": {
+   "gw": 1,
+   "source": "replay",
+   "snapshot_built_at": null,
+   "deadline": "2026-08-21T17:30:00Z",
+   "availability_at_deadline": false,
+   "live_vs_replay_spearman": null,
+   "fpl": {
+    "average": 50,
+    "highest": 131
+   },
+   "model_xi": {
+    "xi": [
+     {
+      "player_id": 412,
+      "name": "Lammens",
+      "pos": "GK",
+      "team_id": 16,
+      "price": 5.0,
+      "ep": 3.94,
+      "pts": 1,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 4,
+      "name": "Gabriel",
+      "pos": "DEF",
+      "team_id": 1,
+      "price": 8.0,
+      "ep": 4.73,
+      "pts": 5,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 387,
+      "name": "O'Reilly",
+      "pos": "DEF",
+      "team_id": 15,
+      "price": 6.5,
+      "ep": 4.64,
+      "pts": 2,
+      "mins": 62,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 200,
+      "name": "Lacroix",
+      "pos": "DEF",
+      "team_id": 6,
+      "price": 6.0,
+      "ep": 3.83,
+      "pts": 6,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 12,
+      "name": "Saka",
+      "pos": "MID",
+      "team_id": 1,
+      "price": 9.5,
+      "ep": 5.68,
+      "pts": 9,
+      "mins": 67,
+      "captain": true,
+      "vice": false
+     },
+     {
+      "player_id": 426,
+      "name": "B.Fernandes",
+      "pos": "MID",
+      "team_id": 16,
+      "price": 12.0,
+      "ep": 4.95,
+      "pts": 2,
+      "mins": 90,
+      "captain": false,
+      "vice": true
+     },
+     {
+      "player_id": 427,
+      "name": "Mbeumo",
+      "pos": "MID",
+      "team_id": 16,
+      "price": 8.0,
+      "ep": 4.82,
+      "pts": 2,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 13,
+      "name": "Rice",
+      "pos": "MID",
+      "team_id": 1,
+      "price": 7.5,
+      "ep": 4.75,
+      "pts": 3,
+      "mins": 67,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 155,
+      "name": "Enzo",
+      "pos": "MID",
+      "team_id": 15,
+      "price": 7.0,
+      "ep": 4.75,
+      "pts": 1,
+      "mins": 25,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 411,
+      "name": "Haaland",
+      "pos": "FWD",
+      "team_id": 15,
+      "price": 15.5,
+      "ep": 4.58,
+      "pts": 2,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 569,
+      "name": "Gonzalo",
+      "pos": "FWD",
+      "team_id": 10,
+      "price": 6.0,
+      "ep": 3.81,
+      "pts": 6,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     }
+    ],
+    "formation": "3-5-2",
+    "projected": 56.2,
+    "actual": 48.0
+   },
+   "model_squad": {
+    "xi": [
+     {
+      "player_id": 412,
+      "name": "Lammens",
+      "pos": "GK",
+      "team_id": 16,
+      "price": 5.0,
+      "ep": 3.94,
+      "pts": 1,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 4,
+      "name": "Gabriel",
+      "pos": "DEF",
+      "team_id": 1,
+      "price": 8.0,
+      "ep": 4.73,
+      "pts": 5,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 387,
+      "name": "O'Reilly",
+      "pos": "DEF",
+      "team_id": 15,
+      "price": 6.5,
+      "ep": 4.64,
+      "pts": 2,
+      "mins": 62,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 200,
+      "name": "Lacroix",
+      "pos": "DEF",
+      "team_id": 6,
+      "price": 6.0,
+      "ep": 3.83,
+      "pts": 6,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 504,
+      "name": "Vuskovic",
+      "pos": "DEF",
+      "team_id": 5,
+      "price": 5.0,
+      "ep": 3.78,
+      "pts": 6,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 12,
+      "name": "Saka",
+      "pos": "MID",
+      "team_id": 1,
+      "price": 9.5,
+      "ep": 5.68,
+      "pts": 9,
+      "mins": 67,
+      "captain": true,
+      "vice": false
+     },
+     {
+      "player_id": 426,
+      "name": "B.Fernandes",
+      "pos": "MID",
+      "team_id": 16,
+      "price": 12.0,
+      "ep": 4.95,
+      "pts": 2,
+      "mins": 90,
+      "captain": false,
+      "vice": true
+     },
+     {
+      "player_id": 427,
+      "name": "Mbeumo",
+      "pos": "MID",
+      "team_id": 16,
+      "price": 8.0,
+      "ep": 4.82,
+      "pts": 2,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 13,
+      "name": "Rice",
+      "pos": "MID",
+      "team_id": 1,
+      "price": 7.5,
+      "ep": 4.75,
+      "pts": 3,
+      "mins": 67,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 155,
+      "name": "Enzo",
+      "pos": "MID",
+      "team_id": 15,
+      "price": 7.0,
+      "ep": 4.75,
+      "pts": 1,
+      "mins": 25,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 569,
+      "name": "Gonzalo",
+      "pos": "FWD",
+      "team_id": 10,
+      "price": 6.0,
+      "ep": 3.81,
+      "pts": 6,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     }
+    ],
+    "formation": "4-5-1",
+    "projected": 55.4,
+    "bench": [
+     {
+      "player_id": 564,
+      "name": "Scherpen",
+      "pos": "GK",
+      "team_id": 12,
+      "price": 4.5,
+      "ep": 3.25,
+      "pts": 2,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 541,
+      "name": "Meunier",
+      "pos": "DEF",
+      "team_id": 20,
+      "price": 4.5,
+      "ep": 3.55,
+      "pts": 1,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 194,
+      "name": "Thomas-Asante",
+      "pos": "FWD",
+      "team_id": 7,
+      "price": 5.0,
+      "ep": 2.97,
+      "pts": 2,
+      "mins": 69,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 640,
+      "name": "Flemming",
+      "pos": "FWD",
+      "team_id": 12,
+      "price": 5.5,
+      "ep": 2.91,
+      "pts": 0,
+      "mins": 0,
+      "captain": false,
+      "vice": false
+     }
+    ],
+    "cost": 100.0,
+    "actual": 52.0
+   },
+   "hindsight_xi": {
+    "xi": [
+     {
+      "player_id": 572,
+      "name": "Tzolakis",
+      "pos": "GK",
+      "team_id": 11,
+      "price": 4.5,
+      "ep": 2.51,
+      "pts": 10,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 115,
+      "name": "De Cuyper",
+      "pos": "DEF",
+      "team_id": 5,
+      "price": 4.5,
+      "ep": 1.72,
+      "pts": 17,
+      "mins": 77,
+      "captain": true,
+      "vice": false
+     },
+     {
+      "player_id": 586,
+      "name": "Mendy",
+      "pos": "DEF",
+      "team_id": 11,
+      "price": 4.0,
+      "ep": 2.32,
+      "pts": 15,
+      "mins": 63,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 279,
+      "name": "Ajayi",
+      "pos": "DEF",
+      "team_id": 11,
+      "price": 4.0,
+      "ep": 2.37,
+      "pts": 14,
+      "mins": 63,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 88,
+      "name": "Kayode",
+      "pos": "DEF",
+      "team_id": 4,
+      "price": 4.5,
+      "ep": 2.64,
+      "pts": 13,
+      "mins": 75,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 123,
+      "name": "Hinshelwood",
+      "pos": "MID",
+      "team_id": 5,
+      "price": 6.0,
+      "ep": 3.33,
+      "pts": 16,
+      "mins": 63,
+      "captain": false,
+      "vice": true
+     },
+     {
+      "player_id": 565,
+      "name": "M.Sangar\u00e9",
+      "pos": "MID",
+      "team_id": 4,
+      "price": 5.5,
+      "ep": 3.96,
+      "pts": 14,
+      "mins": 75,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 154,
+      "name": "Palmer",
+      "pos": "MID",
+      "team_id": 6,
+      "price": 9.5,
+      "ep": 3.75,
+      "pts": 13,
+      "mins": 82,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 335,
+      "name": "Stach",
+      "pos": "MID",
+      "team_id": 13,
+      "price": 6.0,
+      "ep": 2.33,
+      "pts": 13,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 367,
+      "name": "Gakpo",
+      "pos": "MID",
+      "team_id": 14,
+      "price": 7.0,
+      "ep": 3.69,
+      "pts": 12,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 165,
+      "name": "Jo\u00e3o Pedro",
+      "pos": "FWD",
+      "team_id": 6,
+      "price": 7.5,
+      "ep": 3.59,
+      "pts": 11,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     }
+    ],
+    "formation": "4-5-1",
+    "projected": 33.9,
+    "actual": 165.0
+   },
+   "hindsight_squad": {
+    "xi": [
+     {
+      "player_id": 572,
+      "name": "Tzolakis",
+      "pos": "GK",
+      "team_id": 11,
+      "price": 4.5,
+      "ep": 2.51,
+      "pts": 10,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 115,
+      "name": "De Cuyper",
+      "pos": "DEF",
+      "team_id": 5,
+      "price": 4.5,
+      "ep": 1.72,
+      "pts": 17,
+      "mins": 77,
+      "captain": true,
+      "vice": false
+     },
+     {
+      "player_id": 586,
+      "name": "Mendy",
+      "pos": "DEF",
+      "team_id": 11,
+      "price": 4.0,
+      "ep": 2.32,
+      "pts": 15,
+      "mins": 63,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 279,
+      "name": "Ajayi",
+      "pos": "DEF",
+      "team_id": 11,
+      "price": 4.0,
+      "ep": 2.37,
+      "pts": 14,
+      "mins": 63,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 88,
+      "name": "Kayode",
+      "pos": "DEF",
+      "team_id": 4,
+      "price": 4.5,
+      "ep": 2.64,
+      "pts": 13,
+      "mins": 75,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 123,
+      "name": "Hinshelwood",
+      "pos": "MID",
+      "team_id": 5,
+      "price": 6.0,
+      "ep": 3.33,
+      "pts": 16,
+      "mins": 63,
+      "captain": false,
+      "vice": true
+     },
+     {
+      "player_id": 565,
+      "name": "M.Sangar\u00e9",
+      "pos": "MID",
+      "team_id": 4,
+      "price": 5.5,
+      "ep": 3.96,
+      "pts": 14,
+      "mins": 75,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 154,
+      "name": "Palmer",
+      "pos": "MID",
+      "team_id": 6,
+      "price": 9.5,
+      "ep": 3.75,
+      "pts": 13,
+      "mins": 82,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 335,
+      "name": "Stach",
+      "pos": "MID",
+      "team_id": 13,
+      "price": 6.0,
+      "ep": 2.33,
+      "pts": 13,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 367,
+      "name": "Gakpo",
+      "pos": "MID",
+      "team_id": 14,
+      "price": 7.0,
+      "ep": 3.69,
+      "pts": 12,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 165,
+      "name": "Jo\u00e3o Pedro",
+      "pos": "FWD",
+      "team_id": 6,
+      "price": 7.5,
+      "ep": 3.59,
+      "pts": 11,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     }
+    ],
+    "formation": "4-5-1",
+    "projected": 33.9,
+    "bench": [
+     {
+      "player_id": 385,
+      "name": "Trafford",
+      "pos": "GK",
+      "team_id": 13,
+      "price": 5.0,
+      "ep": 2.0,
+      "pts": 9,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 10,
+      "name": "White",
+      "pos": "DEF",
+      "team_id": 1,
+      "price": 5.5,
+      "ep": 1.36,
+      "pts": 11,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 316,
+      "name": "Emersonn",
+      "pos": "FWD",
+      "team_id": 12,
+      "price": 5.5,
+      "ep": 1.62,
+      "pts": 9,
+      "mins": 65,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 249,
+      "name": "Barry",
+      "pos": "FWD",
+      "team_id": 9,
+      "price": 5.5,
+      "ep": 2.58,
+      "pts": 8,
+      "mins": 78,
+      "captain": false,
+      "vice": false
+     }
+    ],
+    "cost": 84.5,
+    "actual": 165.0
+   },
+   "captain": {
+    "model": {
+     "name": "Saka",
+     "pts": 9,
+     "ep": 5.68
+    },
+    "crowd": {
+     "name": "Haaland",
+     "pts": 2
+    },
+    "best": {
+     "name": "De Cuyper",
+     "pts": 17
+    }
+   },
+   "accuracy": {
+    "spearman": 0.548,
+    "spearman_played": 0.316,
+    "top20_hits": 1,
+    "n_played": 310,
+    "mae_played": 2.11,
+    "bias_played": -0.87,
+    "by_pos": {
+     "GK": {
+      "n": 20,
+      "mae": 2.03,
+      "bias": -0.92
+     },
+     "DEF": {
+      "n": 108,
+      "mae": 2.38,
+      "bias": -1.08
+     },
+     "MID": {
+      "n": 147,
+      "mae": 2.0,
+      "bias": -0.8
+     },
+     "FWD": {
+      "n": 35,
+      "mae": 1.79,
+      "bias": -0.46
+     }
+    }
+   },
+   "calibration": [
+    {
+     "lo": 0.3,
+     "hi": 1,
+     "n": 138,
+     "pred": 98.35,
+     "act": 45.0
+    },
+    {
+     "lo": 1,
+     "hi": 2,
+     "n": 178,
+     "pred": 265.35,
+     "act": 242.0
+    },
+    {
+     "lo": 2,
+     "hi": 3,
+     "n": 159,
+     "pred": 390.51,
+     "act": 370.0
+    },
+    {
+     "lo": 3,
+     "hi": 4,
+     "n": 57,
+     "pred": 198.04,
+     "act": 231.0
+    },
+    {
+     "lo": 4,
+     "hi": 5,
+     "n": 11,
+     "pred": 50.85,
+     "act": 41.0
+    },
+    {
+     "lo": 5,
+     "hi": 6,
+     "n": 1,
+     "pred": 5.68,
+     "act": 9.0
+    },
+    {
+     "lo": 6,
+     "hi": 8,
+     "n": 0,
+     "pred": 0.0,
+     "act": 0.0
+    },
+    {
+     "lo": 8,
+     "hi": 99,
+     "n": 0,
+     "pred": 0.0,
+     "act": 0.0
+    }
+   ],
+   "components": {
+    "goals": {
+     "pred": 32.9,
+     "act": 29.0
+    },
+    "assists": {
+     "pred": 28.9,
+     "act": 28.0
+    },
+    "clean_sheets": {
+     "pred": 27.8,
+     "act": 32.0
+    },
+    "defcon_crossings": {
+     "pred": 41.1,
+     "act": 31.0
+    },
+    "bonus": {
+     "pred": 74.8,
+     "act": 64.0
+    },
+    "team_clean_sheets": {
+     "pred": 5.1,
+     "act": 6.0
+    }
+   },
+   "xi_deltas": [
+    {
+     "name": "Enzo",
+     "pos": "MID",
+     "team_id": 15,
+     "ep": 4.75,
+     "pts": 1,
+     "delta": -3.75
+    },
+    {
+     "name": "B.Fernandes",
+     "pos": "MID",
+     "team_id": 16,
+     "ep": 4.95,
+     "pts": 2,
+     "delta": -2.95
+    },
+    {
+     "name": "Lammens",
+     "pos": "GK",
+     "team_id": 16,
+     "ep": 3.94,
+     "pts": 1,
+     "delta": -2.94
+    },
+    {
+     "name": "Mbeumo",
+     "pos": "MID",
+     "team_id": 16,
+     "ep": 4.82,
+     "pts": 2,
+     "delta": -2.82
+    },
+    {
+     "name": "O'Reilly",
+     "pos": "DEF",
+     "team_id": 15,
+     "ep": 4.64,
+     "pts": 2,
+     "delta": -2.64
+    },
+    {
+     "name": "Haaland",
+     "pos": "FWD",
+     "team_id": 15,
+     "ep": 4.58,
+     "pts": 2,
+     "delta": -2.58
+    },
+    {
+     "name": "Rice",
+     "pos": "MID",
+     "team_id": 1,
+     "ep": 4.75,
+     "pts": 3,
+     "delta": -1.75
+    },
+    {
+     "name": "Gabriel",
+     "pos": "DEF",
+     "team_id": 1,
+     "ep": 4.73,
+     "pts": 5,
+     "delta": 0.27
+    },
+    {
+     "name": "Lacroix",
+     "pos": "DEF",
+     "team_id": 6,
+     "ep": 3.83,
+     "pts": 6,
+     "delta": 2.17
+    },
+    {
+     "name": "Gonzalo",
+     "pos": "FWD",
+     "team_id": 10,
+     "ep": 3.81,
+     "pts": 6,
+     "delta": 2.19
+    },
+    {
+     "name": "Saka",
+     "pos": "MID",
+     "team_id": 1,
+     "ep": 5.68,
+     "pts": 9,
+     "delta": 3.32
+    }
+   ],
+   "built_at": 1789625216.4934037
+  },
+  "2": {
+   "gw": 2,
+   "source": "replay",
+   "snapshot_built_at": null,
+   "deadline": "2026-08-28T17:30:00Z",
+   "availability_at_deadline": false,
+   "live_vs_replay_spearman": null,
+   "fpl": {
+    "average": 81,
+    "highest": 161
+   },
+   "model_xi": {
+    "xi": [
+     {
+      "player_id": 412,
+      "name": "Lammens",
+      "pos": "GK",
+      "team_id": 16,
+      "price": 5.0,
+      "ep": 4.11,
+      "pts": 2,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 356,
+      "name": "Virgil",
+      "pos": "DEF",
+      "team_id": 14,
+      "price": 6.5,
+      "ep": 4.71,
+      "pts": 1,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 200,
+      "name": "Lacroix",
+      "pos": "DEF",
+      "team_id": 6,
+      "price": 6.0,
+      "ep": 4.61,
+      "pts": 1,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 61,
+      "name": "Truffert",
+      "pos": "DEF",
+      "team_id": 3,
+      "price": 5.5,
+      "ep": 4.34,
+      "pts": 4,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 426,
+      "name": "B.Fernandes",
+      "pos": "MID",
+      "team_id": 16,
+      "price": 12.0,
+      "ep": 6.69,
+      "pts": 23,
+      "mins": 90,
+      "captain": true,
+      "vice": false
+     },
+     {
+      "player_id": 154,
+      "name": "Palmer",
+      "pos": "MID",
+      "team_id": 6,
+      "price": 9.5,
+      "ep": 5.4,
+      "pts": 7,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 427,
+      "name": "Mbeumo",
+      "pos": "MID",
+      "team_id": 16,
+      "price": 8.0,
+      "ep": 5.26,
+      "pts": 11,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 368,
+      "name": "Szoboszlai",
+      "pos": "MID",
+      "team_id": 14,
+      "price": 7.0,
+      "ep": 5.15,
+      "pts": 4,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 411,
+      "name": "Haaland",
+      "pos": "FWD",
+      "team_id": 15,
+      "price": 15.5,
+      "ep": 5.89,
+      "pts": 13,
+      "mins": 90,
+      "captain": false,
+      "vice": true
+     },
+     {
+      "player_id": 165,
+      "name": "Jo\u00e3o Pedro",
+      "pos": "FWD",
+      "team_id": 6,
+      "price": 7.6,
+      "ep": 5.28,
+      "pts": 9,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 379,
+      "name": "Isak",
+      "pos": "FWD",
+      "team_id": 14,
+      "price": 9.0,
+      "ep": 5.1,
+      "pts": 8,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     }
+    ],
+    "formation": "3-4-3",
+    "projected": 63.2,
+    "actual": 106.0
+   },
+   "model_squad": {
+    "xi": [
+     {
+      "player_id": 412,
+      "name": "Lammens",
+      "pos": "GK",
+      "team_id": 16,
+      "price": 5.0,
+      "ep": 4.11,
+      "pts": 2,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 356,
+      "name": "Virgil",
+      "pos": "DEF",
+      "team_id": 14,
+      "price": 6.5,
+      "ep": 4.71,
+      "pts": 1,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 200,
+      "name": "Lacroix",
+      "pos": "DEF",
+      "team_id": 6,
+      "price": 6.0,
+      "ep": 4.61,
+      "pts": 1,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 61,
+      "name": "Truffert",
+      "pos": "DEF",
+      "team_id": 3,
+      "price": 5.5,
+      "ep": 4.34,
+      "pts": 4,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 426,
+      "name": "B.Fernandes",
+      "pos": "MID",
+      "team_id": 16,
+      "price": 12.0,
+      "ep": 6.69,
+      "pts": 23,
+      "mins": 90,
+      "captain": true,
+      "vice": false
+     },
+     {
+      "player_id": 154,
+      "name": "Palmer",
+      "pos": "MID",
+      "team_id": 6,
+      "price": 9.5,
+      "ep": 5.4,
+      "pts": 7,
+      "mins": 90,
+      "captain": false,
+      "vice": true
+     },
+     {
+      "player_id": 427,
+      "name": "Mbeumo",
+      "pos": "MID",
+      "team_id": 16,
+      "price": 8.0,
+      "ep": 5.26,
+      "pts": 11,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 368,
+      "name": "Szoboszlai",
+      "pos": "MID",
+      "team_id": 14,
+      "price": 7.0,
+      "ep": 5.15,
+      "pts": 4,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 237,
+      "name": "Ndiaye",
+      "pos": "MID",
+      "team_id": 15,
+      "price": 6.0,
+      "ep": 4.81,
+      "pts": 4,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 165,
+      "name": "Jo\u00e3o Pedro",
+      "pos": "FWD",
+      "team_id": 6,
+      "price": 7.6,
+      "ep": 5.28,
+      "pts": 9,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 379,
+      "name": "Isak",
+      "pos": "FWD",
+      "team_id": 14,
+      "price": 9.0,
+      "ep": 5.1,
+      "pts": 8,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     }
+    ],
+    "formation": "3-5-2",
+    "projected": 62.1,
+    "bench": [
+     {
+      "player_id": 57,
+      "name": "Petrovi\u0107",
+      "pos": "GK",
+      "team_id": 3,
+      "price": 4.5,
+      "ep": 3.56,
+      "pts": 3,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 173,
+      "name": "Thomas",
+      "pos": "DEF",
+      "team_id": 7,
+      "price": 4.0,
+      "ep": 4.15,
+      "pts": 8,
+      "mins": 77,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 175,
+      "name": "van Ewijk",
+      "pos": "DEF",
+      "team_id": 7,
+      "price": 4.0,
+      "ep": 3.78,
+      "pts": 2,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 194,
+      "name": "Thomas-Asante",
+      "pos": "FWD",
+      "team_id": 7,
+      "price": 5.0,
+      "ep": 2.86,
+      "pts": 1,
+      "mins": 32,
+      "captain": false,
+      "vice": false
+     }
+    ],
+    "cost": 99.6,
+    "actual": 97.0
+   },
+   "hindsight_xi": {
+    "xi": [
+     {
+      "player_id": 572,
+      "name": "Tzolakis",
+      "pos": "GK",
+      "team_id": 11,
+      "price": 4.5,
+      "ep": 3.19,
+      "pts": 10,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 229,
+      "name": "Tarkowski",
+      "pos": "DEF",
+      "team_id": 9,
+      "price": 6.0,
+      "ep": 3.38,
+      "pts": 12,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 8,
+      "name": "Calafiori",
+      "pos": "DEF",
+      "team_id": 1,
+      "price": 5.6,
+      "ep": 3.44,
+      "pts": 11,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 449,
+      "name": "Hall",
+      "pos": "DEF",
+      "team_id": 17,
+      "price": 5.0,
+      "ep": 2.98,
+      "pts": 11,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 593,
+      "name": "Dedi\u0107",
+      "pos": "DEF",
+      "team_id": 17,
+      "price": 4.5,
+      "ep": 2.7,
+      "pts": 11,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 426,
+      "name": "B.Fernandes",
+      "pos": "MID",
+      "team_id": 16,
+      "price": 12.0,
+      "ep": 6.69,
+      "pts": 23,
+      "mins": 90,
+      "captain": true,
+      "vice": false
+     },
+     {
+      "player_id": 399,
+      "name": "Cherki",
+      "pos": "MID",
+      "team_id": 15,
+      "price": 7.5,
+      "ep": 3.85,
+      "pts": 14,
+      "mins": 81,
+      "captain": false,
+      "vice": true
+     },
+     {
+      "player_id": 124,
+      "name": "Gro\u00df",
+      "pos": "MID",
+      "team_id": 5,
+      "price": 5.5,
+      "ep": 3.5,
+      "pts": 13,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 480,
+      "name": "Gibbs-White",
+      "pos": "MID",
+      "team_id": 18,
+      "price": 8.0,
+      "ep": 3.19,
+      "pts": 13,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 69,
+      "name": "Scott",
+      "pos": "MID",
+      "team_id": 3,
+      "price": 6.0,
+      "ep": 3.68,
+      "pts": 12,
+      "mins": 86,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 411,
+      "name": "Haaland",
+      "pos": "FWD",
+      "team_id": 15,
+      "price": 15.5,
+      "ep": 5.89,
+      "pts": 13,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     }
+    ],
+    "formation": "4-5-1",
+    "projected": 49.2,
+    "actual": 166.0
+   },
+   "hindsight_squad": {
+    "xi": [
+     {
+      "player_id": 572,
+      "name": "Tzolakis",
+      "pos": "GK",
+      "team_id": 11,
+      "price": 4.5,
+      "ep": 3.19,
+      "pts": 10,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 229,
+      "name": "Tarkowski",
+      "pos": "DEF",
+      "team_id": 9,
+      "price": 6.0,
+      "ep": 3.38,
+      "pts": 12,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 8,
+      "name": "Calafiori",
+      "pos": "DEF",
+      "team_id": 1,
+      "price": 5.6,
+      "ep": 3.44,
+      "pts": 11,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 449,
+      "name": "Hall",
+      "pos": "DEF",
+      "team_id": 17,
+      "price": 5.0,
+      "ep": 2.98,
+      "pts": 11,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 593,
+      "name": "Dedi\u0107",
+      "pos": "DEF",
+      "team_id": 17,
+      "price": 4.5,
+      "ep": 2.7,
+      "pts": 11,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 426,
+      "name": "B.Fernandes",
+      "pos": "MID",
+      "team_id": 16,
+      "price": 12.0,
+      "ep": 6.69,
+      "pts": 23,
+      "mins": 90,
+      "captain": true,
+      "vice": false
+     },
+     {
+      "player_id": 399,
+      "name": "Cherki",
+      "pos": "MID",
+      "team_id": 15,
+      "price": 7.5,
+      "ep": 3.85,
+      "pts": 14,
+      "mins": 81,
+      "captain": false,
+      "vice": true
+     },
+     {
+      "player_id": 124,
+      "name": "Gro\u00df",
+      "pos": "MID",
+      "team_id": 5,
+      "price": 5.5,
+      "ep": 3.5,
+      "pts": 13,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 480,
+      "name": "Gibbs-White",
+      "pos": "MID",
+      "team_id": 18,
+      "price": 8.0,
+      "ep": 3.19,
+      "pts": 13,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 69,
+      "name": "Scott",
+      "pos": "MID",
+      "team_id": 3,
+      "price": 6.0,
+      "ep": 3.68,
+      "pts": 12,
+      "mins": 86,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 411,
+      "name": "Haaland",
+      "pos": "FWD",
+      "team_id": 15,
+      "price": 15.5,
+      "ep": 5.89,
+      "pts": 13,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     }
+    ],
+    "formation": "4-5-1",
+    "projected": 49.2,
+    "bench": [
+     {
+      "player_id": 567,
+      "name": "Horn\u00ed\u010dek",
+      "pos": "GK",
+      "team_id": 17,
+      "price": 5.0,
+      "ep": 2.74,
+      "pts": 7,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 277,
+      "name": "Egan",
+      "pos": "DEF",
+      "team_id": 11,
+      "price": 4.0,
+      "ep": 2.85,
+      "pts": 9,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 553,
+      "name": "Isidor",
+      "pos": "FWD",
+      "team_id": 20,
+      "price": 5.5,
+      "ep": 1.56,
+      "pts": 8,
+      "mins": 26,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 320,
+      "name": "Akpom",
+      "pos": "FWD",
+      "team_id": 12,
+      "price": 5.0,
+      "ep": 1.32,
+      "pts": 5,
+      "mins": 45,
+      "captain": false,
+      "vice": false
+     }
+    ],
+    "cost": 99.6,
+    "actual": 166.0
+   },
+   "captain": {
+    "model": {
+     "name": "B.Fernandes",
+     "pts": 23,
+     "ep": 6.69
+    },
+    "crowd": {
+     "name": "Haaland",
+     "pts": 13
+    },
+    "best": {
+     "name": "B.Fernandes",
+     "pts": 23
+    }
+   },
+   "accuracy": {
+    "spearman": 0.713,
+    "spearman_played": 0.509,
+    "top20_hits": 5,
+    "n_played": 312,
+    "mae_played": 1.79,
+    "bias_played": -0.43,
+    "by_pos": {
+     "GK": {
+      "n": 20,
+      "mae": 1.95,
+      "bias": 0.14
+     },
+     "DEF": {
+      "n": 112,
+      "mae": 1.85,
+      "bias": -0.21
+     },
+     "MID": {
+      "n": 147,
+      "mae": 1.66,
+      "bias": -0.59
+     },
+     "FWD": {
+      "n": 33,
+      "mae": 2.03,
+      "bias": -0.82
+     }
+    }
+   },
+   "calibration": [
+    {
+     "lo": 0.3,
+     "hi": 1,
+     "n": 108,
+     "pred": 66.33,
+     "act": 32.0
+    },
+    {
+     "lo": 1,
+     "hi": 2,
+     "n": 97,
+     "pred": 146.87,
+     "act": 131.0
+    },
+    {
+     "lo": 2,
+     "hi": 3,
+     "n": 114,
+     "pred": 289.57,
+     "act": 231.0
+    },
+    {
+     "lo": 3,
+     "hi": 4,
+     "n": 82,
+     "pred": 282.9,
+     "act": 332.0
+    },
+    {
+     "lo": 4,
+     "hi": 5,
+     "n": 19,
+     "pred": 81.92,
+     "act": 73.0
+    },
+    {
+     "lo": 5,
+     "hi": 6,
+     "n": 6,
+     "pred": 32.07,
+     "act": 52.0
+    },
+    {
+     "lo": 6,
+     "hi": 8,
+     "n": 1,
+     "pred": 6.69,
+     "act": 23.0
+    },
+    {
+     "lo": 8,
+     "hi": 99,
+     "n": 0,
+     "pred": 0.0,
+     "act": 0.0
+    }
+   ],
+   "components": {
+    "goals": {
+     "pred": 28.7,
+     "act": 29.0
+    },
+    "assists": {
+     "pred": 25.5,
+     "act": 30.0
+    },
+    "clean_sheets": {
+     "pred": 25.9,
+     "act": 22.0
+    },
+    "defcon_crossings": {
+     "pred": 37.2,
+     "act": 29.0
+    },
+    "bonus": {
+     "pred": 66.0,
+     "act": 65.0
+    },
+    "team_clean_sheets": {
+     "pred": 5.2,
+     "act": 4.0
+    }
+   },
+   "xi_deltas": [
+    {
+     "name": "Virgil",
+     "pos": "DEF",
+     "team_id": 14,
+     "ep": 4.71,
+     "pts": 1,
+     "delta": -3.71
+    },
+    {
+     "name": "Lacroix",
+     "pos": "DEF",
+     "team_id": 6,
+     "ep": 4.61,
+     "pts": 1,
+     "delta": -3.61
+    },
+    {
+     "name": "Lammens",
+     "pos": "GK",
+     "team_id": 16,
+     "ep": 4.11,
+     "pts": 2,
+     "delta": -2.11
+    },
+    {
+     "name": "Szoboszlai",
+     "pos": "MID",
+     "team_id": 14,
+     "ep": 5.15,
+     "pts": 4,
+     "delta": -1.15
+    },
+    {
+     "name": "Truffert",
+     "pos": "DEF",
+     "team_id": 3,
+     "ep": 4.34,
+     "pts": 4,
+     "delta": -0.34
+    },
+    {
+     "name": "Palmer",
+     "pos": "MID",
+     "team_id": 6,
+     "ep": 5.4,
+     "pts": 7,
+     "delta": 1.6
+    },
+    {
+     "name": "Isak",
+     "pos": "FWD",
+     "team_id": 14,
+     "ep": 5.1,
+     "pts": 8,
+     "delta": 2.9
+    },
+    {
+     "name": "Jo\u00e3o Pedro",
+     "pos": "FWD",
+     "team_id": 6,
+     "ep": 5.28,
+     "pts": 9,
+     "delta": 3.72
+    },
+    {
+     "name": "Mbeumo",
+     "pos": "MID",
+     "team_id": 16,
+     "ep": 5.26,
+     "pts": 11,
+     "delta": 5.74
+    },
+    {
+     "name": "Haaland",
+     "pos": "FWD",
+     "team_id": 15,
+     "ep": 5.89,
+     "pts": 13,
+     "delta": 7.11
+    },
+    {
+     "name": "B.Fernandes",
+     "pos": "MID",
+     "team_id": 16,
+     "ep": 6.69,
+     "pts": 23,
+     "delta": 16.31
+    }
+   ],
+   "built_at": 1789625269.1500015
+  },
+  "3": {
+   "gw": 3,
+   "source": "replay",
+   "snapshot_built_at": null,
+   "deadline": "2026-09-04T17:30:00Z",
+   "availability_at_deadline": true,
+   "live_vs_replay_spearman": null,
+   "fpl": {
+    "average": 51,
+    "highest": 119
+   },
+   "model_xi": {
+    "xi": [
+     {
+      "player_id": 82,
+      "name": "Kelleher",
+      "pos": "GK",
+      "team_id": 4,
+      "price": 5.0,
+      "ep": 3.72,
+      "pts": 2,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 387,
+      "name": "O'Reilly",
+      "pos": "DEF",
+      "team_id": 15,
+      "price": 6.5,
+      "ep": 5.2,
+      "pts": 0,
+      "mins": 0,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 4,
+      "name": "Gabriel",
+      "pos": "DEF",
+      "team_id": 1,
+      "price": 8.0,
+      "ep": 4.35,
+      "pts": 2,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 356,
+      "name": "Virgil",
+      "pos": "DEF",
+      "team_id": 14,
+      "price": 6.5,
+      "ep": 4.29,
+      "pts": 6,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 399,
+      "name": "Cherki",
+      "pos": "MID",
+      "team_id": 15,
+      "price": 7.7,
+      "ep": 6.59,
+      "pts": 3,
+      "mins": 65,
+      "captain": false,
+      "vice": true
+     },
+     {
+      "player_id": 426,
+      "name": "B.Fernandes",
+      "pos": "MID",
+      "team_id": 16,
+      "price": 12.0,
+      "ep": 5.85,
+      "pts": 2,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 565,
+      "name": "M.Sangar\u00e9",
+      "pos": "MID",
+      "team_id": 4,
+      "price": 5.7,
+      "ep": 5.53,
+      "pts": 0,
+      "mins": 45,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 368,
+      "name": "Szoboszlai",
+      "pos": "MID",
+      "team_id": 14,
+      "price": 7.0,
+      "ep": 5.45,
+      "pts": 3,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 12,
+      "name": "Saka",
+      "pos": "MID",
+      "team_id": 1,
+      "price": 9.5,
+      "ep": 5.38,
+      "pts": 2,
+      "mins": 89,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 411,
+      "name": "Haaland",
+      "pos": "FWD",
+      "team_id": 15,
+      "price": 15.5,
+      "ep": 7.92,
+      "pts": 9,
+      "mins": 90,
+      "captain": true,
+      "vice": false
+     },
+     {
+      "player_id": 379,
+      "name": "Isak",
+      "pos": "FWD",
+      "team_id": 14,
+      "price": 9.0,
+      "ep": 5.54,
+      "pts": 13,
+      "mins": 63,
+      "captain": false,
+      "vice": false
+     }
+    ],
+    "formation": "3-5-2",
+    "projected": 67.7,
+    "actual": 51.0
+   },
+   "model_squad": {
+    "xi": [
+     {
+      "player_id": 572,
+      "name": "Tzolakis",
+      "pos": "GK",
+      "team_id": 11,
+      "price": 4.6,
+      "ep": 3.63,
+      "pts": 6,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 356,
+      "name": "Virgil",
+      "pos": "DEF",
+      "team_id": 14,
+      "price": 6.5,
+      "ep": 4.29,
+      "pts": 6,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 84,
+      "name": "Collins",
+      "pos": "DEF",
+      "team_id": 4,
+      "price": 5.5,
+      "ep": 4.29,
+      "pts": 1,
+      "mins": 16,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 445,
+      "name": "Thiaw",
+      "pos": "DEF",
+      "team_id": 17,
+      "price": 5.0,
+      "ep": 4.01,
+      "pts": -1,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 399,
+      "name": "Cherki",
+      "pos": "MID",
+      "team_id": 15,
+      "price": 7.7,
+      "ep": 6.59,
+      "pts": 3,
+      "mins": 65,
+      "captain": false,
+      "vice": true
+     },
+     {
+      "player_id": 398,
+      "name": "Foden",
+      "pos": "MID",
+      "team_id": 15,
+      "price": 7.0,
+      "ep": 5.91,
+      "pts": 1,
+      "mins": 24,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 565,
+      "name": "M.Sangar\u00e9",
+      "pos": "MID",
+      "team_id": 4,
+      "price": 5.7,
+      "ep": 5.53,
+      "pts": 0,
+      "mins": 45,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 368,
+      "name": "Szoboszlai",
+      "pos": "MID",
+      "team_id": 14,
+      "price": 7.0,
+      "ep": 5.45,
+      "pts": 3,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 411,
+      "name": "Haaland",
+      "pos": "FWD",
+      "team_id": 15,
+      "price": 15.5,
+      "ep": 7.92,
+      "pts": 9,
+      "mins": 90,
+      "captain": true,
+      "vice": false
+     },
+     {
+      "player_id": 379,
+      "name": "Isak",
+      "pos": "FWD",
+      "team_id": 14,
+      "price": 9.0,
+      "ep": 5.54,
+      "pts": 13,
+      "mins": 63,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 106,
+      "name": "Thiago",
+      "pos": "FWD",
+      "team_id": 4,
+      "price": 8.0,
+      "ep": 5.13,
+      "pts": 2,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     }
+    ],
+    "formation": "3-4-3",
+    "projected": 66.2,
+    "bench": [
+     {
+      "player_id": 109,
+      "name": "Verbruggen",
+      "pos": "GK",
+      "team_id": 5,
+      "price": 4.5,
+      "ep": 3.55,
+      "pts": 3,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 124,
+      "name": "Gro\u00df",
+      "pos": "MID",
+      "team_id": 5,
+      "price": 5.5,
+      "ep": 4.25,
+      "pts": 1,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 593,
+      "name": "Dedi\u0107",
+      "pos": "DEF",
+      "team_id": 17,
+      "price": 4.5,
+      "ep": 3.55,
+      "pts": 1,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 277,
+      "name": "Egan",
+      "pos": "DEF",
+      "team_id": 11,
+      "price": 4.0,
+      "ep": 3.25,
+      "pts": 6,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     }
+    ],
+    "cost": 100.0,
+    "actual": 52.0
+   },
+   "hindsight_xi": {
+    "xi": [
+     {
+      "player_id": 597,
+      "name": "Suzuki",
+      "pos": "GK",
+      "team_id": 2,
+      "price": 5.0,
+      "ep": 3.12,
+      "pts": 10,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 204,
+      "name": "Mitchell",
+      "pos": "DEF",
+      "team_id": 8,
+      "price": 4.5,
+      "ep": 2.33,
+      "pts": 15,
+      "mins": 73,
+      "captain": true,
+      "vice": false
+     },
+     {
+      "player_id": 330,
+      "name": "Bogle",
+      "pos": "DEF",
+      "team_id": 13,
+      "price": 4.5,
+      "ep": 2.01,
+      "pts": 14,
+      "mins": 60,
+      "captain": false,
+      "vice": true
+     },
+     {
+      "player_id": 504,
+      "name": "Vuskovic",
+      "pos": "DEF",
+      "team_id": 5,
+      "price": 5.0,
+      "ep": 3.29,
+      "pts": 12,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 503,
+      "name": "Van de Ven",
+      "pos": "DEF",
+      "team_id": 19,
+      "price": 5.0,
+      "ep": 2.56,
+      "pts": 9,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 453,
+      "name": "Barnes",
+      "pos": "MID",
+      "team_id": 17,
+      "price": 6.0,
+      "ep": 3.43,
+      "pts": 12,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 98,
+      "name": "Janelt",
+      "pos": "MID",
+      "team_id": 4,
+      "price": 5.0,
+      "ep": 3.39,
+      "pts": 11,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 367,
+      "name": "Gakpo",
+      "pos": "MID",
+      "team_id": 14,
+      "price": 7.1,
+      "ep": 4.66,
+      "pts": 11,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 15,
+      "name": "\u00d8degaard",
+      "pos": "MID",
+      "team_id": 1,
+      "price": 6.6,
+      "ep": 3.46,
+      "pts": 10,
+      "mins": 76,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 242,
+      "name": "George",
+      "pos": "MID",
+      "team_id": 9,
+      "price": 5.5,
+      "ep": 1.98,
+      "pts": 10,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 379,
+      "name": "Isak",
+      "pos": "FWD",
+      "team_id": 14,
+      "price": 9.0,
+      "ep": 5.54,
+      "pts": 13,
+      "mins": 63,
+      "captain": false,
+      "vice": false
+     }
+    ],
+    "formation": "4-5-1",
+    "projected": 38.1,
+    "actual": 142.0
+   },
+   "hindsight_squad": {
+    "xi": [
+     {
+      "player_id": 597,
+      "name": "Suzuki",
+      "pos": "GK",
+      "team_id": 2,
+      "price": 5.0,
+      "ep": 3.12,
+      "pts": 10,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 204,
+      "name": "Mitchell",
+      "pos": "DEF",
+      "team_id": 8,
+      "price": 4.5,
+      "ep": 2.33,
+      "pts": 15,
+      "mins": 73,
+      "captain": true,
+      "vice": false
+     },
+     {
+      "player_id": 330,
+      "name": "Bogle",
+      "pos": "DEF",
+      "team_id": 13,
+      "price": 4.5,
+      "ep": 2.01,
+      "pts": 14,
+      "mins": 60,
+      "captain": false,
+      "vice": true
+     },
+     {
+      "player_id": 504,
+      "name": "Vuskovic",
+      "pos": "DEF",
+      "team_id": 5,
+      "price": 5.0,
+      "ep": 3.29,
+      "pts": 12,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 453,
+      "name": "Barnes",
+      "pos": "MID",
+      "team_id": 17,
+      "price": 6.0,
+      "ep": 3.43,
+      "pts": 12,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 98,
+      "name": "Janelt",
+      "pos": "MID",
+      "team_id": 4,
+      "price": 5.0,
+      "ep": 3.39,
+      "pts": 11,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 367,
+      "name": "Gakpo",
+      "pos": "MID",
+      "team_id": 14,
+      "price": 7.1,
+      "ep": 4.66,
+      "pts": 11,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 15,
+      "name": "\u00d8degaard",
+      "pos": "MID",
+      "team_id": 1,
+      "price": 6.6,
+      "ep": 3.46,
+      "pts": 10,
+      "mins": 76,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 69,
+      "name": "Scott",
+      "pos": "MID",
+      "team_id": 3,
+      "price": 6.0,
+      "ep": 3.59,
+      "pts": 10,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 379,
+      "name": "Isak",
+      "pos": "FWD",
+      "team_id": 14,
+      "price": 9.0,
+      "ep": 5.54,
+      "pts": 13,
+      "mins": 63,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 411,
+      "name": "Haaland",
+      "pos": "FWD",
+      "team_id": 15,
+      "price": 15.5,
+      "ep": 7.92,
+      "pts": 9,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     }
+    ],
+    "formation": "3-5-2",
+    "projected": 45.1,
+    "bench": [
+     {
+      "player_id": 350,
+      "name": "A.Becker",
+      "pos": "GK",
+      "team_id": 14,
+      "price": 5.5,
+      "ep": 2.94,
+      "pts": 8,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 503,
+      "name": "Van de Ven",
+      "pos": "DEF",
+      "team_id": 19,
+      "price": 5.0,
+      "ep": 2.56,
+      "pts": 9,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 26,
+      "name": "Havertz",
+      "pos": "FWD",
+      "team_id": 1,
+      "price": 7.5,
+      "ep": 4.04,
+      "pts": 8,
+      "mins": 77,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 586,
+      "name": "Mendy",
+      "pos": "DEF",
+      "team_id": 11,
+      "price": 4.0,
+      "ep": 2.22,
+      "pts": 8,
+      "mins": 70,
+      "captain": false,
+      "vice": false
+     }
+    ],
+    "cost": 96.2,
+    "actual": 142.0
+   },
+   "captain": {
+    "model": {
+     "name": "Haaland",
+     "pts": 9,
+     "ep": 7.92
+    },
+    "crowd": {
+     "name": "Haaland",
+     "pts": 9
+    },
+    "best": {
+     "name": "Mitchell",
+     "pts": 15
+    }
+   },
+   "accuracy": {
+    "spearman": 0.777,
+    "spearman_played": 0.347,
+    "top20_hits": 3,
+    "n_played": 307,
+    "mae_played": 1.88,
+    "bias_played": -0.44,
+    "by_pos": {
+     "GK": {
+      "n": 20,
+      "mae": 1.83,
+      "bias": -0.6
+     },
+     "DEF": {
+      "n": 110,
+      "mae": 2.22,
+      "bias": -1.01
+     },
+     "MID": {
+      "n": 140,
+      "mae": 1.75,
+      "bias": -0.19
+     },
+     "FWD": {
+      "n": 37,
+      "mae": 1.44,
+      "bias": 0.36
+     }
+    }
+   },
+   "calibration": [
+    {
+     "lo": 0.3,
+     "hi": 1,
+     "n": 76,
+     "pred": 49.84,
+     "act": 52.0
+    },
+    {
+     "lo": 1,
+     "hi": 2,
+     "n": 98,
+     "pred": 146.88,
+     "act": 131.0
+    },
+    {
+     "lo": 2,
+     "hi": 3,
+     "n": 94,
+     "pred": 231.94,
+     "act": 294.0
+    },
+    {
+     "lo": 3,
+     "hi": 4,
+     "n": 86,
+     "pred": 291.95,
+     "act": 306.0
+    },
+    {
+     "lo": 4,
+     "hi": 5,
+     "n": 18,
+     "pred": 78.83,
+     "act": 76.0
+    },
+    {
+     "lo": 5,
+     "hi": 6,
+     "n": 10,
+     "pred": 54.9,
+     "act": 32.0
+    },
+    {
+     "lo": 6,
+     "hi": 8,
+     "n": 2,
+     "pred": 14.51,
+     "act": 12.0
+    },
+    {
+     "lo": 8,
+     "hi": 99,
+     "n": 0,
+     "pred": 0.0,
+     "act": 0.0
+    }
+   ],
+   "components": {
+    "goals": {
+     "pred": 28.3,
+     "act": 22.0
+    },
+    "assists": {
+     "pred": 25.4,
+     "act": 20.0
+    },
+    "clean_sheets": {
+     "pred": 24.4,
+     "act": 32.0
+    },
+    "defcon_crossings": {
+     "pred": 35.4,
+     "act": 35.0
+    },
+    "bonus": {
+     "pred": 65.0,
+     "act": 64.0
+    },
+    "team_clean_sheets": {
+     "pred": 5.1,
+     "act": 6.0
+    }
+   },
+   "xi_deltas": [
+    {
+     "name": "M.Sangar\u00e9",
+     "pos": "MID",
+     "team_id": 4,
+     "ep": 5.53,
+     "pts": 0,
+     "delta": -5.53
+    },
+    {
+     "name": "O'Reilly",
+     "pos": "DEF",
+     "team_id": 15,
+     "ep": 5.2,
+     "pts": 0,
+     "delta": -5.2
+    },
+    {
+     "name": "B.Fernandes",
+     "pos": "MID",
+     "team_id": 16,
+     "ep": 5.85,
+     "pts": 2,
+     "delta": -3.85
+    },
+    {
+     "name": "Cherki",
+     "pos": "MID",
+     "team_id": 15,
+     "ep": 6.59,
+     "pts": 3,
+     "delta": -3.59
+    },
+    {
+     "name": "Saka",
+     "pos": "MID",
+     "team_id": 1,
+     "ep": 5.38,
+     "pts": 2,
+     "delta": -3.38
+    },
+    {
+     "name": "Szoboszlai",
+     "pos": "MID",
+     "team_id": 14,
+     "ep": 5.45,
+     "pts": 3,
+     "delta": -2.45
+    },
+    {
+     "name": "Gabriel",
+     "pos": "DEF",
+     "team_id": 1,
+     "ep": 4.35,
+     "pts": 2,
+     "delta": -2.35
+    },
+    {
+     "name": "Kelleher",
+     "pos": "GK",
+     "team_id": 4,
+     "ep": 3.72,
+     "pts": 2,
+     "delta": -1.72
+    },
+    {
+     "name": "Haaland",
+     "pos": "FWD",
+     "team_id": 15,
+     "ep": 7.92,
+     "pts": 9,
+     "delta": 1.08
+    },
+    {
+     "name": "Virgil",
+     "pos": "DEF",
+     "team_id": 14,
+     "ep": 4.29,
+     "pts": 6,
+     "delta": 1.71
+    },
+    {
+     "name": "Isak",
+     "pos": "FWD",
+     "team_id": 14,
+     "ep": 5.54,
+     "pts": 13,
+     "delta": 7.46
+    }
+   ],
+   "built_at": 1789625360.2473018
+  },
+  "4": {
+   "gw": 4,
+   "source": "live",
+   "snapshot_built_at": 1789210186.0009832,
+   "deadline": "2026-09-12T12:30:00Z",
+   "availability_at_deadline": true,
+   "live_vs_replay_spearman": 0.922,
+   "fpl": {
+    "average": 69,
+    "highest": 151
+   },
+   "model_xi": {
+    "xi": [
+     {
+      "player_id": 597,
+      "name": "Suzuki",
+      "pos": "GK",
+      "team_id": 2,
+      "price": 5.0,
+      "ep": 4.2,
+      "pts": 2,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 200,
+      "name": "Lacroix",
+      "pos": "DEF",
+      "team_id": 6,
+      "price": 6.0,
+      "ep": 5.22,
+      "pts": 1,
+      "mins": 4,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 588,
+      "name": "Khalaili",
+      "pos": "DEF",
+      "team_id": 8,
+      "price": 5.0,
+      "ep": 4.71,
+      "pts": 7,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 203,
+      "name": "Canvot",
+      "pos": "DEF",
+      "team_id": 8,
+      "price": 4.9,
+      "ep": 4.53,
+      "pts": 0,
+      "mins": 0,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 426,
+      "name": "B.Fernandes",
+      "pos": "MID",
+      "team_id": 16,
+      "price": 12.0,
+      "ep": 5.37,
+      "pts": 2,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 154,
+      "name": "Palmer",
+      "pos": "MID",
+      "team_id": 6,
+      "price": 9.7,
+      "ep": 5.14,
+      "pts": 5,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 12,
+      "name": "Saka",
+      "pos": "MID",
+      "team_id": 1,
+      "price": 9.5,
+      "ep": 4.88,
+      "pts": 8,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 368,
+      "name": "Szoboszlai",
+      "pos": "MID",
+      "team_id": 14,
+      "price": 7.0,
+      "ep": 4.85,
+      "pts": 3,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 69,
+      "name": "Scott",
+      "pos": "MID",
+      "team_id": 3,
+      "price": 6.1,
+      "ep": 4.72,
+      "pts": 4,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 411,
+      "name": "Haaland",
+      "pos": "FWD",
+      "team_id": 15,
+      "price": 15.5,
+      "ep": 6.68,
+      "pts": 9,
+      "mins": 90,
+      "captain": true,
+      "vice": false
+     },
+     {
+      "player_id": 165,
+      "name": "Jo\u00e3o Pedro",
+      "pos": "FWD",
+      "team_id": 6,
+      "price": 7.7,
+      "ep": 6.32,
+      "pts": 12,
+      "mins": 90,
+      "captain": false,
+      "vice": true
+     }
+    ],
+    "formation": "3-5-2",
+    "projected": 63.3,
+    "actual": 62.0
+   },
+   "model_squad": {
+    "xi": [
+     {
+      "player_id": 597,
+      "name": "Suzuki",
+      "pos": "GK",
+      "team_id": 2,
+      "price": 5.0,
+      "ep": 4.2,
+      "pts": 2,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 200,
+      "name": "Lacroix",
+      "pos": "DEF",
+      "team_id": 6,
+      "price": 6.0,
+      "ep": 5.22,
+      "pts": 1,
+      "mins": 4,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 588,
+      "name": "Khalaili",
+      "pos": "DEF",
+      "team_id": 8,
+      "price": 5.0,
+      "ep": 4.71,
+      "pts": 7,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 203,
+      "name": "Canvot",
+      "pos": "DEF",
+      "team_id": 8,
+      "price": 4.9,
+      "ep": 4.53,
+      "pts": 0,
+      "mins": 0,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 154,
+      "name": "Palmer",
+      "pos": "MID",
+      "team_id": 6,
+      "price": 9.7,
+      "ep": 5.14,
+      "pts": 5,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 12,
+      "name": "Saka",
+      "pos": "MID",
+      "team_id": 1,
+      "price": 9.5,
+      "ep": 4.88,
+      "pts": 8,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 368,
+      "name": "Szoboszlai",
+      "pos": "MID",
+      "team_id": 14,
+      "price": 7.0,
+      "ep": 4.85,
+      "pts": 3,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 69,
+      "name": "Scott",
+      "pos": "MID",
+      "team_id": 3,
+      "price": 6.1,
+      "ep": 4.72,
+      "pts": 4,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 411,
+      "name": "Haaland",
+      "pos": "FWD",
+      "team_id": 15,
+      "price": 15.5,
+      "ep": 6.68,
+      "pts": 9,
+      "mins": 90,
+      "captain": true,
+      "vice": false
+     },
+     {
+      "player_id": 165,
+      "name": "Jo\u00e3o Pedro",
+      "pos": "FWD",
+      "team_id": 6,
+      "price": 7.7,
+      "ep": 6.32,
+      "pts": 12,
+      "mins": 90,
+      "captain": false,
+      "vice": true
+     },
+     {
+      "player_id": 79,
+      "name": "Evanilson",
+      "pos": "FWD",
+      "team_id": 3,
+      "price": 6.0,
+      "ep": 4.68,
+      "pts": 5,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     }
+    ],
+    "formation": "3-4-3",
+    "projected": 62.6,
+    "bench": [
+     {
+      "player_id": 385,
+      "name": "Trafford",
+      "pos": "GK",
+      "team_id": 13,
+      "price": 5.0,
+      "ep": 3.86,
+      "pts": 3,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 173,
+      "name": "Thomas",
+      "pos": "DEF",
+      "team_id": 7,
+      "price": 4.0,
+      "ep": 4.03,
+      "pts": 0,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 605,
+      "name": "Yalcouy\u00e9",
+      "pos": "MID",
+      "team_id": 5,
+      "price": 4.5,
+      "ep": 3.9,
+      "pts": 8,
+      "mins": 64,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 277,
+      "name": "Egan",
+      "pos": "DEF",
+      "team_id": 11,
+      "price": 4.1,
+      "ep": 3.3,
+      "pts": 2,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     }
+    ],
+    "cost": 100.0,
+    "actual": 65.0
+   },
+   "hindsight_xi": {
+    "xi": [
+     {
+      "player_id": 1,
+      "name": "Raya",
+      "pos": "GK",
+      "team_id": 1,
+      "price": 6.0,
+      "ep": 3.53,
+      "pts": 14,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 330,
+      "name": "Bogle",
+      "pos": "DEF",
+      "team_id": 13,
+      "price": 4.5,
+      "ep": 2.49,
+      "pts": 15,
+      "mins": 82,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 305,
+      "name": "Davis",
+      "pos": "DEF",
+      "team_id": 12,
+      "price": 4.0,
+      "ep": 2.88,
+      "pts": 14,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 116,
+      "name": "Dunk",
+      "pos": "DEF",
+      "team_id": 5,
+      "price": 4.5,
+      "ep": 3.01,
+      "pts": 12,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 115,
+      "name": "De Cuyper",
+      "pos": "DEF",
+      "team_id": 5,
+      "price": 4.8,
+      "ep": 3.81,
+      "pts": 11,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 233,
+      "name": "Mykolenko",
+      "pos": "DEF",
+      "team_id": 9,
+      "price": 4.5,
+      "ep": 2.98,
+      "pts": 11,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 124,
+      "name": "Gro\u00df",
+      "pos": "MID",
+      "team_id": 5,
+      "price": 5.6,
+      "ep": 4.12,
+      "pts": 17,
+      "mins": 90,
+      "captain": true,
+      "vice": false
+     },
+     {
+      "player_id": 94,
+      "name": "Schade",
+      "pos": "MID",
+      "team_id": 4,
+      "price": 6.0,
+      "ep": 4.08,
+      "pts": 15,
+      "mins": 90,
+      "captain": false,
+      "vice": true
+     },
+     {
+      "player_id": 286,
+      "name": "Belloumi",
+      "pos": "MID",
+      "team_id": 11,
+      "price": 5.0,
+      "ep": 3.09,
+      "pts": 13,
+      "mins": 59,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 165,
+      "name": "Jo\u00e3o Pedro",
+      "pos": "FWD",
+      "team_id": 6,
+      "price": 7.7,
+      "ep": 6.32,
+      "pts": 12,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 316,
+      "name": "Emersonn",
+      "pos": "FWD",
+      "team_id": 12,
+      "price": 5.5,
+      "ep": 2.17,
+      "pts": 12,
+      "mins": 62,
+      "captain": false,
+      "vice": false
+     }
+    ],
+    "formation": "5-3-2",
+    "projected": 42.6,
+    "actual": 163.0
+   },
+   "hindsight_squad": {
+    "xi": [
+     {
+      "player_id": 1,
+      "name": "Raya",
+      "pos": "GK",
+      "team_id": 1,
+      "price": 6.0,
+      "ep": 3.53,
+      "pts": 14,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 330,
+      "name": "Bogle",
+      "pos": "DEF",
+      "team_id": 13,
+      "price": 4.5,
+      "ep": 2.49,
+      "pts": 15,
+      "mins": 82,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 305,
+      "name": "Davis",
+      "pos": "DEF",
+      "team_id": 12,
+      "price": 4.0,
+      "ep": 2.88,
+      "pts": 14,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 116,
+      "name": "Dunk",
+      "pos": "DEF",
+      "team_id": 5,
+      "price": 4.5,
+      "ep": 3.01,
+      "pts": 12,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 233,
+      "name": "Mykolenko",
+      "pos": "DEF",
+      "team_id": 9,
+      "price": 4.5,
+      "ep": 2.98,
+      "pts": 11,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 391,
+      "name": "Gvardiol",
+      "pos": "DEF",
+      "team_id": 15,
+      "price": 5.6,
+      "ep": 3.94,
+      "pts": 11,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 124,
+      "name": "Gro\u00df",
+      "pos": "MID",
+      "team_id": 5,
+      "price": 5.6,
+      "ep": 4.12,
+      "pts": 17,
+      "mins": 90,
+      "captain": true,
+      "vice": false
+     },
+     {
+      "player_id": 94,
+      "name": "Schade",
+      "pos": "MID",
+      "team_id": 4,
+      "price": 6.0,
+      "ep": 4.08,
+      "pts": 15,
+      "mins": 90,
+      "captain": false,
+      "vice": true
+     },
+     {
+      "player_id": 286,
+      "name": "Belloumi",
+      "pos": "MID",
+      "team_id": 11,
+      "price": 5.0,
+      "ep": 3.09,
+      "pts": 13,
+      "mins": 59,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 165,
+      "name": "Jo\u00e3o Pedro",
+      "pos": "FWD",
+      "team_id": 6,
+      "price": 7.7,
+      "ep": 6.32,
+      "pts": 12,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 316,
+      "name": "Emersonn",
+      "pos": "FWD",
+      "team_id": 12,
+      "price": 5.5,
+      "ep": 2.17,
+      "pts": 12,
+      "mins": 62,
+      "captain": false,
+      "vice": false
+     }
+    ],
+    "formation": "5-3-2",
+    "projected": 42.7,
+    "bench": [
+     {
+      "player_id": 250,
+      "name": "Leno",
+      "pos": "GK",
+      "team_id": 10,
+      "price": 4.5,
+      "ep": 2.59,
+      "pts": 9,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 346,
+      "name": "Calvert-Lewin",
+      "pos": "FWD",
+      "team_id": 13,
+      "price": 6.0,
+      "ep": 3.85,
+      "pts": 10,
+      "mins": 77,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 336,
+      "name": "Okafor",
+      "pos": "MID",
+      "team_id": 13,
+      "price": 5.9,
+      "ep": 2.63,
+      "pts": 9,
+      "mins": 71,
+      "captain": false,
+      "vice": false
+     },
+     {
+      "player_id": 40,
+      "name": "Rogers",
+      "pos": "MID",
+      "team_id": 6,
+      "price": 7.6,
+      "ep": 4.33,
+      "pts": 8,
+      "mins": 90,
+      "captain": false,
+      "vice": false
+     }
+    ],
+    "cost": 82.9,
+    "actual": 163.0
+   },
+   "captain": {
+    "model": {
+     "name": "Haaland",
+     "pts": 9,
+     "ep": 6.68
+    },
+    "crowd": {
+     "name": "Haaland",
+     "pts": 9
+    },
+    "best": {
+     "name": "Gro\u00df",
+     "pts": 17
+    }
+   },
+   "accuracy": {
+    "spearman": 0.729,
+    "spearman_played": 0.404,
+    "top20_hits": 2,
+    "n_played": 307,
+    "mae_played": 2.14,
+    "bias_played": -0.49,
+    "by_pos": {
+     "GK": {
+      "n": 20,
+      "mae": 2.86,
+      "bias": -1.14
+     },
+     "DEF": {
+      "n": 106,
+      "mae": 2.57,
+      "bias": -0.69
+     },
+     "MID": {
+      "n": 146,
+      "mae": 1.68,
+      "bias": -0.25
+     },
+     "FWD": {
+      "n": 35,
+      "mae": 2.32,
+      "bias": -0.55
+     }
+    }
+   },
+   "calibration": [
+    {
+     "lo": 0.3,
+     "hi": 1,
+     "n": 88,
+     "pred": 49.9,
+     "act": 69.0
+    },
+    {
+     "lo": 1,
+     "hi": 2,
+     "n": 53,
+     "pred": 80.45,
+     "act": 63.0
+    },
+    {
+     "lo": 2,
+     "hi": 3,
+     "n": 85,
+     "pred": 219.04,
+     "act": 227.0
+    },
+    {
+     "lo": 3,
+     "hi": 4,
+     "n": 99,
+     "pred": 340.35,
+     "act": 347.0
+    },
+    {
+     "lo": 4,
+     "hi": 5,
+     "n": 30,
+     "pred": 131.93,
+     "act": 148.0
+    },
+    {
+     "lo": 5,
+     "hi": 6,
+     "n": 3,
+     "pred": 15.73,
+     "act": 8.0
+    },
+    {
+     "lo": 6,
+     "hi": 8,
+     "n": 2,
+     "pred": 13.0,
+     "act": 21.0
+    },
+    {
+     "lo": 8,
+     "hi": 99,
+     "n": 0,
+     "pred": 0.0,
+     "act": 0.0
+    }
+   ],
+   "components": {
+    "goals": {
+     "pred": 28.2,
+     "act": 28.0
+    },
+    "assists": {
+     "pred": 25.1,
+     "act": 26.0
+    },
+    "clean_sheets": {
+     "pred": 26.1,
+     "act": 35.0
+    },
+    "defcon_crossings": {
+     "pred": 37.0,
+     "act": 33.0
+    },
+    "bonus": {
+     "pred": 66.5,
+     "act": 62.0
+    },
+    "team_clean_sheets": {
+     "pred": 5.1,
+     "act": 7.0
+    }
+   },
+   "xi_deltas": [
+    {
+     "name": "Canvot",
+     "pos": "DEF",
+     "team_id": 8,
+     "ep": 4.53,
+     "pts": 0,
+     "delta": -4.53
+    },
+    {
+     "name": "Lacroix",
+     "pos": "DEF",
+     "team_id": 6,
+     "ep": 5.22,
+     "pts": 1,
+     "delta": -4.22
+    },
+    {
+     "name": "B.Fernandes",
+     "pos": "MID",
+     "team_id": 16,
+     "ep": 5.37,
+     "pts": 2,
+     "delta": -3.37
+    },
+    {
+     "name": "Suzuki",
+     "pos": "GK",
+     "team_id": 2,
+     "ep": 4.2,
+     "pts": 2,
+     "delta": -2.2
+    },
+    {
+     "name": "Szoboszlai",
+     "pos": "MID",
+     "team_id": 14,
+     "ep": 4.85,
+     "pts": 3,
+     "delta": -1.85
+    },
+    {
+     "name": "Scott",
+     "pos": "MID",
+     "team_id": 3,
+     "ep": 4.72,
+     "pts": 4,
+     "delta": -0.72
+    },
+    {
+     "name": "Palmer",
+     "pos": "MID",
+     "team_id": 6,
+     "ep": 5.14,
+     "pts": 5,
+     "delta": -0.14
+    },
+    {
+     "name": "Khalaili",
+     "pos": "DEF",
+     "team_id": 8,
+     "ep": 4.71,
+     "pts": 7,
+     "delta": 2.29
+    },
+    {
+     "name": "Haaland",
+     "pos": "FWD",
+     "team_id": 15,
+     "ep": 6.68,
+     "pts": 9,
+     "delta": 2.32
+    },
+    {
+     "name": "Saka",
+     "pos": "MID",
+     "team_id": 1,
+     "ep": 4.88,
+     "pts": 8,
+     "delta": 3.12
+    },
+    {
+     "name": "Jo\u00e3o Pedro",
+     "pos": "FWD",
+     "team_id": 6,
+     "ep": 6.32,
+     "pts": 12,
+     "delta": 5.68
+    }
+   ],
+   "built_at": 1789625438.4137526
+  }
+ },
+ "updated_at": 1789625438.4137526
+}

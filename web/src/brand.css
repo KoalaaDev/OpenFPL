@@ -963,3 +963,117 @@ body {
   .ld-prices .live-two { grid-template-columns: 1fr; }
   .ld-prices .lt-head { padding-top: 8px; }
 }
+
+/* ========== admin Model tab: season record, accuracy, internals ============= */
+.mdl .ops-head { flex-wrap: wrap; }
+.mdl-seg { margin-left: auto; margin-right: 8px; }
+.mdl .tile-row { grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
+.mdl-grid { display: grid; gap: 14px; }
+.mdl-grid.two { grid-template-columns: repeat(auto-fit, minmax(520px, 1fr)); }
+.mdl-grid > .panel { min-width: 0; }
+@media (max-width: 620px) { .mdl-grid.two { grid-template-columns: 1fr; } }
+.mdl-note { padding: 4px 14px 12px; margin: 0; }
+
+.mdl-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.mdl-table th {
+  text-align: left; font-size: 10px; font-weight: 800; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--muted-2); padding: 7px 12px;
+  border-bottom: 1px solid var(--line);
+}
+.mdl-table td { padding: 6px 12px; border-bottom: 1px solid var(--line-soft); }
+.mdl-table .num { text-align: right; font-family: var(--mono); }
+.mdl-table td.up { color: var(--green); }
+.mdl-table td.down { color: var(--red); }
+.mdl-table td.warn { color: var(--gold); font-weight: 800; }
+.mdl-table .muted { color: var(--muted-2); }
+
+.src-badge {
+  display: inline-block; font-family: var(--mono); font-size: 9.5px; font-weight: 900;
+  letter-spacing: 0.08em; padding: 2px 6px; border-radius: 4px;
+}
+.src-badge.live { background: rgba(61, 220, 151, 0.18); color: var(--green); }
+.src-badge.replay { background: var(--panel-3); color: var(--muted); }
+.src-badge.noavail { box-shadow: inset 0 0 0 1px var(--gold); color: var(--gold); }
+
+/* one gameweek: the model's team beside the best possible */
+.mdl-gws { margin-left: auto; }
+.gwp-sum {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 10px 14px 0; font-size: 12px; color: var(--muted);
+}
+.gwp-sum b { color: var(--text); }
+.gwp-sum .muted { color: var(--muted-2); font-size: 11px; }
+.gwp-pitches { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 14px; padding: 10px 14px 14px; }
+.gwp-col { min-width: 0; }
+.gwp-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; margin-bottom: 6px; }
+.gwp-form { font-family: var(--mono); font-size: 11px; font-weight: 800; padding: 1px 7px; border-radius: 5px; background: var(--panel-3); }
+.gwp-score { margin-left: auto; font-size: 12px; color: var(--muted); }
+.gwp-score b { font-family: var(--mono); font-size: 16px; color: var(--text); }
+.gwp-score .muted { color: var(--muted-2); font-size: 11px; }
+.gwp-pitch { margin: 0; }
+.gwp-ep {
+  flex: none; font-style: normal; padding: 1px 4px; background: #191930; color: var(--muted-2);
+  display: grid; place-items: center; font-size: 9.5px;
+}
+.gwp-pts { flex: 1; text-align: center; background: var(--blue-cell); color: #fff; padding: 1px 0; }
+.gwp-pts.good { background: #1f9d63; }
+.gwp-pts.bad { background: #b8434f; }
+.bx-p.dnp .bx-shirt { opacity: 0.35; }
+.bx-p.dnp .bx-name { text-decoration: line-through; color: var(--muted-2); }
+.gwp-bench {
+  display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 6px;
+  font-size: 11px; color: var(--muted-2);
+}
+.gwp-bench span b { font-family: var(--mono); color: var(--muted); }
+.gwp-bench span.dnp { text-decoration: line-through; }
+
+/* calibration */
+.rel { display: flex; justify-content: center; }
+.rel-svg { width: 100%; max-width: 520px; height: auto; }
+.rel-grid { stroke: var(--line-soft); stroke-width: 1; }
+.rel-diag { stroke: var(--muted-2); stroke-width: 1.2; stroke-dasharray: 4 4; }
+.rel-dot { fill: rgba(57, 135, 229, 0.55); stroke: #6aa8f0; stroke-width: 1.2; }
+.rel-tick { fill: var(--muted-2); font-size: 9.5px; font-family: var(--mono); }
+.rel-axis { fill: var(--muted-2); font-size: 10px; }
+
+/* components */
+.cmp-list { padding: 12px 14px 4px; display: grid; gap: 9px; }
+.cmp-row { display: grid; grid-template-columns: 150px minmax(0, 1fr) 70px 44px; gap: 10px; align-items: center; font-size: 12px; }
+.cmp-bars { display: grid; gap: 2px; }
+.cmp-bars i, .cmp-legend i { display: block; height: 7px; border-radius: 3px; }
+.cmp-bars .exp, .cmp-legend .exp { background: #3987e5; }
+.cmp-bars .act, .cmp-legend .act { background: #3ddc97; }
+.cmp-nums { font-family: var(--mono); font-size: 11px; color: var(--muted); text-align: right; }
+.cmp-ratio { font-family: var(--mono); font-weight: 800; text-align: right; }
+.cmp-ratio.warn { color: var(--gold); }
+.cmp-legend {
+  display: flex; align-items: center; gap: 6px; padding: 2px 14px 10px;
+  font-size: 10.5px; color: var(--muted-2);
+}
+.cmp-legend i { width: 14px; display: inline-block; }
+@media (max-width: 620px) {
+  .cmp-row { grid-template-columns: minmax(0, 1fr) 60px 40px; }
+  .cmp-bars { grid-column: 1 / -1; order: 3; }
+  .gwp-pitches { grid-template-columns: 1fr; }
+}
+/* the segmented control, wherever it sits — it was scoped to panel heads, so
+   the Model tab's view switcher rendered as run-together text */
+.ops-head .seg {
+  display: inline-flex; gap: 2px; padding: 2px;
+  border-radius: 8px; background: var(--bg-deep); border: 1px solid var(--line);
+}
+.ops-head .seg button {
+  padding: 6px 13px; border-radius: 6px; min-height: 30px;
+  font-size: 12px; font-weight: 800; color: var(--muted-2);
+}
+.ops-head .seg button:hover { color: var(--text); }
+.ops-head .seg button.on { background: var(--accent); color: #12122a; }
+/* the preview dot: grey until the desk is on air for everyone */
+.tab.live-tab.idle { color: var(--muted); }
+.tab.live-tab.idle .live-dot { background: var(--muted-2); animation: none; }
+/* Model tab: panels size to their content (a short chart beside a tall table
+   left a screen of empty panel), and a chart never grows past a readable size
+   — a 760-unit viewBox stretched across a wide panel scaled its text to 20px */
+.mdl-grid { align-items: start; }
+.mdl .chart-wrap svg { max-height: 290px; }
+.mdl .rel-svg { max-width: 420px; }

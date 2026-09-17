@@ -2460,6 +2460,48 @@ one plain sentence and the operator note shows to admins only. On a phone the
 Fixtures team column was half the screen, leaving four gameweeks; it is now a
 sticky three-letter column.
 
+### The model's season record (admin Model tab)
+
+`app/modelrecord.py` writes `data/model_record_<season>.json`: for every
+finished gameweek, once, what the model PICKED before the deadline and how that
+went. The scheduled refresh builds it (`scheduler.score_finished_gameweeks`);
+the Model tab has three views over it — Season record, Accuracy, Internals.
+
+**Provenance is the whole point.** A gameweek is scored on what the model
+believed BEFORE the deadline:
+* `live` — the last projection-history snapshot built before the deadline:
+  exactly what the site showed. Snapshots begin 2026-09-11, so GW4 onward.
+* `replay` — earlier weeks: `xpts_predict_gw` at the first kickoff, with
+  availability AS IT STOOD AT THE DEADLINE (`lineup_feed.availability_at`).
+  The availability change log in the DB starts 2026-08-29, AFTER the GW1 and
+  GW2 deadlines, so those two replays have no injury flags and are marked `*`.
+  GW4 has both: live and replay agree at rank ρ 0.92, the check that a replay
+  is a fair stand-in.
+
+**What is scored.** An unlimited-budget best XI; a £100m squad of fifteen
+(2/5/5/3, ≤3 per club, bench keeper first) scored with
+`rank_utility.autosub_points` and the armband passing to the vice — the fair
+comparison with a manager, but rebuilt from scratch each week, i.e. a free
+wildcard weekly, which flatters it; the best possible XI and squad in
+hindsight under the same rules; FPL's own `average_entry_score`,
+`highest_score` and `most_captained`. All selections are exact PuLP solves.
+
+**Accuracy.** Spearman (all / played), top-20 found, error and bias by
+position among players who played (negative by construction — playing is good
+news the projection could not know), a calibration table by projection band,
+and components vs reality: goals, assists, GK/DEF clean sheets, TEAM clean
+sheets (exp(-λ) per club — the cleaner check, since the player count also
+depends on who lasted 60), DefCon crossings counted per fixture against the
+YAML thresholds, bonus.
+
+**First reading, GW1-4 (one live week, three replays — noise, not findings):**
+the £100m squad scored 266 against the average manager's 251 (3 of 4 weeks
+above), 42% of the best possible £100m squad; the model's captain 50 points to
+the crowd's 33. Calibration is good where the players are — projections of 1-6
+score 0.89-1.09 of what was projected. DefCon crossings ran 1.18 over, almost
+all in the GW1-2 replays that had no injury flags (GW3-4: 1.06); team clean
+sheets 21 expected vs 23. `tests/test_model_record.py`.
+
 ### Playstyles: what a strategy is allowed to vary
 
 `PLAYSTYLES` used to differ only in horizon decay, FT value and whether hits

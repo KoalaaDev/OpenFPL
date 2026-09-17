@@ -111,10 +111,12 @@ export default function App() {
           {tabs.map(([t]) => (
             <button key={t}
               className={`tab ${tab === t ? 'active' : ''} ${t === 'Live' ? `live-tab ${live.phase}` : ''}`}
+              title={t === 'Live' && live.phase === 'idle' ? 'Preview — visible to admins only until 24 h before the deadline' : undefined}
               onClick={() => openTab(t)}>
               {t === 'Live' && <i className="live-dot" aria-hidden="true" />}
-              {t === 'Live' && live.phase === 'closed' ? 'Live · over'
-                : t === 'Live' && live.phase === 'idle' ? 'Live · preview' : t}
+              {/* the phase is carried by the dot's colour and the tooltip; a
+                  longer label pushed the first tab off a crowded strip */}
+              {t === 'Live' && live.phase === 'closed' ? 'Live · over' : t}
             </button>
           ))}
         </nav>

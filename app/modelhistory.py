@@ -194,6 +194,73 @@ def backtests() -> list[dict]:
     return out
 
 
+def season_record(season: str) -> dict:
+    """The per-gameweek record, oldest first, and what it adds up to."""
+    from . import modelrecord
+    doc = modelrecord.load(season)
+    gws = [doc["gws"][k] for k in sorted(doc.get("gws", {}), key=int)]
+    if not gws:
+        return {"gws": [], "season": None}
+
+    def tot(path):
+        vals = []
+        for r in gws:
+            v = r
+            for k in path:
+                v = (v or {}).get(k) if isinstance(v, dict) else None
+            if isinstance(v, (int, float)):
+                vals.append(float(v))
+        return round(sum(vals), 1) if vals else None
+
+    beat = sum(1 for r in gws if r.get("model_squad") and r["fpl"].get("average") is not None
+               and r["model_squad"]["actual"] > r["fpl"]["average"])
+    calib: dict = {}
+    for r in gws:
+        for b in r.get("calibration") or []:
+            c = calib.setdefault((b["lo"], b["hi"]), {"lo": b["lo"], "hi": b["hi"], "n": 0, "pred": 0.0, "act": 0.0})
+            c["n"] += b["n"]
+            c["pred"] += b["pred"]
+            c["act"] += b["act"]
+    by_pos: dict = {}
+    for r in gws:
+        for pos, v in ((r.get("accuracy") or {}).get("by_pos") or {}).items():
+            d = by_pos.setdefault(pos, {"n": 0, "mae": 0.0, "bias": 0.0})
+            d["n"] += v["n"]
+            d["mae"] += v["mae"] * v["n"]
+            d["bias"] += v["bias"] * v["n"]
+    for d in by_pos.values():
+        d["mae"] = round(d["mae"] / d["n"], 2) if d["n"] else None
+        d["bias"] = round(d["bias"] / d["n"], 2) if d["n"] else None
+    comps: dict = {}
+    for r in gws:
+        for k, v in (r.get("components") or {}).items():
+            if v.get("pred") is None:
+                continue
+            c = comps.setdefault(k, {"pred": 0.0, "act": 0.0, "gws": 0})
+            c["pred"] += v["pred"]
+            c["act"] += v["act"]
+            c["gws"] += 1
+    squad, hind = tot(["model_squad", "actual"]), tot(["hindsight_squad", "actual"])
+    return {
+        "gws": gws,
+        "season": {
+            "n": len(gws),
+            "live_weeks": sum(1 for r in gws if r.get("source") == "live"),
+            "model_squad": squad, "model_xi": tot(["model_xi", "actual"]),
+            "average": tot(["fpl", "average"]), "highest": tot(["fpl", "highest"]),
+            "hindsight_squad": hind, "hindsight_xi": tot(["hindsight_xi", "actual"]),
+            "weeks_beat_average": beat,
+            "captured": round(squad / hind, 3) if squad and hind else None,
+            "captain": {"model": tot(["captain", "model", "pts"]),
+                        "crowd": tot(["captain", "crowd", "pts"]),
+                        "best": tot(["captain", "best", "pts"])},
+            "calibration": [{**c, "pred": round(c["pred"], 1)} for c in calib.values()],
+            "by_pos": by_pos,
+            "components": {k: {**v, "pred": round(v["pred"], 1)} for k, v in comps.items()},
+        },
+    }
+
+
 def payload(force: bool = False) -> dict:
     now = time.time()
     if not force and _cache["v"] is not None and now - _cache["t"] < TTL:
@@ -208,6 +275,7 @@ def payload(force: bool = False) -> dict:
         "market_stretch": _load(os.path.join(config.MODELS_DIR, "xpts",
                                              "market_stretch.json")),
         "backtests": backtests(),
+        "record": season_record(season),
         "built_at": now,
     }
     _cache["t"], _cache["v"] = now, out

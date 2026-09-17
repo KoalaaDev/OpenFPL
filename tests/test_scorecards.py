@@ -16,7 +16,26 @@ from app import scheduler
 from fpl_engine import config
 
 
-def test_already_scored_gameweeks_are_skipped(tmp_path, monkeypatch):
+@pytest.fixture(autouse=True)
+def _no_engine(monkeypatch):
+    """These tests are about the runner's bookkeeping — what it skips, what it
+    reports, that it cannot raise — not about the engine. Left real, every
+    call re-ran a post-mortem, the lineup-feed scoring and the model record's
+    replays for each finished gameweek against the live database: minutes per
+    test, and a full suite that went from five minutes to half an hour. Each
+    of those has its own tests; a test here overrides a stub when it needs to."""
+    from app import modelrecord
+    from fpl_engine import lineup_feed, postmortem
+    calls = {"postmortem": []}
+    monkeypatch.setattr(modelrecord, "refresh", lambda *a, **k: {"built": [], "total": 0})
+    monkeypatch.setattr(postmortem, "run",
+                        lambda conn, season=None, gw=None, **k: calls["postmortem"].append(gw) or {})
+    monkeypatch.setattr(lineup_feed, "score_gw", lambda *a, **k: {"gw": 0})
+    monkeypatch.setattr(lineup_feed, "save", lambda *a, **k: "")
+    return calls
+
+
+def test_already_scored_gameweeks_are_skipped(tmp_path, monkeypatch, _no_engine):
     """The file on disk is the "done" marker. Without this a daily refresh
     would re-run a season's post-mortems every single day."""
     monkeypatch.setattr(config, "DATA_DIR", str(tmp_path))
@@ -24,15 +43,9 @@ def test_already_scored_gameweeks_are_skipped(tmp_path, monkeypatch):
     marker = tmp_path / f"postmortem_{season}_gw1.json"
     marker.write_text("{}", encoding="utf-8")
 
-    called = []
-
-    class Boom:
-        def run(self, *a, **k):
-            called.append(k.get("gw"))
-            raise AssertionError("should not have been called")
-
     out = scheduler.score_finished_gameweeks()
     assert 1 not in out["postmortem"]
+    assert 1 not in _no_engine["postmortem"]      # never even called for it
 
 
 def test_a_failing_scorecard_is_reported_not_raised(tmp_path, monkeypatch):

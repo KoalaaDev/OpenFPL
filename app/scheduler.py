@@ -159,7 +159,7 @@ def score_finished_gameweeks(job_id: str | None = None, *, limit: int = 6) -> di
     into the job and swallowed: a scorecard must never cost a data pull.
     """
     from fpl_engine import config, db
-    done = {"postmortem": [], "lineup_feed": [], "errors": []}
+    done = {"postmortem": [], "lineup_feed": [], "model_record": [], "errors": []}
     season = config.CURRENT_SEASON
     conn = db.connect(config.DB_PATH)
     try:
@@ -178,6 +178,14 @@ def score_finished_gameweeks(job_id: str | None = None, *, limit: int = 6) -> di
                 done["postmortem"].append(gw)
             except Exception as exc:  # noqa: BLE001
                 done["errors"].append(f"postmortem gw{gw}: {exc}")
+        try:
+            # the model's picks before each deadline, scored against what
+            # happened, the average manager and perfect hindsight
+            from . import modelrecord
+            r = modelrecord.refresh(progress=(lambda m: jobs.progress(job_id, m)) if job_id else None)
+            done["model_record"] = r.get("built", [])
+        except Exception as exc:  # noqa: BLE001
+            done["errors"].append(f"model record: {exc}")
         try:
             from fpl_engine import lineup_feed as lf
             archive = lf.load_archive(season)
