@@ -39,7 +39,7 @@ FPL_BASE = "https://fantasy.premierleague.com/api"
 _TTL = 600.0
 # bumped whenever the API contract changes; the frontend compares it with
 # its own build so a stale `python -m app` process is flagged, not puzzling
-API_VERSION = "2026-09-16.1"
+API_VERSION = "2026-09-17.1"
 
 _mem: dict[str, tuple[float, object]] = {}
 _bundle = None
@@ -1067,6 +1067,37 @@ def _get_bundle():
         if _bundle is None:
             _bundle = predict_mod.load_models()
         return _bundle
+
+
+BREAKDOWN_PARTS = ("goals", "assists", "bonus", "appearance", "cs", "defcon",
+                   "saves", "conceded", "cards")
+
+
+def player_breakdown(player_id: int) -> dict | None:
+    """Where one player's projection comes from, gameweek by gameweek.
+
+    The engine assembles every projection from components (goals, assists,
+    bonus, appearance, clean sheet, DefCon, saves, goals conceded, cards) and
+    `build_projections` stores them; this serves one player's so the card can
+    answer "why 6.3?". Anything the parts do not account for (the engine's
+    unmodelled residual, a pre-season prior) is reported as `other` rather
+    than silently folded in.
+    """
+    rec = (_load_proj_cache().get("players") or {}).get(str(int(player_id)))
+    if not rec:
+        return None
+    out = {}
+    for gw, ep in sorted((rec.get("ep") or {}).items(), key=lambda kv: int(kv[0])):
+        comp = (rec.get("comp") or {}).get(gw)
+        if not comp:
+            continue
+        parts = {k: round(float(comp.get(k) or 0.0), 2) for k in BREAKDOWN_PARTS}
+        out[gw] = {"ep": round(float(ep), 2), "parts": parts,
+                   "other": round(float(ep) - sum(parts.values()), 2),
+                   "xg": round(float(comp.get("eg") or 0.0), 2),
+                   "xa": round(float(comp.get("ea") or 0.0), 2),
+                   "p_cs": round(float(comp.get("pcs") or 0.0), 3)}
+    return {"player_id": int(player_id), "position": rec.get("position"), "gws": out}
 
 
 def projections_payload() -> dict:

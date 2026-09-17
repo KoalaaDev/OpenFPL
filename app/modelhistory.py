@@ -261,6 +261,14 @@ def season_record(season: str) -> dict:
     }
 
 
+def _team(season: str) -> dict:
+    from . import modelteam
+    try:
+        return modelteam.summary(season)
+    except Exception as exc:  # noqa: BLE001 - one broken file must not blank the tab
+        return {"weeks": [], "error": str(exc)}
+
+
 def payload(force: bool = False) -> dict:
     now = time.time()
     if not force and _cache["v"] is not None and now - _cache["t"] < TTL:
@@ -276,6 +284,7 @@ def payload(force: bool = False) -> dict:
                                              "market_stretch.json")),
         "backtests": backtests(),
         "record": season_record(season),
+        "team": _team(season),
         "built_at": now,
     }
     _cache["t"], _cache["v"] = now, out

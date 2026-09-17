@@ -2669,6 +2669,30 @@ and finds **22** real disagreements. Disagreement is now only computed for a
 club whose XI actually resolved — *a resolution failure must never be able to
 present itself as a finding*. `tests/test_deadline_lineups.py`.
 
+**Three additions on 2026-09-17.**
+
+* **The player card says where a projection comes from**
+  (`/api/player/{id}/breakdown`, `services.player_breakdown`): the engine's
+  stored components per gameweek — goals, assists, bonus, appearance, clean
+  sheet, DefCon, saves, minus conceded and cards — with anything the parts do
+  not account for reported as `other`, never folded in.
+* **The model's own season-long team** (`app/modelteam.py`,
+  `data/model_team_<season>.json`, Model tab → "Model's team"). The season
+  record rebuilds a squad every week, a free wildcard weekly; this is one
+  £100m squad carried all season under a manager's rules — one free transfer
+  a week banked to five, -4 per extra decided by the solver, FPL's selling
+  price, autosubs, no chips. Each decision uses only what was known before
+  that deadline: the last live projection snapshot, else a point-in-time
+  replay (as_of first kickoff, availability as at the deadline, odds only for
+  the gameweek being decided). Built incrementally by the post-gameweek
+  scorecards, plus a plan for the next deadline from the current cache.
+* **Projections rebuild on team news that matters** (`scheduler.significant_changes`,
+  `maybe_reproject`). The 15-minute news poll triggers a statuses-plus-reproject
+  job when a change is material (status class changes, or chance of playing
+  moves 25+ points) and the player is >=10% owned, projected >=3, or
+  P(start) >=0.6. One rebuild per `FPLABS_REPROJECT_MINUTES` (default 60,
+  floor 20); news inside the cooldown is queued, not dropped.
+
 Solver specifics worth knowing:
 
 * **Playstyles, not near-duplicates.** Asking for N plans returns one per

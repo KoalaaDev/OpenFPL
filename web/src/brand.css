@@ -1184,3 +1184,55 @@ body {
   .pmc-head { gap: 6px; }
   .pmc-head .pmc-verdict { flex-basis: 100%; }
 }
+
+/* ---------- player card: where the points come from ------------------------ */
+.bd-wrap { margin: 0 20px 4px; padding: 12px 14px; border: 1px solid var(--line-soft); border-radius: 10px; background: var(--bg-deep); }
+.bd-loading { font-size: 12px; color: var(--muted-2); }
+.bd-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+.bd-sub { margin-left: auto; font-size: 11px; color: var(--muted-2); font-family: var(--mono); }
+.bd-sub b { color: var(--text); }
+.bd-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-bottom: 8px; font-size: 11px; color: var(--muted); }
+.bd-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.bd-legend i { width: 9px; height: 9px; border-radius: 2px; display: inline-block; }
+.bd-legend b { font-family: var(--mono); color: var(--text); }
+.bd-legend .neg b { color: var(--red); }
+.bd-rows { display: grid; gap: 4px; }
+.bd-row { display: grid; grid-template-columns: 38px 70px minmax(0, 1fr) 34px 34px; gap: 8px; align-items: center; font-size: 11px; }
+.bd-gw { font-family: var(--mono); color: var(--muted-2); }
+.bd-opp { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: var(--mono); font-size: 10.5px; }
+.bd-bar { display: flex; height: 12px; border-radius: 3px; overflow: hidden; background: var(--panel-3); }
+.bd-bar i { display: block; height: 100%; }
+.bd-bar i.other { background: repeating-linear-gradient(45deg, #5a5f80 0 3px, #474b68 3px 6px); }
+.bd-ep { font-family: var(--mono); font-weight: 800; text-align: right; color: var(--text); }
+.bd-neg { font-family: var(--mono); color: var(--red); text-align: right; }
+@media (max-width: 620px) {
+  .bd-wrap { margin: 0 12px 4px; }
+  .bd-row { grid-template-columns: 34px 52px minmax(0, 1fr) 30px 30px; gap: 5px; }
+  .bd-sub { margin-left: 0; }
+}
+
+/* ---------- model tab: the model's own team -------------------------------- */
+.mt-scroll { max-height: 330px; overflow: auto; }
+.mdl-table tr.sel td { background: var(--panel-3); }
+.mdl-table tbody tr { cursor: pointer; }
+.mt-moves { max-width: 260px; font-size: 11px; white-space: normal; }
+.mt-transfers { display: flex; flex-direction: column; gap: 8px; }
+.mt-list { display: grid; gap: 6px; }
+.mt-row { display: grid; grid-template-columns: minmax(0, 1fr) 16px minmax(0, 1fr) auto; gap: 8px; align-items: center;
+  padding: 8px 10px; border: 1px solid var(--line-soft); border-radius: 8px; background: var(--bg-deep); }
+.mt-player { display: grid; grid-template-columns: 26px minmax(0, 1fr); column-gap: 7px; align-items: center; min-width: 0; }
+.mt-player.out .mt-name { color: var(--red); }
+.mt-player.in .mt-name { color: var(--green); }
+.mt-shirt { width: 26px; height: 26px; object-fit: contain; grid-row: span 2; }
+.mt-name { font-weight: 700; font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mt-meta { font-size: 10.5px; color: var(--muted-2); font-family: var(--mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mt-arrow { color: var(--muted-2); text-align: center; }
+.mt-gain { font-family: var(--mono); font-size: 11px; color: var(--muted); white-space: nowrap; }
+.mt-cap { font-size: 12px; color: var(--muted); }
+.mt-xi { display: grid; gap: 6px; font-size: 12px; }
+.mt-xi-p { display: inline-block; margin: 0 10px 2px 0; }
+.mt-xi-p b { font-family: var(--mono); color: var(--muted); font-weight: 600; }
+@media (max-width: 620px) {
+  .mt-row { grid-template-columns: minmax(0, 1fr) 12px minmax(0, 1fr); }
+  .mt-gain { grid-column: 1 / -1; text-align: right; }
+}

@@ -28,6 +28,8 @@ def _no_engine(monkeypatch):
     from fpl_engine import lineup_feed, postmortem
     calls = {"postmortem": []}
     monkeypatch.setattr(modelrecord, "refresh", lambda *a, **k: {"built": [], "total": 0})
+    from app import modelteam
+    monkeypatch.setattr(modelteam, "build", lambda *a, **k: {"built": [], "weeks": 0, "next": None})
     monkeypatch.setattr(postmortem, "run",
                         lambda conn, season=None, gw=None, **k: calls["postmortem"].append(gw) or {})
     monkeypatch.setattr(lineup_feed, "score_gw", lambda *a, **k: {"gw": 0})

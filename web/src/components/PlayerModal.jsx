@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
+import { api } from '../api'
 import Flag from './Flag'
 import { useFixtureLookup, useStore } from '../store'
 import { Radar, VIZ } from '../charts'
@@ -188,6 +189,8 @@ export default function PlayerModal({ pid, draft, plan, actions, close }) {
           <ComparePicker p={p} players={players} cmpId={cmpId} setCmpId={setCmpId}
             q={cmpQ} setQ={setCmpQ} byId={byId} teams={teams} proj={proj} gws={gws} />
         )}
+
+        <Breakdown pid={pid} gws={gws} fixOf={fixOf} teamId={p.team_id} />
 
         <div className="pd-grid">
           <div className="statgrid">
@@ -440,6 +443,91 @@ function ComparePicker({ p, players, cmpId, setCmpId, q, setQ, byId, teams, proj
         A green cell is only better on that row. The projection already folds
         fixtures, minutes and availability together — where it disagrees with
         the per-90 rates, it is because one of them has the easier run.
+      </div>
+    </div>
+  )
+}
+
+/* "Why is he projected 6.3?"
+
+   The engine builds every projection out of parts — goals, assists, bonus,
+   turning up, a clean sheet, DefCon, saves, minus goals conceded and cards —
+   and the card used to show only the total. A 6.3 made of a likely goal and a
+   6.3 made of 90 minutes and a clean sheet are different players to own; this
+   says which, week by week, from the same numbers the model used. */
+const PARTS = [
+  ['goals', 'Goals', '#e8663d'],
+  ['assists', 'Assists', '#f0a13d'],
+  ['bonus', 'Bonus', '#c98500'],
+  ['appearance', 'Minutes', '#4b6fd8'],
+  ['cs', 'Clean sheet', '#4d8ef0'],
+  ['defcon', 'DefCon', '#2bb3a3'],
+  ['saves', 'Saves', '#9d7bff'],
+]
+const DEDUCTIONS = [['conceded', 'Conceded'], ['cards', 'Cards']]
+
+function Breakdown({ pid, gws, fixOf, teamId }) {
+  const [d, setD] = useState(null)
+  const [err, setErr] = useState(false)
+  useEffect(() => {
+    let alive = true
+    setD(null); setErr(false)
+    api.playerBreakdown(pid).then((v) => { if (alive) setD(v) }).catch(() => { if (alive) setErr(true) })
+    return () => { alive = false }
+  }, [pid])
+  if (err) return null
+  if (!d) return <div className="bd-wrap bd-loading">Loading the breakdown…</div>
+  const weeks = (gws.length ? gws.map(String) : Object.keys(d.gws)).filter((g) => d.gws[g])
+  if (!weeks.length) return null
+  const first = d.gws[weeks[0]]
+  const max = Math.max(...weeks.map((g) => {
+    const w = d.gws[g]
+    return PARTS.reduce((a, [k]) => a + Math.max(0, w.parts[k] || 0), 0) + Math.max(0, w.other)
+  }), 1)
+  const shown = PARTS.filter(([k]) => weeks.some((g) => (d.gws[g].parts[k] || 0) >= 0.05))
+
+  return (
+    <div className="bd-wrap">
+      <div className="bd-head">
+        <span className="section-label">Where the points come from</span>
+        <span className="bd-sub">
+          GW{weeks[0]}: xG <b>{first.xg.toFixed(2)}</b> · xA <b>{first.xa.toFixed(2)}</b>
+          {first.p_cs >= 0.01 ? <> · clean sheet <b>{Math.round(first.p_cs * 100)}%</b></> : null}
+        </span>
+      </div>
+      <div className="bd-legend">
+        {shown.map(([k, label, color]) => (
+          <span key={k}><i style={{ background: color }} />{label} <b>{(first.parts[k] || 0).toFixed(1)}</b></span>
+        ))}
+        {DEDUCTIONS.map(([k, label]) => (first.parts[k] || 0) <= -0.05 && (
+          <span key={k} className="neg">{label} <b>{first.parts[k].toFixed(1)}</b></span>
+        ))}
+      </div>
+      <div className="bd-rows">
+        {weeks.map((g) => {
+          const w = d.gws[g]
+          const fx = fixOf(teamId, Number(g))
+          const neg = DEDUCTIONS.reduce((a, [k]) => a + Math.min(0, w.parts[k] || 0), 0)
+          return (
+            <div className="bd-row" key={g}>
+              <span className="bd-gw">GW{g}</span>
+              <span className="bd-opp">{fx.length ? fx.map((f) => `${f.oppShort}${f.home ? ' H' : ' A'}`).join(' + ') : 'blank'}</span>
+              <span className="bd-bar" role="img"
+                aria-label={PARTS.map(([k, l]) => `${l} ${(w.parts[k] || 0).toFixed(1)}`).join(', ')}>
+                {PARTS.map(([k, label, color]) => {
+                  const v = Math.max(0, w.parts[k] || 0)
+                  if (v < 0.03) return null
+                  return <i key={k} style={{ width: `${(v / max) * 100}%`, background: color }}
+                    title={`${label} ${v.toFixed(2)}`} />
+                })}
+                {w.other > 0.03 && <i className="other" style={{ width: `${(w.other / max) * 100}%` }}
+                  title={`not assigned to a component ${w.other.toFixed(2)}`} />}
+              </span>
+              <span className="bd-ep">{w.ep.toFixed(1)}</span>
+              <span className="bd-neg">{neg <= -0.05 ? neg.toFixed(1) : ''}</span>
+            </div>
+          )
+        })}
       </div>
     </div>
   )

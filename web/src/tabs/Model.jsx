@@ -55,7 +55,7 @@ export default function Model() {
           </div>
         </div>
         <span className="seg mdl-seg" role="tablist">
-          {[['record', 'Season record'], ['accuracy', 'Accuracy'], ['internals', 'Internals']].map(([k, l]) => (
+          {[['record', 'Season record'], ['team', "Model's team"], ['accuracy', 'Accuracy'], ['internals', 'Internals']].map(([k, l]) => (
             <button key={k} role="tab" aria-selected={view === k}
               className={view === k ? 'on' : ''} onClick={() => setView(k)}>{l}</button>
           ))}
@@ -66,6 +66,7 @@ export default function Model() {
       </div>
 
       {view === 'record' && <SeasonRecord rec={rec} />}
+      {view === 'team' && <ModelTeam team={d.team} rec={rec} />}
       {view === 'accuracy' && <Accuracy rec={rec} feed={d.feed} />}
       {view === 'internals' && (
         <>
@@ -195,6 +196,202 @@ function SeasonRecord({ rec }) {
         <DeltasPanel gws={gws} />
       </div>
     </>
+  )
+}
+
+/* ============================================================ the team == */
+
+/* The honest benchmark. The season record rebuilds the best squad every week,
+   which is a free wildcard every week; this is one squad, bought before GW1
+   and carried the way a manager carries it — a free transfer a week, banked
+   up to five, -4 for each extra, sold at FPL's selling price, no chips. */
+const formationOf = (xi) => ['DEF', 'MID', 'FWD'].map((p) => xi.filter((x) => x.pos === p).length).join('-')
+
+function ModelTeam({ team, rec }) {
+  const weeks = team?.weeks || []
+  const [gw, setGw] = usePersisted('model.teamGw', null)
+  if (!weeks.length) {
+    return (
+      <div className="panel">
+        <Empty mark="🧮" title={team?.error ? 'Could not read the model\'s team' : 'The model\'s team has not played yet'}>
+          {team?.error || 'It is built after each finished gameweek by the scheduled refresh.'}
+        </Empty>
+      </div>
+    )
+  }
+  const t = team.totals
+  const w = weeks.find((x) => x.gw === gw) || weeks[weeks.length - 1]
+  const rebuild = Object.fromEntries((rec?.gws || []).map((r) => [r.gw, r.model_squad?.actual]))
+  let cn = 0, ca = 0, cr = 0
+  const cum = weeks.map((x) => {
+    cn += x.net; ca += x.average || 0; cr += rebuild[x.gw] ?? x.net
+    return { gw: x.gw, net: cn, avg: ca, rebuild: cr }
+  })
+  const margin = t.net - t.average
+  const last = cum[cum.length - 1]
+  const sel = {
+    xi: w.xi, bench: w.bench, formation: formationOf(w.xi), actual: w.points,
+    projected: w.projected, cost: null,
+  }
+
+  return (
+    <>
+      <div className="tile-row">
+        <StatTile label="Model's team" value={`${Math.round(t.net)} pts`}
+          delta={`${signed(margin)} vs average`} deltaGood={margin >= 0}
+          sub={`average manager ${Math.round(t.average)} · after hits`} />
+        <StatTile label="Weeks above average" value={`${t.weeks_above_average} / ${weeks.length}`}
+          sub="one squad, carried all season" />
+        <StatTile label="Transfers" value={t.transfers}
+          sub={`${t.hits} hit${t.hits === 1 ? '' : 's'} taken (−${t.hits * 4} pts)`} />
+        <StatTile label="Free transfers now" value={team.state?.ft ?? '—'}
+          sub={`bank £${(team.state?.bank ?? 0).toFixed(1)}m`} />
+        <StatTile label="Cost of carrying a team" value={signed(last.net - last.rebuild)}
+          sub="vs rebuilding a fresh £100m squad every week" />
+      </div>
+
+      <div className="mdl-grid two">
+        <div className="panel">
+          <div className="panel-head">Cumulative margin over the average manager
+            <span className="panel-sub">points above FPL&apos;s average, after hits</span></div>
+          <div className="chart-wrap">
+            <LineChart height={240} fmt={(v) => `${v >= 0 ? '+' : ''}${v.toFixed(0)}`} series={[
+              { name: "Model's team (transfers)", color: VIZ[0], points: cum.map((c) => ({ x: c.gw, y: c.net - c.avg })) },
+              { name: 'Fresh squad every week', color: VIZ_NEUTRAL, points: cum.map((c) => ({ x: c.gw, y: c.rebuild - c.avg })) },
+            ]} />
+          </div>
+          <div className="fold-note mdl-note">
+            Decisions use only what the model knew before each deadline — the
+            projection the site showed, or a point-in-time replay where no live
+            snapshot exists. The grey line is the season record&apos;s weekly
+            rebuild: the gap between the two is what transfer limits cost.
+          </div>
+        </div>
+
+        <div className="panel">
+          <div className="panel-head">Week by week</div>
+          <div className="mt-scroll">
+            <table className="mdl-table">
+              <thead><tr><th>GW</th><th>moves</th><th className="num">FT</th><th className="num">hits</th>
+                <th className="num">pts</th><th className="num">avg</th><th className="num">±</th></tr></thead>
+              <tbody>
+                {weeks.map((x) => (
+                  <tr key={x.gw} className={x.gw === w.gw ? 'sel' : ''} onClick={() => setGw(x.gw)}>
+                    <td>GW{x.gw}</td>
+                    <td className="mt-moves">{x.build ? 'squad built'
+                      : x.transfers.length ? x.transfers.map((tr) => `${tr.out.name} → ${tr.in.name}`).join(', ')
+                        : <span className="muted">rolled</span>}</td>
+                    <td className="num">{x.build ? '—' : x.ft_before}</td>
+                    <td className={`num ${x.hits ? 'down' : ''}`}>{x.hits ? `−${x.hits * 4}` : ''}</td>
+                    <td className="num"><b>{Math.round(x.net)}</b></td>
+                    <td className="num">{x.average ?? '—'}</td>
+                    <td className={`num ${x.average != null ? (x.net >= x.average ? 'up' : 'down') : ''}`}>
+                      {x.average != null ? signed(x.net - x.average) : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div className="panel">
+        <div className="panel-head">The team, gameweek by gameweek
+          <span className="seg mdl-gws">
+            {weeks.map((x) => (
+              <button key={x.gw} className={x.gw === w.gw ? 'on' : ''} onClick={() => setGw(x.gw)}>GW{x.gw}</button>
+            ))}
+          </span>
+        </div>
+        <div className="gwp-sum">
+          <span className={`src-badge ${w.source === 'live' ? 'live' : 'replay'}`}>{w.source === 'live' ? 'LIVE' : 'REPLAY'}</span>
+          <span>GW{w.gw} · {w.build ? 'opening squad' : `${w.ft_before} free transfer${w.ft_before === 1 ? '' : 's'} available`}
+            {' '}· bank £{w.bank.toFixed(1)}m · average manager <b>{w.average ?? '—'}</b></span>
+        </div>
+        <div className="gwp-pitches">
+          <MiniPitch title={`GW${w.gw}${w.hits ? ` · −${w.hits * 4} hit` : ''}`} sel={sel} showEp />
+          <TransferList w={w} />
+        </div>
+      </div>
+
+      {team.next && <NextPlan n={team.next} />}
+    </>
+  )
+}
+
+function TransferList({ w, title }) {
+  const { teams } = useStore()
+  const row = (p, dir) => {
+    const tm = teams[String(p.team_id)]
+    return (
+      <span className={`mt-player ${dir}`}>
+        <img className="mt-shirt" alt="" loading="lazy" src={shirtUrl(tm?.code, p.pos === 'GK')}
+          onError={(e) => { e.currentTarget.style.visibility = 'hidden' }} />
+        <span className="mt-name">{p.name}</span>
+        <span className="mt-meta">{tm?.short ?? ''} · {p.pos} · £{p.price.toFixed(1)}m</span>
+      </span>
+    )
+  }
+  return (
+    <div className="gwp-col mt-transfers">
+      <div className="gwp-head"><b>{title || 'Transfers'}</b>
+        <span className="gwp-score muted">
+          {w.build ? 'fifteen bought from £100m'
+            : `${w.free_used} free${w.hits ? ` · ${w.hits} extra at −4` : ''}`}
+        </span>
+      </div>
+      {w.build ? (
+        <div className="dd-empty">The opening squad — no transfers to make before GW1.</div>
+      ) : w.transfers.length ? (
+        <div className="mt-list">
+          {w.transfers.map((tr, i) => (
+            <div className="mt-row" key={i}>
+              {row(tr.out, 'out')}
+              <span className="mt-arrow" aria-hidden="true">→</span>
+              {row(tr.in, 'in')}
+              <span className="mt-gain" title="projected points over the planning horizon, in minus out">
+                {signed(tr.in.ep_horizon - tr.out.ep_horizon, 1)} xP
+              </span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="dd-empty">No transfers — the free transfer was rolled
+          {w.ft_before < 5 ? ` (${Math.min(5, w.ft_before + 1)} next week)` : ''}.</div>
+      )}
+      {w.captain != null && (
+        <div className="mt-cap">Captain <b>{(w.xi.find((p) => p.captain) || {}).name}</b>
+          {w.vice != null && <> · vice {(w.xi.find((p) => p.vice) || {}).name}</>}
+          {' '}· projected <b>{w.projected}</b></div>
+      )}
+    </div>
+  )
+}
+
+function NextPlan({ n }) {
+  return (
+    <div className="panel">
+      <div className="panel-head">Next deadline · GW{n.gw}
+        <span className="panel-sub">what the model&apos;s team will do, from the projections on the site now</span></div>
+      <div className="gwp-pitches">
+        <TransferList w={n} title={n.transfers.length ? 'Planned transfers' : 'Plan'} />
+        <div className="gwp-col">
+          <div className="gwp-head"><b>Starting XI</b><span className="gwp-form">{formationOf(n.xi)}</span></div>
+          <div className="mt-xi">
+            {['GK', 'DEF', 'MID', 'FWD'].map((pos) => (
+              <div key={pos}><span className="muted">{pos}</span>{' '}
+                {n.xi.filter((p) => p.pos === pos).map((p) => (
+                  <span key={p.player_id} className="mt-xi-p">{p.name}{p.captain ? ' (C)' : p.vice ? ' (V)' : ''} <b>{p.ep.toFixed(1)}</b></span>
+                ))}
+              </div>
+            ))}
+            <div><span className="muted">Bench</span>{' '}
+              {n.bench.map((p) => <span key={p.player_id} className="mt-xi-p">{p.name} <b>{p.ep.toFixed(1)}</b></span>)}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }
 

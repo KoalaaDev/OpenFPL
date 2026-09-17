@@ -279,6 +279,17 @@ def projections(_=Depends(rate("cheap"))):
     return services.projections_payload()
 
 
+@app.get("/api/player/{player_id}/breakdown")
+def player_breakdown(player_id: int, _=Depends(rate("cheap"))):
+    """Where a player's projection comes from, per gameweek."""
+    if player_id <= 0:
+        raise HTTPException(400, "bad player id")
+    out = services.player_breakdown(player_id)
+    if out is None:
+        raise HTTPException(404, "no projection for that player")
+    return out
+
+
 @app.get("/api/projections/history")
 def projections_history(request: Request, _=Depends(rate("cheap"))):
     if not _entitlements(request)["history"]:
