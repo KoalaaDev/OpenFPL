@@ -1236,32 +1236,46 @@ body {
 }
 
 /* ---------- live desk: what the managers actually said ---------------------- */
-/* Quotes are prose: they belong across the page, not in a 320px column where
-   a paragraph is fifteen lines. Full width under the dashboard, as many
-   columns as fit, and the panel scrolls once it is a few rows deep. */
+/* Quotes are prose, so the panel runs full width under the dashboard and the
+   clubs sit side by side; a 320px column turns a paragraph into fifteen lines. */
+.pq-controls { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.pq-select {
+  background: var(--panel-2); color: var(--text); border: 1px solid var(--line);
+  border-radius: 7px; padding: 3px 8px; font-size: 11.5px; font-family: inherit;
+  max-width: 200px;
+}
 .pq-list {
-  padding: 10px 14px 14px; display: grid; gap: 12px;
-  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
-  align-items: start; max-height: 620px;
+  padding: 10px 14px 14px; display: grid; gap: 12px; align-items: start;
+  grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); max-height: 620px;
+  justify-content: start;
 }
+/* a column of prose wider than ~90 characters stops being easy to read, so the
+   clubs keep their width whatever is left over */
+.pq-group { max-width: 520px; }
+.pq-group { display: grid; gap: 8px; align-content: start; }
+.pq-gh { display: flex; align-items: center; gap: 8px; font-size: 12.5px; padding: 0 2px; }
+.pq-gh img { width: 18px; height: 18px; object-fit: contain; }
+.pq-gh .muted { font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pq-gh .dd-when { margin-left: auto; white-space: nowrap; }
 .pq { border: 1px solid var(--line-soft); border-radius: 10px; padding: 10px 12px; background: var(--bg-deep); }
-.pq-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; font-size: 12.5px; }
-.pq-head b { font-size: 13px; }
-.pq-head .dd-when { margin-left: auto; }
-.pq-club {
-  font-size: 10px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase;
-  color: var(--text); background: var(--panel-3); border-radius: 4px; padding: 2px 6px;
-}
+.pq-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; font-size: 11px; }
 .pq-fix { font-size: 10.5px; color: var(--muted-2); font-family: var(--mono); }
-.pq-lead { margin-top: 6px; font-size: 12px; color: var(--muted); line-height: 1.5; }
+.pq-lead { margin-top: 5px; font-size: 12px; color: var(--muted); line-height: 1.5; }
 .pq-quote {
   margin: 7px 0 0; padding-left: 10px; border-left: 2px solid var(--line);
   font-size: 13px; line-height: 1.6; color: var(--text);
 }
 .pq-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-.pill-btn.tiny { padding: 2px 8px; font-size: 10.5px; margin-left: auto; }
+.pq-more {
+  background: none; border: 1px dashed var(--line); color: var(--muted); cursor: pointer;
+  border-radius: 8px; padding: 5px 8px; font: inherit; font-size: 11.5px;
+}
+.pq-more:hover { color: var(--text); border-color: var(--line-strong, var(--line)); }
+.pill-btn.tiny { padding: 2px 8px; font-size: 10.5px; }
 .pill-btn.tiny.on { border-color: var(--accent); color: var(--text); }
 @media (max-width: 620px) {
+  .pq-controls { margin: 6px 0 0; width: 100%; }
+  .pq-select { flex: 1 1 auto; max-width: none; }
   .pq-quote { font-size: 13.5px; }
-  .ld-pressers .ld-scroll { max-height: 70vh; }
+  .pq-list { max-height: 70vh; }
 }

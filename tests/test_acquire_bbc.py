@@ -1,6 +1,7 @@
 """BBC Sport collector: parsers on the container shapes seen on the site."""
 import os
 import tempfile
+from datetime import date
 
 from acquire import storage
 from acquire.sources import bbc
@@ -189,6 +190,71 @@ def test_pressers_collect_page_is_incremental(monkeypatch):
     except PermissionError:
         pass
 
+
+
+def test_pressers_refresh_rereads_the_page_a_live_blog_is_still_writing(monkeypatch):
+    """A Friday page is published in the morning and written all day, in blocks,
+    as each manager takes his turn. `collect_page` stops at "every stream page
+    read", so without a refresh the archive freezes at whatever had been posted
+    when it first ran — which is what left the desk showing the morning only."""
+    import copy
+    import json
+    from acquire.core import http
+    from acquire.sources import bbc_pressers as bp
+    fd, path = tempfile.mkstemp(suffix=".sqlite")
+    os.close(fd)
+    conn = storage.connect(path)
+    storage.init(conn)
+    bp.register(conn)
+    stream = copy.deepcopy(PRESSER_STREAM)
+
+    def fake_get(url, **kw):
+        if "/sport/football/live/" in url:
+            return http.Response(url, 200, 'x "stream?assetId=c64g&liveTextStreamId=ABC123&pageNumber=1" y',
+                                 http.utcnow(), "text/html")
+        return http.Response(url, 200, json.dumps(stream), http.utcnow(), "application/json")
+
+    monkeypatch.setattr(http, "get", fake_get)
+    page = {"page_id": "c64g", "headline": "Recap", "date_published": date.today().isoformat()}
+    assert bp.collect_page(conn, page, progress=lambda m: None)["posts"] == 1
+    # the afternoon's managers are appended to the same stream page
+    post = copy.deepcopy(stream["results"][0])
+    post["urn"] = "urn:x:2"
+    post["dates"] = {"firstPublished": "2026-09-11T16:05:00.000Z"}
+    stream["results"].append(post)
+
+    assert bp.collect_page(conn, page, progress=lambda m: None)["skipped"] is True
+    assert conn.execute("SELECT COUNT(*) FROM acq_bbc_presser").fetchone()[0] == 1
+
+    out = bp.refresh_live(conn, progress=lambda m: None)
+    assert out["new"] == 1 and out["pages"] == 1
+    assert conn.execute("SELECT COUNT(*) FROM acq_bbc_presser").fetchone()[0] == 2
+    # and the page's own count is the truth, not a running total
+    assert conn.execute("SELECT posts FROM acq_bbc_presser_page").fetchone()[0] == 2
+    # nothing new: a refresh writes nothing and reports nothing
+    assert bp.refresh_live(conn, progress=lambda m: None)["new"] == 0
+    conn.close()
+    try:
+        os.remove(path)
+    except PermissionError:
+        pass
+
+
+def test_pressers_refresh_needs_a_recent_page(monkeypatch):
+    from acquire.sources import bbc_pressers as bp
+    fd, path = tempfile.mkstemp(suffix=".sqlite")
+    os.close(fd)
+    conn = storage.connect(path)
+    storage.init(conn)
+    bp.register(conn)
+    conn.execute("INSERT INTO acq_bbc_presser_page (page_id, headline, date_published, "
+                 "observed_utc) VALUES ('old', 'Recap', '2026-01-01T08:00:00Z', '2026-01-01T09:00:00Z')")
+    assert bp.refresh_live(conn, progress=lambda m: None) == {"pages": 0, "posts": 0, "new": 0}
+    conn.close()
+    try:
+        os.remove(path)
+    except PermissionError:
+        pass
 
 
 def test_parse_ratings_reads_the_embedded_player_rater():

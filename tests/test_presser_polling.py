@@ -24,11 +24,21 @@ def test_the_window_is_wide_enough_for_fridays_page():
 
 def test_the_poll_interval_is_bounded(monkeypatch):
     monkeypatch.delenv("FPLABS_PRESSER_MINUTES", raising=False)
-    assert scheduler.presser_minutes() == 20.0
-    monkeypatch.setenv("FPLABS_PRESSER_MINUTES", "1")
-    assert scheduler.presser_minutes() == 10.0          # never hammer the BBC
+    assert scheduler.presser_minutes() == 5.0
+    monkeypatch.setenv("FPLABS_PRESSER_MINUTES", "0.5")
+    assert scheduler.presser_minutes() == 3.0           # never hammer the BBC
     monkeypatch.setenv("FPLABS_PRESSER_MINUTES", "nonsense")
-    assert scheduler.presser_minutes() == 20.0
+    assert scheduler.presser_minutes() == 5.0
+
+
+def test_the_cheap_refresh_runs_often_and_the_page_hunt_rarely():
+    """Re-reading the live page is one or two requests; walking the search
+    index for a page we have not seen is several, and a new page appears once
+    a week."""
+    src = inspect.getsource(scheduler._news_loop)
+    assert "PRESSER_FULL_MINUTES" in src and "pull_pressers(full=full)" in src
+    assert scheduler.PRESSER_FULL_MINUTES >= 30
+    assert "refresh_live" in inspect.getsource(scheduler.pull_pressers)
 
 
 def test_hours_to_deadline_ignores_deadlines_that_have_passed(monkeypatch):
@@ -44,7 +54,7 @@ def test_hours_to_deadline_ignores_deadlines_that_have_passed(monkeypatch):
 
 def test_a_failed_pull_is_recorded_not_raised(monkeypatch):
     from acquire.sources import bbc_pressers
-    monkeypatch.setattr(bbc_pressers, "pull",
+    monkeypatch.setattr(bbc_pressers, "refresh_live",
                         lambda conn, **k: (_ for _ in ()).throw(RuntimeError("BBC is down")))
     out = scheduler.pull_pressers()
     assert "BBC is down" in out["error"]
@@ -54,10 +64,17 @@ def test_a_failed_pull_is_recorded_not_raised(monkeypatch):
 def test_a_successful_pull_records_what_it_found(monkeypatch):
     from acquire.sources import bbc_pressers
     from fpl_engine import pressers
-    monkeypatch.setattr(bbc_pressers, "pull", lambda conn, **k: {"pages": 2, "posts": 7})
+    called = []
+    monkeypatch.setattr(bbc_pressers, "refresh_live",
+                        lambda conn, **k: called.append("quick") or {"pages": 1, "posts": 6, "new": 2})
+    monkeypatch.setattr(bbc_pressers, "pull",
+                        lambda conn, **k: called.append("full") or {"pages": 5, "posts": 0, "new": 0})
     monkeypatch.setattr(pressers, "extract_pressers", lambda conn, seasons=None: {"obs": 3})
     out = scheduler.pull_pressers()
-    assert out["posts"] == 7 and out["obs"] == 3
+    assert called == ["quick"] and out["new"] == 2 and out["obs"] == 3
     st = scheduler.state()
-    assert st["pressers_last_posts"] == 7 and st["pressers_last_error"] is None
+    # what is REPORTED is what arrived, not what was re-read
+    assert st["pressers_last_posts"] == 2 and st["pressers_last_error"] is None
     assert time.time() - st["pressers_last_run"] < 30
+    scheduler.pull_pressers(full=True)
+    assert called == ["quick", "full"]

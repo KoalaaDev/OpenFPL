@@ -203,12 +203,21 @@ def parse_stream(payload: dict) -> tuple[list[dict], int]:
     return posts, total
 
 
-def collect_page(conn, page: dict, *, progress=print) -> dict:
+def collect_page(conn, page: dict, *, progress=print, refresh: bool = False) -> dict:
+    """Archive a page's live text.
+
+    Incremental by default: a page whose every stream page has been read is
+    skipped. `refresh` re-reads the LAST stream page instead, which is what a
+    live blog needs — it keeps appending posts to the page it is on all day,
+    so "we have read all N pages" is only true until the next post. Posts are
+    keyed by their own urn, so re-reading writes nothing new twice.
+    """
     now = http.utcnow()
     pid = page["page_id"]
     row = conn.execute("SELECT stream_id, pages_done, pages_total FROM "
                        "acq_bbc_presser_page WHERE page_id=?", (pid,)).fetchone()
-    if row and row[2] is not None and row[1] >= row[2]:
+    done = bool(row and row[2] is not None and row[1] >= row[2])
+    if done and not refresh:
         return {"page_id": pid, "skipped": True}
     stream_id = row[0] if row and row[0] else None
     if not stream_id:
@@ -226,9 +235,15 @@ def collect_page(conn, page: dict, *, progress=print) -> dict:
         "headline=excluded.headline, date_published=excluded.date_published, "
         "stream_id=excluded.stream_id, observed_utc=excluded.observed_utc",
         (pid, page.get("headline"), page.get("date_published"), stream_id, now))
+    before = conn.execute("SELECT COUNT(*) FROM acq_bbc_presser WHERE page_id=?",
+                          (pid,)).fetchone()[0]
     n_posts = 0
     p = (row[1] if row else 0) + 1
-    total = row[2] if row and row[2] else None
+    if done and refresh:
+        p = max(1, p - 1)                   # the page the blog is still writing
+        total = None                        # and re-ask how many there are now
+    else:
+        total = row[2] if row and row[2] else None
     while total is None or p <= total:
         resp = http.get(stream_url(pid, stream_id, p), delay=DELAY)
         if not resp.ok or not resp.text.strip():
@@ -245,11 +260,38 @@ def collect_page(conn, page: dict, *, progress=print) -> dict:
                 "fixture_label, text, raw_id) VALUES (?,?,?,?,?,?)",
                 (pid, q["post_urn"], q["published_utc"], q["fixture_label"], q["text"], rid))
         n_posts += len(posts)
+        # count the rows rather than adding to a running total: a refresh
+        # re-reads a page it has already seen
         conn.execute("UPDATE acq_bbc_presser_page SET pages_done=?, pages_total=?, "
-                     "posts=posts+? WHERE page_id=?", (p, total, len(posts), pid))
+                     "posts=(SELECT COUNT(*) FROM acq_bbc_presser WHERE page_id=?) "
+                     "WHERE page_id=?", (p, total, pid, pid))
         p += 1
     conn.commit()
-    return {"page_id": pid, "posts": n_posts, "pages": total}
+    after = conn.execute("SELECT COUNT(*) FROM acq_bbc_presser WHERE page_id=?",
+                         (pid,)).fetchone()[0]
+    return {"page_id": pid, "posts": n_posts, "new": after - before, "pages": total}
+
+
+def refresh_live(conn, *, within_days: int = 3, progress=print) -> dict:
+    """Re-read the newest archived page, for a blog that is still running.
+
+    The Friday page is published in the morning and written all day — the
+    managers speak in blocks through to the evening — so a collector that
+    stops at "every page read" freezes at whatever had been posted when it
+    first ran.
+    """
+    register(conn)
+    since = (date.today() - timedelta(days=within_days)).isoformat()
+    row = conn.execute(
+        "SELECT page_id, headline, date_published FROM acq_bbc_presser_page "
+        "WHERE date_published >= ? ORDER BY date_published DESC LIMIT 1",
+        (since,)).fetchone()
+    if not row:
+        return {"pages": 0, "posts": 0, "new": 0}
+    out = collect_page(conn, {"page_id": row[0], "headline": row[1],
+                              "date_published": row[2]}, progress=progress, refresh=True)
+    return {"pages": 1, "posts": out.get("posts", 0), "new": out.get("new", 0),
+            "page_id": row[0]}
 
 
 # --------------------------------------------------------------------------

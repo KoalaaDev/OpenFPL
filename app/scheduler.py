@@ -506,9 +506,12 @@ PRESSER_WINDOW_H = 40.0     # Friday's page runs from the morning before
 
 def presser_minutes() -> float:
     try:
-        return max(10.0, float(os.environ.get("FPLABS_PRESSER_MINUTES", 20)))
+        return max(3.0, float(os.environ.get("FPLABS_PRESSER_MINUTES", 5)))
     except ValueError:
-        return 20.0
+        return 5.0
+
+
+PRESSER_FULL_MINUTES = 60.0     # how often to look for a NEW page
 
 
 def hours_to_deadline() -> float | None:
@@ -517,11 +520,13 @@ def hours_to_deadline() -> float | None:
     return (min(ahead) - time.time()) / 3600.0 if ahead else None
 
 
-def pull_pressers() -> dict:
+def pull_pressers(*, full: bool = False) -> dict:
     """Archive the BBC press-conference page and re-extract its statements.
 
-    One search-index read plus any page that has new posts, so it is cheap
-    enough to run through a deadline morning. Never raises.
+    `full` walks the search index for a page we have not seen; otherwise it
+    re-reads the newest page, which is one or two requests — the Friday blog is
+    written all day, in blocks, as each manager speaks, so it has to be asked
+    again rather than treated as finished. Never raises.
     """
     from fpl_engine import config
     try:
@@ -530,14 +535,15 @@ def pull_pressers() -> dict:
         from fpl_engine import pressers as _pr
         with _st.connect(config.DB_PATH) as conn:
             _st.init(conn)
-            out = dict(_bp.pull(conn, season=config.CURRENT_SEASON))
+            out = dict(_bp.pull(conn, season=config.CURRENT_SEASON) if full
+                       else _bp.refresh_live(conn, progress=lambda m: None))
             out["obs"] = (_pr.extract_pressers(
                 conn, seasons=[config.CURRENT_SEASON]) or {}).get("obs")
         with _lock:
             _state["pressers_last_run"] = time.time()
-            _state["pressers_last_posts"] = out.get("posts")
+            _state["pressers_last_posts"] = out.get("new", out.get("posts"))
             _state["pressers_last_error"] = None
-        if out.get("posts"):
+        if out.get("new") or out.get("posts"):
             try:
                 from . import live            # the desk caches for a minute
                 live._cache["v"] = None
@@ -553,15 +559,19 @@ def pull_pressers() -> dict:
 def _news_loop(startup_delay: float) -> None:
     if _stop.wait(startup_delay):
         return
-    last_pressers = 0.0
+    last_pressers = last_full = 0.0
     while not _stop.is_set():
         pull_team_news()
         hrs = hours_to_deadline()
+        now = time.time()
         if (hrs is not None and hrs <= PRESSER_WINDOW_H
-                and time.time() - last_pressers >= presser_minutes() * 60.0):
-            last_pressers = time.time()
-            pull_pressers()
-        if _stop.wait(news_minutes() * 60.0):
+                and now - last_pressers >= presser_minutes() * 60.0):
+            last_pressers = now
+            full = now - last_full >= PRESSER_FULL_MINUTES * 60.0
+            if full:
+                last_full = now
+            pull_pressers(full=full)
+        if _stop.wait(min(news_minutes(), presser_minutes()) * 60.0):
             return
 
 

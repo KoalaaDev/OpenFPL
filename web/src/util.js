@@ -426,6 +426,59 @@ export function applyChipToDraft(d, chip, gw, ctx) {
   return d
 }
 
+/* A gameweek's transfer record is the difference between the squad it starts
+   with and the squad it plays — not the moves of whatever action ran last.
+
+   "Best single transfer from here" used to REPLACE the record with its own
+   solve's moves while leaving the squad it had already changed. Run it twice
+   and the second solve, seeded from the squad the first one bought, would
+   often decide the best move is no move — and writing that empty result back
+   erased the first transfer. The squad had two new players, the record said
+   none, so the ledger charged nothing and the week read as a roll.
+
+   These accumulate the way manual transfers always have: a move whose OUT was
+   bought earlier in the same week rewrites that pair (A->B then B->C is A->C),
+   anything else is appended, and an action that moves nobody changes nothing. */
+export function pairMoves(outs, ins, posOf) {
+  const rest = [...ins]
+  const pairs = []
+  for (const out of outs) {
+    // FPL transfers are like-for-like, so pair on position where we can
+    let k = posOf ? rest.findIndex((id) => posOf(id) === posOf(out)) : 0
+    if (k < 0) k = 0
+    const inId = rest.splice(k, 1)[0]
+    if (inId != null) pairs.push([out, inId])
+  }
+  return pairs
+}
+
+export function recordMoves(g, pairs, sellOf) {
+  g.transfers_in = [...(g.transfers_in || [])]
+  g.transfers_out = [...(g.transfers_out || [])]
+  g.sold = { ...(g.sold || {}) }
+  for (const [out, inId] of pairs) {
+    const j = g.transfers_in.indexOf(out)
+    if (j >= 0) {
+      g.transfers_in[j] = inId              // he was bought this week: rewrite
+    } else {
+      g.transfers_out.push(out)
+      g.transfers_in.push(inId)
+      if (sellOf) g.sold[out] = sellOf(out)
+    }
+  }
+  return g
+}
+
+/* The same question answered from squads rather than moves, for a week whose
+   whole fifteen was replaced (a chip): what changed against what it carried
+   in. Pairing is by position so the list reads as transfers. */
+export function movesBetween(before, after, posOf) {
+  const had = before.map((s) => (typeof s === 'object' ? s.id : s))
+  const now = after.map((s) => (typeof s === 'object' ? s.id : s))
+  return pairMoves(had.filter((id) => !now.includes(id)),
+                   now.filter((id) => !had.includes(id)), posOf)
+}
+
 export function applyFtLedger(draft, ft0) {
   if (!draft?.gws?.length) return draft
   const start = Number.isFinite(ft0) ? ft0 : null

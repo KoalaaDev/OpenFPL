@@ -2726,6 +2726,29 @@ present itself as a finding*. `tests/test_deadline_lineups.py`.
   from, and a filter for the posts that name somebody. It sits full width under
   the dashboard, because a paragraph in a 320px column is fifteen lines.
   `tests/test_presser_quotes.py`.
+* **A gameweek's transfer record is a difference, not the last action's diff.**
+  "Best single transfer from here" WROTE its own solve's moves over the week's
+  record while leaving the squad it had already changed. Run it twice and the
+  second solve — seeded from the squad the first one bought — often found no
+  move worth making, and writing that empty result back erased the first
+  transfer: two new players, no transfers on the record, nothing charged, the
+  week read as a roll. `recordMoves`/`pairMoves` (`web/src/util.js`) accumulate
+  the way manual transfers always have (selling someone bought earlier the same
+  week rewrites that pair), a chip week's record is `movesBetween` what it
+  carried in and what it plays, the solve now asks for the free transfers the
+  week has LEFT rather than always one, and a solve that moves nobody says so
+  instead of claiming it applied something. `tests/test_transfer_record_js.py`.
+* **The Friday page is written all day, and the collector stopped reading it.**
+  `collect_page` skips a page whose every stream page has been read — true
+  until the next post, and a live blog keeps appending as each manager takes
+  his turn, so the archive froze at the morning block. `collect_page(...,
+  refresh=True)` re-reads the last stream page and `bbc_pressers.refresh_live`
+  does that for the newest page (one or two requests, no HTTP cache in
+  `acquire.core.http`), which is what makes a 5-minute poll worth anything.
+  The scheduler polls that every `FPLABS_PRESSER_MINUTES` (default 5, floor 3)
+  inside the deadline window and walks the search index for a NEW page once an
+  hour. The desk groups the quotes by the club whose manager is speaking, with
+  a dropdown, newest first. `tests/test_acquire_bbc.py`.
 * **Press conferences only updated on the full refresh** (daily, and ~2 h
   before the deadline) while the BBC page is published through the Friday
   morning — 26 posts on the deadline morning that the panel could be hours

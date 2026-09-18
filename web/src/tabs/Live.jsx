@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { api } from '../api'
 import { useStore, usePersisted } from '../store'
 import { Empty, Loading } from '../components/States'
@@ -80,7 +80,7 @@ export default function Live() {
         </section>
       </div>
 
-      <Pressers rows={d.pressers || []} quotes={d.quotes || []} gw={d.gw} />
+      <Pressers rows={d.pressers || []} quotes={d.quotes || []} gw={d.gw} built={d.built_at} />
 
       <Lineups l={d.lineups || { clubs: [] }} />
     </div>
@@ -372,54 +372,114 @@ function TeamNews({ rows }) {
   )
 }
 
-/* The panel used to show only what the rules extractor could turn into a
-   player statement — one line on a morning when two managers had spoken at
-   length. It shows the quotes now, newest first, with the extracted statements
-   tagged onto the post they came from and a filter for the posts that name
-   somebody. The text is set to be read, not scanned. */
-function Pressers({ rows, quotes, gw }) {
+/* What the managers said, by club.
+
+   It began as the rules extractor's output — one line on a morning when two
+   managers had spoken at length — then as a flat list of every post, which
+   buried the club you actually own players at. It is grouped by the club whose
+   manager is speaking, with a dropdown to sit on one of them, newest first,
+   and the timestamps are what make it readable as a live feed: the page is
+   written in blocks through the day as each manager takes his turn. */
+function Pressers({ rows, quotes, gw, built }) {
+  const { teams } = useStore()
+  const [club, setClub] = usePersisted('live.quoteClub', 'all')
   const [only, setOnly] = usePersisted('live.quotesOnly', false)
-  const named = quotes.filter((q) => q.players.length)
-  const list = only ? named : quotes
+  const [open, setOpen] = useState({})
+
+  const groups = useMemo(() => {
+    const by = new Map()
+    for (const q of quotes) {
+      const key = q.club_id != null ? String(q.club_id) : (q.club || 'other')
+      const g = by.get(key) || { key, club: q.club, club_id: q.club_id, managers: new Set(), items: [] }
+      if (q.manager) g.managers.add(q.manager)
+      g.items.push(q)
+      by.set(key, g)
+    }
+    // the club that spoke most recently is the one worth reading first
+    for (const g of by.values()) g.name = teams[String(g.club_id)]?.name || g.club || 'Other'
+    return [...by.values()].sort((a, b) => (b.items[0]?.when || '').localeCompare(a.items[0]?.when || ''))
+  }, [quotes, teams])
+
+  const named = quotes.filter((q) => q.players.length).length
+  const shown = groups
+    .filter((g) => club === 'all' || g.key === club)
+    .map((g) => ({ ...g, items: only ? g.items.filter((q) => q.players.length) : g.items }))
+    .filter((g) => g.items.length)
+
   const when = (t) => (t ? new Date(t).toLocaleString(undefined,
     { weekday: 'short', hour: '2-digit', minute: '2-digit' }) : '')
+
   return (
-    <div className={`panel ld-pressers ${quotes.length || rows.length ? '' : 'is-empty'}`}>
+    <div className={`panel ld-pressers ${quotes.length ? '' : 'is-empty'}`}>
       <div className="panel-head">Managers said <span className="chip dim num">{quotes.length}</span>
-        <span className="panel-sub">Friday press conferences (BBC)</span>
-        {named.length > 0 && (
-          <button className={`pill-btn tiny ${only ? 'on' : ''}`} onClick={() => setOnly(!only)}
-            title="only the posts the model could read a player out of">
-            {only ? `all quotes` : `${named.length} name a player`}
-          </button>
-        )}
+        <span className="panel-sub">BBC press conferences · updated every 5 minutes
+          {built ? ` · ${ago(built)}` : ''}</span>
+        <div className="pq-controls">
+          <select className="pq-select" value={club} onChange={(e) => setClub(e.target.value)}
+            aria-label="club">
+            <option value="all">All clubs ({groups.length})</option>
+            {groups.map((g) => (
+              <option key={g.key} value={g.key}>
+                {g.name} ({g.items.length})
+              </option>
+            ))}
+          </select>
+          {named > 0 && (
+            <button className={`pill-btn tiny ${only ? 'on' : ''}`} onClick={() => setOnly(!only)}
+              title="only the posts the model could read a player out of">
+              {only ? 'all quotes' : `${named} name a player`}
+            </button>
+          )}
+        </div>
       </div>
       <div className="ld-scroll pq-list">
-        {!list.length && (
-          <div className="dd-empty">Nothing archived for GW{gw} yet — the Friday page
-            is collected through the morning before the deadline.</div>
+        {!shown.length && (
+          <div className="dd-empty">
+            {quotes.length ? 'Nothing here for that club yet.'
+              : `Nothing archived for GW${gw} yet — the page is written through the day
+                 before the deadline, as each manager speaks.`}
+          </div>
         )}
-        {list.map((q, i) => (
-          <article key={i} className="pq">
-            <div className="pq-head">
-              {q.club && <span className="pq-club">{q.club}</span>}
-              <b>{q.manager || 'Press conference'}</b>
-              {q.fixture && <span className="pq-fix">{q.fixture}</span>}
-              <span className="dd-when">{when(q.when)}</span>
-            </div>
-            {q.lead && <div className="pq-lead">{q.lead}</div>}
-            {q.quote && <blockquote className="pq-quote">{q.quote}</blockquote>}
-            {q.players.length > 0 && (
-              <div className="pq-tags">
-                {q.players.map((p) => (
-                  <span key={p.player_id} className={`presser-tag ${p.cls}`}>
-                    {p.name} · {p.cls}
-                  </span>
-                ))}
+        {shown.map((g) => {
+          const all = club !== 'all' || open[g.key]
+          const items = all ? g.items : g.items.slice(0, 2)
+          const t = teams[String(g.club_id)]
+          return (
+            <section className="pq-group" key={g.key}>
+              <div className="pq-gh">
+                {t?.code ? <img src={badgeUrl(t.code)} alt="" loading="lazy" /> : null}
+                <b>{g.name}</b>
+                <span className="muted">{[...g.managers].join(', ')}</span>
+                <span className="dd-when">{ago(Date.parse(g.items[0].when) / 1000)}</span>
               </div>
-            )}
-          </article>
-        ))}
+              {items.map((q, i) => (
+                <article key={i} className="pq">
+                  <div className="pq-head">
+                    <span className="dd-when" title={q.when ? new Date(q.when).toLocaleString() : ''}>
+                      {when(q.when)}</span>
+                    {q.fixture && <span className="pq-fix">{q.fixture}</span>}
+                  </div>
+                  {q.lead && <div className="pq-lead">{q.lead}</div>}
+                  {q.quote && <blockquote className="pq-quote">{q.quote}</blockquote>}
+                  {q.players.length > 0 && (
+                    <div className="pq-tags">
+                      {q.players.map((pl) => (
+                        <span key={pl.player_id} className={`presser-tag ${pl.cls}`}>
+                          {pl.name} · {pl.cls}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </article>
+              ))}
+              {!all && g.items.length > items.length && (
+                <button className="pq-more" onClick={() => setOpen({ ...open, [g.key]: true })}>
+                  {g.items.length - items.length} more from {g.name}
+                </button>
+              )}
+            </section>
+          )
+        })}
       </div>
     </div>
   )

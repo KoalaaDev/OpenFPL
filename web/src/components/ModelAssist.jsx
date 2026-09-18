@@ -1,7 +1,10 @@
 import React, { useMemo, useState } from 'react'
 import { api, pollJob } from '../api'
 import { useStore } from '../store'
-import { CHIP_NAME, bestXI, chipAvailability, chipNote, epOf, fmt1 } from '../util'
+import {
+  CHIP_NAME, bestXI, chipAvailability, chipNote, epOf, fmt1, movesBetween,
+  pairMoves, recordMoves,
+} from '../util'
 
 /* The Planner used to be a drawing tool: it let you move players around and
    told you the total afterwards. Everything the model knew lived in the Solver
@@ -60,6 +63,11 @@ export default function ModelAssist({
     setToast({ kind: 'ok', msg: `XI optimised — +${fmt1(xiGap.gain)} projected points.` })
   }
 
+  /* What this gameweek has left. Asking for "one free transfer" however many
+     moves the week already carries makes the solver price a move at zero that
+     the ledger will charge -4 for. */
+  const freeLeft = Math.max(0, (plan?.ft_available ?? 1) - (plan?.transfers_in?.length ?? 0))
+
   /* --- server-side solves, seeded from this gameweek's drafted squad ------ */
   const runSolve = async (kind) => {
     setBusy(kind); setNote(null)
@@ -86,7 +94,7 @@ export default function ModelAssist({
       horizon,
       initial_squad: seed,
       bank: plan.bank || 0,
-      free_transfers: kind === 'transfer' ? 1 : 5,
+      free_transfers: kind === 'transfer' ? freeLeft : 5,
       n_plans: 1,
       time_limit: 45,
       max_transfers: kind === 'transfer' ? 1 : 3,
@@ -116,6 +124,7 @@ export default function ModelAssist({
     const xi = per.squad.filter((r) => r.in_xi).map((r) => r.player_id)
     const captain = per.squad.find((r) => r.is_captain)?.player_id ?? null
     const vice = per.squad.find((r) => r.is_vice)?.player_id ?? null
+    const sellOf = (id) => plan.squad.find((s) => s.id === id)?.sell ?? byId.get(id)?.price ?? 0
     // A Free Hit reverts, so it touches exactly one gameweek. Anything else
     // changes the squad you carry, so it propagates until the next Free Hit.
     const single = kind === 'freehit'
@@ -128,10 +137,21 @@ export default function ModelAssist({
         g.bank = per.bank ?? g.bank
         if (i === gwIdx) {
           g.xi = xi; g.captain = captain; g.vice = vice
-          if (kind === 'freehit' || kind === 'wildcard') g.chip = kind
+          if (kind === 'freehit' || kind === 'wildcard') {
+            g.chip = kind
+            // the chip replaced the fifteen, so the week's moves are what it
+            // changed against the squad carried IN — what the chip put aside,
+            // or failing that the week before
+            const before = g.chip_before?.squad || d.gws[i - 1]?.squad || plan.squad
+            g.transfers_in = []; g.transfers_out = []; g.sold = {}
+            recordMoves(g, movesBetween(before, squad, posOf),
+                        (id) => before.find((x) => x.id === id)?.sell ?? sellOf(id))
+          }
           if (kind === 'transfer') {
-            g.transfers_in = per.transfers_in.map((r) => r.player_id)
-            g.transfers_out = per.transfers_out.map((r) => r.player_id)
+            // accumulate: a second solve must not erase the first one's move
+            recordMoves(g, pairMoves(per.transfers_out.map((r) => r.player_id),
+                                     per.transfers_in.map((r) => r.player_id), posOf),
+                        sellOf)
           }
         } else {
           // later gameweeks keep their own best XI for their own fixtures
@@ -147,7 +167,10 @@ export default function ModelAssist({
     })
     const label = { freehit: 'Free Hit squad', wildcard: 'Wildcard squad',
                     transfer: 'transfer' }[kind]
-    setToast({ kind: 'ok', msg: `Applied the model's ${label} for GW${plan.gw}.` })
+    setToast({ kind: 'ok', msg: kind === 'transfer' && !per.transfers_in.length
+      ? `Nothing is worth transferring from here for GW${plan.gw}`
+        + `${freeLeft ? '' : ' at -4'} — the model would keep this squad.`
+      : `Applied the model's ${label} for GW${plan.gw}.` })
   }
 
   const chip = plan.chip
@@ -176,7 +199,9 @@ export default function ModelAssist({
       key: 'transfer',
       icon: '↔',
       title: 'Best single transfer from here',
-      body: 'Solves one move from the squad this draft reaches at this gameweek — free transfer, no hit.',
+      body: `Solves one move from the squad this draft reaches at this gameweek — `
+        + (freeLeft ? `${freeLeft} free transfer${freeLeft === 1 ? '' : 's'} left, no hit.`
+          : 'no free transfer left, so it only moves if the gain beats -4.'),
       cta: 'Find it',
       run: () => runSolve('transfer'),
       disabled: !!busy || isPast,
