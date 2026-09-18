@@ -76,13 +76,12 @@ export default function Live() {
         <section className="ld-col ld-c">
           <Fixtures rows={d.fixtures || []} />
           <TeamNews rows={d.news || []} />
+          <Pressers quotes={d.quotes || []} gw={d.gw} built={d.built_at} />
           <Movers m={d.movers || { rows: [] }} />
         </section>
       </div>
 
-      <Pressers rows={d.pressers || []} quotes={d.quotes || []} gw={d.gw} built={d.built_at} />
-
-      <Lineups l={d.lineups || { clubs: [] }} />
+      <Lineups l={d.lineups || { clubs: [] }} fixtures={d.fixtures || []} />
     </div>
   )
 }
@@ -372,112 +371,82 @@ function TeamNews({ rows }) {
   )
 }
 
-/* What the managers said, by club.
+/* What the managers said, in the same shape as the team-news feed beside it:
+   one row a post, newest first, the club it came from on the left and when it
+   was said on the right. A club picker rather than a wall, because on a Friday
+   twenty managers speak and you own players at three or four of them.
 
-   It began as the rules extractor's output — one line on a morning when two
-   managers had spoken at length — then as a flat list of every post, which
-   buried the club you actually own players at. It is grouped by the club whose
-   manager is speaking, with a dropdown to sit on one of them, newest first,
-   and the timestamps are what make it readable as a live feed: the page is
-   written in blocks through the day as each manager takes his turn. */
-function Pressers({ rows, quotes, gw, built }) {
+   The quote is clamped to a few lines and opens on click — the rhythm of the
+   feed is what makes it scannable, and some answers run for a paragraph. */
+function Pressers({ quotes, gw, built }) {
   const { teams } = useStore()
   const [club, setClub] = usePersisted('live.quoteClub', 'all')
-  const [only, setOnly] = usePersisted('live.quotesOnly', false)
   const [open, setOpen] = useState({})
 
-  const groups = useMemo(() => {
+  const clubs = useMemo(() => {
     const by = new Map()
     for (const q of quotes) {
       const key = q.club_id != null ? String(q.club_id) : (q.club || 'other')
-      const g = by.get(key) || { key, club: q.club, club_id: q.club_id, managers: new Set(), items: [] }
-      if (q.manager) g.managers.add(q.manager)
-      g.items.push(q)
-      by.set(key, g)
+      const c = by.get(key) || { key, club: q.club, club_id: q.club_id, n: 0, when: q.when }
+      c.n += 1
+      by.set(key, c)
     }
-    // the club that spoke most recently is the one worth reading first
-    for (const g of by.values()) g.name = teams[String(g.club_id)]?.name || g.club || 'Other'
-    return [...by.values()].sort((a, b) => (b.items[0]?.when || '').localeCompare(a.items[0]?.when || ''))
+    for (const c of by.values()) c.name = teams[String(c.club_id)]?.name || c.club || 'Other'
+    return [...by.values()].sort((a, b) => a.name.localeCompare(b.name))
   }, [quotes, teams])
 
-  const named = quotes.filter((q) => q.players.length).length
-  const shown = groups
-    .filter((g) => club === 'all' || g.key === club)
-    .map((g) => ({ ...g, items: only ? g.items.filter((q) => q.players.length) : g.items }))
-    .filter((g) => g.items.length)
-
-  const when = (t) => (t ? new Date(t).toLocaleString(undefined,
-    { weekday: 'short', hour: '2-digit', minute: '2-digit' }) : '')
+  const rows = quotes.filter((q) => club === 'all'
+    || (q.club_id != null ? String(q.club_id) : (q.club || 'other')) === club)
 
   return (
     <div className={`panel ld-pressers ${quotes.length ? '' : 'is-empty'}`}>
-      <div className="panel-head">Managers said <span className="chip dim num">{quotes.length}</span>
-        <span className="panel-sub">BBC press conferences · updated every 5 minutes
-          {built ? ` · ${ago(built)}` : ''}</span>
-        <div className="pq-controls">
-          <select className="pq-select" value={club} onChange={(e) => setClub(e.target.value)}
-            aria-label="club">
-            <option value="all">All clubs ({groups.length})</option>
-            {groups.map((g) => (
-              <option key={g.key} value={g.key}>
-                {g.name} ({g.items.length})
-              </option>
-            ))}
-          </select>
-          {named > 0 && (
-            <button className={`pill-btn tiny ${only ? 'on' : ''}`} onClick={() => setOnly(!only)}
-              title="only the posts the model could read a player out of">
-              {only ? 'all quotes' : `${named} name a player`}
-            </button>
-          )}
-        </div>
+      <div className="panel-head">Managers said <span className="chip dim num">{rows.length}</span>
+        <span className="panel-sub">BBC, every 5 min{built ? ` · ${ago(built)}` : ''}</span>
+        <select className="pq-select" value={club} onChange={(e) => setClub(e.target.value)}
+          aria-label="club">
+          <option value="all">All clubs ({clubs.length})</option>
+          {clubs.map((c) => <option key={c.key} value={c.key}>{c.name} ({c.n})</option>)}
+        </select>
       </div>
-      <div className="ld-scroll pq-list">
-        {!shown.length && (
+      <div className="live-list ld-scroll">
+        {!rows.length && (
           <div className="dd-empty">
-            {quotes.length ? 'Nothing here for that club yet.'
+            {quotes.length ? 'That club has not spoken yet.'
               : `Nothing archived for GW${gw} yet — the page is written through the day
                  before the deadline, as each manager speaks.`}
           </div>
         )}
-        {shown.map((g) => {
-          const all = club !== 'all' || open[g.key]
-          const items = all ? g.items : g.items.slice(0, 2)
-          const t = teams[String(g.club_id)]
+        {rows.map((q, i) => {
+          const t = teams[String(q.club_id)]
+          const shown = open[i]
           return (
-            <section className="pq-group" key={g.key}>
-              <div className="pq-gh">
-                {t?.code ? <img src={badgeUrl(t.code)} alt="" loading="lazy" /> : null}
-                <b>{g.name}</b>
-                <span className="muted">{[...g.managers].join(', ')}</span>
-                <span className="dd-when">{ago(Date.parse(g.items[0].when) / 1000)}</span>
-              </div>
-              {items.map((q, i) => (
-                <article key={i} className="pq">
-                  <div className="pq-head">
-                    <span className="dd-when" title={q.when ? new Date(q.when).toLocaleString() : ''}>
-                      {when(q.when)}</span>
-                    {q.fixture && <span className="pq-fix">{q.fixture}</span>}
+            <div key={i} className={`live-row pq-row ${shown ? 'open' : ''}`}
+              role="button" tabIndex={0}
+              onClick={() => setOpen({ ...open, [i]: !shown })}
+              onKeyDown={(e) => { if (e.key === 'Enter') setOpen({ ...open, [i]: !shown }) }}>
+              <span className="pq-badge" title={q.club || ''}>
+                {t?.code ? <img src={badgeUrl(t.code)} alt="" loading="lazy"
+                  onError={(e) => { e.currentTarget.style.visibility = 'hidden' }} /> : (q.club || '—')}
+              </span>
+              <div className="lr-text">
+                <b>{q.manager || 'Press conference'}</b>{' '}
+                <span className="muted">{q.fixture || q.club}</span>
+                {q.lead && <div className="lr-note">{q.lead}</div>}
+                {q.quote && <div className={`lr-note pq-q ${shown ? 'open' : ''}`}>{q.quote}</div>}
+                {q.players.length > 0 && (
+                  <div className="pq-tags">
+                    {q.players.map((pl) => (
+                      <span key={pl.player_id} className={`presser-tag ${pl.cls}`}>
+                        {pl.name} · {pl.cls}
+                      </span>
+                    ))}
                   </div>
-                  {q.lead && <div className="pq-lead">{q.lead}</div>}
-                  {q.quote && <blockquote className="pq-quote">{q.quote}</blockquote>}
-                  {q.players.length > 0 && (
-                    <div className="pq-tags">
-                      {q.players.map((pl) => (
-                        <span key={pl.player_id} className={`presser-tag ${pl.cls}`}>
-                          {pl.name} · {pl.cls}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </article>
-              ))}
-              {!all && g.items.length > items.length && (
-                <button className="pq-more" onClick={() => setOpen({ ...open, [g.key]: true })}>
-                  {g.items.length - items.length} more from {g.name}
-                </button>
-              )}
-            </section>
+                )}
+              </div>
+              <span className="dd-when" title={q.when ? new Date(q.when).toLocaleString() : ''}>
+                {ago(Date.parse(q.when) / 1000)}
+              </span>
+            </div>
           )
         })}
       </div>
@@ -561,46 +530,60 @@ function PriceWatch({ p, open }) {
   )
 }
 
-function Lineups({ l }) {
+function Lineups({ l, fixtures = [] }) {
   const { teams } = useStore()
-  const [open, setOpen] = useState(false)
   const clubs = l.clubs || []
+  /* It used to be hidden behind a "show" button and then twenty pitches at
+     once: either nothing or everything. A club picker is the concise version —
+     you look up the sides you own players at — and the board is always on. */
+  const [pick, setPick] = usePersisted('live.lineupClub', 'all')
+  const named = clubs.map((c) => ({ ...c, name: teams[String(c.team_id)]?.name || c.team }))
+  // one club means one match: show who they are playing beside them, which is
+  // the comparison anybody picking a captain is actually making
+  const fx = pick === 'all' ? null
+    : fixtures.find((f) => String(f.home_id) === pick || String(f.away_id) === pick)
+  const ids = fx ? [String(fx.home_id), String(fx.away_id)] : [pick]
+  const shown = pick === 'all' ? named
+    : ids.map((id) => named.find((c) => String(c.team_id) === id)).filter(Boolean)
   const dis = clubs.reduce((a, c) => a + (c.disagreements || 0), 0)
+  const changed = named.filter((c) => c.shape_change)
   return (
     <div className="panel">
       <div className="panel-head">Predicted line-ups
         <span className="chip dim num">{clubs.length} clubs</span>
         {dis > 0 && <span className="chip gold num">{dis} disagree with the model</span>}
-        <button className="pill-btn" style={{ marginLeft: 'auto' }}
-          onClick={() => setOpen((o) => !o)}>{open ? 'hide' : 'show'}</button>
+        <select className="pq-select" value={pick} onChange={(e) => setPick(e.target.value)}
+          aria-label="club" style={{ marginLeft: 'auto' }}>
+          <option value="all">All clubs ({clubs.length})</option>
+          {[...named].sort((a, b) => a.name.localeCompare(b.name)).map((c) => (
+            <option key={c.team_id} value={String(c.team_id)}>
+              {c.name}{c.shape_change ? ' · shape change' : ''}
+            </option>
+          ))}
+        </select>
       </div>
       {l.note && <div className="dd-empty">{l.note}</div>}
-      {clubs.some((c) => c.shape_change) && (
+      {changed.length > 0 && (
         <div className="lu-changes">
           Predicted to change shape:{' '}
-          {clubs.filter((c) => c.shape_change).map((c) => (
+          {changed.map((c) => (
             <b key={c.team}>{c.team} {c.last_formation} → {c.formation}</b>
           ))}
         </div>
       )}
-      {open ? (
-        <>
-          <div className="lu-legend">
-            <span><i className="lu-dot" /> model&apos;s chance he starts</span>
-            <span><i className="lu-dot dis" /> the model disagrees with the feed</span>
-            <span><i className="lu-dot unk" /> not matched to an FPL player</span>
-          </div>
-          <div className="lu-grid">
-            {clubs.map((c) => <XiCard key={c.team} c={c} team={teams[String(c.team_id)]} />)}
-          </div>
-        </>
-      ) : (
-        <div className="fold-note" style={{ padding: '0 12px 12px' }}>
-          A predicted XI is somebody&apos;s forecast, not the team sheet — the real
-          one lands about an hour before kick-off, after this deadline. Where a
-          feed disagrees with the model&apos;s own P(start), both are shown.
-        </div>
-      )}
+      <div className="lu-legend">
+        <span><i className="lu-dot" /> model&apos;s chance he starts</span>
+        <span><i className="lu-dot dis" /> the model disagrees with the feed</span>
+        <span><i className="lu-dot unk" /> not matched to an FPL player</span>
+      </div>
+      <div className="lu-grid">
+        {shown.map((c) => <XiCard key={c.team} c={c} team={teams[String(c.team_id)]} />)}
+      </div>
+      <div className="fold-note" style={{ padding: '0 12px 12px' }}>
+        A predicted XI is somebody&apos;s forecast, not the team sheet — the real
+        one lands about an hour before kick-off, after this deadline. Where a
+        feed disagrees with the model&apos;s own P(start), both are shown.
+      </div>
     </div>
   )
 }

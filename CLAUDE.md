@@ -2747,8 +2747,16 @@ present itself as a finding*. `tests/test_deadline_lineups.py`.
   `acquire.core.http`), which is what makes a 5-minute poll worth anything.
   The scheduler polls that every `FPLABS_PRESSER_MINUTES` (default 5, floor 3)
   inside the deadline window and walks the search index for a NEW page once an
-  hour. The desk groups the quotes by the club whose manager is speaking, with
-  a dropdown, newest first. `tests/test_acquire_bbc.py`.
+  hour. `tests/test_acquire_bbc.py`.
+* **Both feeds are club-pickable, and the line-ups no longer hide.** "Managers
+  said" reads as the team-news feed it sits beside — one row a post, crest,
+  manager, fixture, the quote clamped to three lines and opening on click,
+  newest first — with a club `<select>` in the head; the feed column is wider
+  (`minmax(400px, 1.25fr)`) and the fixtures panel is capped at 30% so the two
+  reading panels get the height. Predicted line-ups lost the show/hide toggle
+  (a board that is there to be checked should not start hidden) and gained the
+  same club picker: choosing one shows that club AND its opponent, which is the
+  comparison a captaincy call actually needs.
 * **Press conferences only updated on the full refresh** (daily, and ~2 h
   before the deadline) while the BBC page is published through the Friday
   morning — 26 posts on the deadline morning that the panel could be hours
