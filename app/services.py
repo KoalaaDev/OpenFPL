@@ -39,7 +39,7 @@ FPL_BASE = "https://fantasy.premierleague.com/api"
 _TTL = 600.0
 # bumped whenever the API contract changes; the frontend compares it with
 # its own build so a stale `python -m app` process is flagged, not puzzling
-API_VERSION = "2026-09-18.1"
+API_VERSION = "2026-09-18.2"
 
 _mem: dict[str, tuple[float, object]] = {}
 _bundle = None

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { api } from '../api'
-import { useStore } from '../store'
+import { useStore, usePersisted } from '../store'
 import { Empty, Loading } from '../components/States'
 import { badgeUrl, fmt1, money, shirtUrl } from '../util'
 import PitchLines from '../components/Pitch'
@@ -76,10 +76,11 @@ export default function Live() {
         <section className="ld-col ld-c">
           <Fixtures rows={d.fixtures || []} />
           <TeamNews rows={d.news || []} />
-          <Pressers rows={d.pressers || []} gw={d.gw} />
           <Movers m={d.movers || { rows: [] }} />
         </section>
       </div>
+
+      <Pressers rows={d.pressers || []} quotes={d.quotes || []} gw={d.gw} />
 
       <Lineups l={d.lineups || { clubs: [] }} />
     </div>
@@ -371,26 +372,53 @@ function TeamNews({ rows }) {
   )
 }
 
-function Pressers({ rows, gw }) {
+/* The panel used to show only what the rules extractor could turn into a
+   player statement — one line on a morning when two managers had spoken at
+   length. It shows the quotes now, newest first, with the extracted statements
+   tagged onto the post they came from and a filter for the posts that name
+   somebody. The text is set to be read, not scanned. */
+function Pressers({ rows, quotes, gw }) {
+  const [only, setOnly] = usePersisted('live.quotesOnly', false)
+  const named = quotes.filter((q) => q.players.length)
+  const list = only ? named : quotes
+  const when = (t) => (t ? new Date(t).toLocaleString(undefined,
+    { weekday: 'short', hour: '2-digit', minute: '2-digit' }) : '')
   return (
-    <div className={`panel ld-pressers ${rows.length ? '' : 'is-empty'}`}>
-      <div className="panel-head">Managers said <span className="chip dim num">{rows.length}</span>
-        <span className="panel-sub">Friday press conferences (BBC)</span></div>
-      <div className="live-list ld-scroll">
-        {!rows.length && (
-          <div className="dd-empty">Nothing archived for GW{gw} yet — the Friday
-            page is collected on the pre-deadline refresh.</div>
+    <div className={`panel ld-pressers ${quotes.length || rows.length ? '' : 'is-empty'}`}>
+      <div className="panel-head">Managers said <span className="chip dim num">{quotes.length}</span>
+        <span className="panel-sub">Friday press conferences (BBC)</span>
+        {named.length > 0 && (
+          <button className={`pill-btn tiny ${only ? 'on' : ''}`} onClick={() => setOnly(!only)}
+            title="only the posts the model could read a player out of">
+            {only ? `all quotes` : `${named.length} name a player`}
+          </button>
         )}
-        {rows.map((p, i) => (
-          <div key={i} className="live-row">
-            <span className={`presser-tag ${p.cls}`}>{p.cls}</span>
-            <div className="lr-text">
-              <b>{p.name}</b> <span className="muted">{p.team}</span>
-              <div className="lr-note">{p.snippet}</div>
+      </div>
+      <div className="ld-scroll pq-list">
+        {!list.length && (
+          <div className="dd-empty">Nothing archived for GW{gw} yet — the Friday page
+            is collected through the morning before the deadline.</div>
+        )}
+        {list.map((q, i) => (
+          <article key={i} className="pq">
+            <div className="pq-head">
+              {q.club && <span className="pq-club">{q.club}</span>}
+              <b>{q.manager || 'Press conference'}</b>
+              {q.fixture && <span className="pq-fix">{q.fixture}</span>}
+              <span className="dd-when">{when(q.when)}</span>
             </div>
-            <span className="dd-when">{p.when ? new Date(p.when).toLocaleString(undefined,
-              { weekday: 'short', hour: '2-digit', minute: '2-digit' }) : ''}</span>
-          </div>
+            {q.lead && <div className="pq-lead">{q.lead}</div>}
+            {q.quote && <blockquote className="pq-quote">{q.quote}</blockquote>}
+            {q.players.length > 0 && (
+              <div className="pq-tags">
+                {q.players.map((p) => (
+                  <span key={p.player_id} className={`presser-tag ${p.cls}`}>
+                    {p.name} · {p.cls}
+                  </span>
+                ))}
+              </div>
+            )}
+          </article>
         ))}
       </div>
     </div>

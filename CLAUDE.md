@@ -2715,6 +2715,17 @@ present itself as a finding*. `tests/test_deadline_lineups.py`.
   whoever is cheapest. The exact MILP stays one click away in Model assist
   ("Build it"), which the toast names. Bench Boost and Triple Captain buy no
   players, so they still only tag. `tests/test_chip_squad_js.py` (node).
+* **"Managers said" showed one line against a morning of quotes.** The panel
+  rendered `presser_obs` — the rules extractor's player-level output — and
+  that extractor classifies the clause NAMING a player, so "was asked about
+  the availability of Mosquera, White, Timber and Hincapie" followed by
+  "everyone is fine" yields nothing. 26 archived posts, 1 statement. The desk
+  now serves the quotes themselves (`deadline._presser_quotes`, `live.quotes`):
+  speaker and club parsed from BBC's "<Club> boss <Name>" lead, the post split
+  into context and quote, extracted statements tagged onto the post they came
+  from, and a filter for the posts that name somebody. It sits full width under
+  the dashboard, because a paragraph in a 320px column is fifteen lines.
+  `tests/test_presser_quotes.py`.
 * **Press conferences only updated on the full refresh** (daily, and ~2 h
   before the deadline) while the BBC page is published through the Friday
   morning — 26 posts on the deadline morning that the panel could be hours

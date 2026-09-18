@@ -23,8 +23,9 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import pandas as pd
 
@@ -117,6 +118,82 @@ def _news(conn, season: str, pl: dict, tm: dict, days: float = 7.0) -> list[dict
     # backfill, a poll that missed a window) must not jump the queue
     out.sort(key=lambda r: r["published"] or r["observed"] or "", reverse=True)
     return out[:80]
+
+
+QUOTE_DAYS = 4          # a deadline's build-up, not the season's
+QUOTE_MAX = 60
+_SPEAKER = re.compile(
+    r"^(?P<club>[A-Z][\w'\u2019&.\- ]{2,24}?)\s+"
+    r"(?:interim\s+)?(?:boss|manager|head coach)\s+"
+    r"(?P<name>[A-Z][\w'\u2019.\-]+(?:\s+[A-Z][\w'\u2019.\-]+){0,3})")
+
+
+def _clubs(conn, season: str) -> list[tuple[str, int, str]]:
+    return [(str(r[1]).lower(), int(r[0]), str(r[2] or r[1]))
+            for r in conn.execute(
+                "SELECT team_id, name, short_name FROM team WHERE season=?", (season,))]
+
+
+def _presser_quotes(conn, season: str, gw: int, pl: dict, tm: dict) -> list[dict]:
+    """What the managers actually SAID, not only what the extractor could turn
+    into a player statement.
+
+    The rules extractor is deliberately conservative — it classifies the clause
+    that names a player, so "was asked about the availability of Mosquera,
+    White, Timber and Hincapie" followed by "everyone is fine" yields nothing —
+    and the desk was showing only its output. On a Friday morning that reads as
+    one line against two managers' worth of quotes. The quotes are archived
+    anyway; this serves them, with whatever the extractor did resolve attached
+    to the post it came from.
+    """
+    try:
+        since = (datetime.now(timezone.utc) - timedelta(days=QUOTE_DAYS)).isoformat()
+        posts = conn.execute(
+            "SELECT post_urn, published_utc, fixture_label, text FROM acq_bbc_presser "
+            "WHERE published_utc >= ? ORDER BY published_utc DESC LIMIT 400",
+            (since,)).fetchall()
+        obs_rows = conn.execute(
+            "SELECT post_urn, player_id, cls FROM presser_obs "
+            "WHERE season=? AND source='presser' AND post_urn IS NOT NULL", (season,)).fetchall()
+    except Exception:  # noqa: BLE001
+        return []
+    tagged: dict[str, list[dict]] = {}
+    for urn, pid, cls in obs_rows:
+        p = pl.get(int(pid))
+        if not p:
+            continue
+        seen = tagged.setdefault(str(urn), [])
+        if not any(t["player_id"] == int(pid) for t in seen):
+            seen.append({"player_id": int(pid), "name": p["name"],
+                         "team": tm.get(p["team_id"]), "cls": cls})
+    clubs = _clubs(conn, season)
+    out = []
+    for urn, pub, fixture, text in posts:
+        body = " ".join((text or "").split())
+        m = _SPEAKER.match(body)
+        players = tagged.get(str(urn), [])
+        # a post that names nobody and quotes nobody is live-blog chatter
+        if not m and not players:
+            continue
+        club_id, club = None, None
+        if m:
+            token = m.group("club").lower()
+            for name, tid, short in clubs:
+                if token == name or token in name or name.startswith(token):
+                    club_id, club = tid, short
+                    break
+            club = club or m.group("club")
+        # "<lead>: "the quote"" — the lead is context, the quote is the news
+        lead, quote = body, ""
+        cut = min([i for i in (body.find('"'), body.find("\u201c")) if i > 0] or [0])
+        if cut:
+            lead, quote = body[:cut].rstrip(" :"), body[cut:]
+        out.append({"when": pub, "fixture": fixture, "club": club, "club_id": club_id,
+                    "manager": m.group("name") if m else None,
+                    "lead": lead[:400], "quote": quote[:900].strip(), "players": players})
+        if len(out) >= QUOTE_MAX:
+            break
+    return out
 
 
 def _pressers(conn, season: str, gw: int, pl: dict, tm: dict) -> list[dict]:

@@ -280,6 +280,7 @@ def payload(force: bool = False) -> dict:
             # actually consumes
             "news": dd._news(conn, season, pl, tm, days=7.0)[:40],
             "pressers": dd._pressers(conn, season, gw, pl, tm)[:40],
+            "quotes": dd._presser_quotes(conn, season, gw, pl, tm),
             "lineups": dd._lineups(conn, season, gw, pl, tm, start_p),
             "movers": dd._movers(gw, pl, tm),
             "best_xi": best_xi(pool),
