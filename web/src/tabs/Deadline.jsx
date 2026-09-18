@@ -44,6 +44,8 @@ export default function Deadline() {
 
   /* the three things that have actually broken here before */
   const projAge = r.proj_updated_at ? (Date.now() / 1000 - r.proj_updated_at) / 3600 : null
+  // the press-conference poll only runs while a deadline is close (40 h)
+  const near = dl != null && (dl.getTime() - Date.now()) / 3600e3 < 40
   const checks = [
     {
       key: 'refresh',
@@ -70,6 +72,19 @@ export default function Deadline() {
       value: r.news_last_run ? `polled ${ago(r.news_last_run)}` : 'never polled',
       detail: r.news_last_error ? String(r.news_last_error).slice(0, 160)
         : r.news_last_changes != null ? `${r.news_last_changes} change${r.news_last_changes === 1 ? '' : 's'} on the last poll` : '',
+    },
+    {
+      key: 'pressers',
+      label: 'Press conferences',
+      // polled beside team news while a deadline is within PRESSER_WINDOW_H;
+      // outside that window the last run is simply the last refresh, so an
+      // old timestamp is only a fault when a deadline is close
+      ok: !r.pressers_last_error
+        && (!near || (r.pressers_last_run && (Date.now() / 1000 - r.pressers_last_run) < 60 * 60)),
+      value: r.pressers_last_run ? `polled ${ago(r.pressers_last_run)}` : 'not polled yet',
+      detail: r.pressers_last_error ? String(r.pressers_last_error).slice(0, 160)
+        : near ? 'a deadline is close — polling every 20 minutes'
+          : 'polled near a deadline and on every refresh',
     },
     {
       key: 'market',

@@ -11,7 +11,7 @@ import { Radar, VIZ, VIZ_NEUTRAL as VIZ_MUTED } from '../charts'
 import { DNA_AXES, dnaOf, dnaRaw, dnaScaled } from '../dna'
 import {
   CHIP_LONG, CHIP_NAME, CHIP_SHORT, POSITIONS, applyFtLedger, baselineDeltas, draftFt0,
-  bestAffordableXI, bestXI, chipAvailability, chipNote, epOf, fdrColor,
+  applyChipToDraft, bestAffordableXI, bestXI, chipAvailability, chipNote, epOf, fdrColor,
   formationRows, fmt1, gwEV, gwHasProj, money, shirtUrl, withBaseline, xiLegal,
 } from '../util'
 
@@ -63,13 +63,25 @@ export default function Planner() {
     setBuilding(true)
     setToast({ kind: 'info', busy: true, msg: 'Building projections…' })
     try {
-      const { job_id } = await api.buildProjections(draft.gws.map((g) => g.gw))
-      await pollJob(job_id, (j) => {
-        const last = j.progress[j.progress.length - 1]
-        if (last) setToast({ kind: 'info', busy: true, msg: last.msg })
-      })
+      // one request models a bounded number of gameweeks, so a plan extended
+      // by more than that needs another round — keep going while each round
+      // leaves the plan with fewer unprojected weeks than it started
+      let missing = draft.gws.map((g) => g.gw).filter((g) => !gwHasProj(proj, g))
+      for (let round = 0; round < 5 && missing.length; round++) {
+        const { job_id } = await api.buildProjections(missing)
+        await pollJob(job_id, (j) => {
+          const last = j.progress[j.progress.length - 1]
+          if (last) setToast({ kind: 'info', busy: true, msg: last.msg })
+        })
+        const fresh = await api.projections()
+        const left = missing.filter((g) => !gwHasProj(fresh, g))
+        if (left.length === missing.length) break        // no progress: stop
+        missing = left
+      }
       refreshProjections()
-      setToast({ kind: 'ok', msg: 'Projections built.' })
+      setToast(missing.length
+        ? { kind: 'err', msg: `GW${missing.join(', GW')} could not be projected.` }
+        : { kind: 'ok', msg: 'Projections built.' })
     } catch (e) {
       setToast({ kind: 'err', msg: `Build failed: ${e.message}` })
     } finally {
@@ -300,7 +312,8 @@ export default function Planner() {
   return (
     <div>
       <GwBar draft={draft} gwIdx={gwIdx} setGwIdx={setGwIdx} evs={evs} deltas={deltas}
-        plan={plan} nMoves={nMoves} updateDraft={updateDraft} undo={undo} canUndo={undoN > 0} />
+        plan={plan} nMoves={nMoves} updateDraft={updateDraft} undo={undo} canUndo={undoN > 0}
+        byId={byId} players={players} posOf={posOf} />
       <div className="planner-grid">
         <div className="planner-main">
           {planIsPast && (
@@ -455,23 +468,26 @@ function Advice({ draft, gwIdx, plan, posOf, updateDraft, setToast, proj,
 
 const ALL_CHIPS = ['bench_boost', 'triple_captain', 'wildcard', 'freehit']
 
-function GwBar({ draft, gwIdx, setGwIdx, evs, deltas, plan, nMoves, updateDraft, undo, canUndo }) {
-  const { proj, status, entry, editableGw } = useStore()
+function GwBar({ draft, gwIdx, setGwIdx, evs, deltas, plan, nMoves, updateDraft, undo, canUndo,
+                 byId, players, posOf }) {
+  const { proj, status, entry, editableGw, isAdmin, setToast } = useStore()
   const avail = chipAvailability(entry?.chips, draft.gws.map((p) => p.gw))
   const total = evs.reduce((a, b) => a + b, 0)
   const dTotal = deltas ? deltas.reduce((a, b) => a + b, 0) : null
   const [openChip, setOpenChip] = useState(null)
 
   const setChip = (c, gw) => {
-    updateDraft((d) => {
-      for (const p of d.gws) if (p.chip === c) p.chip = null
-      if (gw != null) {
-        const t = d.gws.find((p) => p.gw === gw)
-        if (t) t.chip = c
-      }
-      return d
-    })
+    updateDraft((d) => applyChipToDraft(d, c, gw, { proj, byId, players, posOf }))
     setOpenChip(null)
+    // The two chips that buy a squad now fill one in from this budget, which
+    // is a good team instantly; the exact solve is one click away in Model
+    // assist, and saying so is the difference between the two agreeing and
+    // the user thinking one of them is wrong.
+    if (gw == null || (c !== 'freehit' && c !== 'wildcard')) return
+    setToast(gwHasProj(proj, gw)
+      ? { kind: 'ok', msg: `${CHIP_NAME[c]} drafted for GW${gw} — the best fifteen this budget buys. `
+          + 'Model assist → Build it solves it exactly.' }
+      : { kind: 'err', msg: `GW${gw} has no projections yet, so the chip is only marked — build them first.` })
   }
 
   const planned = new Set(draft.gws.map((p) => p.gw))
@@ -502,8 +518,12 @@ function GwBar({ draft, gwIdx, setGwIdx, evs, deltas, plan, nMoves, updateDraft,
           )
         })}
         {/* a draft can only look as far ahead as it is long */}
-        <button className="gw-dot add" title="add the next gameweek to this plan"
-          disabled={!nextUnplanned}
+        <button className="gw-dot add"
+          title={!nextUnplanned ? 'the season has no further gameweeks'
+            : gwHasProj(proj, nextUnplanned) || isAdmin
+              ? `add GW${nextUnplanned} to this plan`
+              : `GW${nextUnplanned} is beyond the projected horizon — the model builds ${(status?.scheduled_gws || []).filter((g) => gwHasProj(proj, g)).length} gameweeks ahead`}
+          disabled={!nextUnplanned || (!isAdmin && !gwHasProj(proj, nextUnplanned))}
           onClick={() => updateDraft((d) => {
             const last = d.gws[d.gws.length - 1]
             d.gws.push({
@@ -944,12 +964,8 @@ function ChipAdvisor({ draft, proj, byId, players, posOf, updateDraft, entryChip
     && (!usable[h.chip].known
         || usable[h.chip].windows.some(([x, y]) => h.gw >= x && h.gw <= y)))
   const [showXi, setShowXi] = useState(null)
-  const apply = (chip, gw) => updateDraft((d) => {
-    for (const p of d.gws) if (p.chip === chip) p.chip = null
-    const t = d.gws.find((p) => p.gw === gw)
-    if (t) t.chip = chip
-    return d
-  })
+  const apply = (chip, gw) => updateDraft(
+    (d) => applyChipToDraft(d, chip, gw, { proj, byId, players, posOf }))
   const active = new Set(draft.gws.filter((p) => p.chip).map((p) => `${p.chip}@${p.gw}`))
   return (
     <>

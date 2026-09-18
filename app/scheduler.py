@@ -501,11 +501,66 @@ def maybe_reproject(triggers: list[dict]) -> str | None:
     return job_id
 
 
+PRESSER_WINDOW_H = 40.0     # Friday's page runs from the morning before
+
+
+def presser_minutes() -> float:
+    try:
+        return max(10.0, float(os.environ.get("FPLABS_PRESSER_MINUTES", 20)))
+    except ValueError:
+        return 20.0
+
+
+def hours_to_deadline() -> float | None:
+    """Hours until the next deadline, or None when none is known."""
+    ahead = [d for d in _deadlines() if d > time.time()]
+    return (min(ahead) - time.time()) / 3600.0 if ahead else None
+
+
+def pull_pressers() -> dict:
+    """Archive the BBC press-conference page and re-extract its statements.
+
+    One search-index read plus any page that has new posts, so it is cheap
+    enough to run through a deadline morning. Never raises.
+    """
+    from fpl_engine import config
+    try:
+        from acquire import storage as _st
+        from acquire.sources import bbc_pressers as _bp
+        from fpl_engine import pressers as _pr
+        with _st.connect(config.DB_PATH) as conn:
+            _st.init(conn)
+            out = dict(_bp.pull(conn, season=config.CURRENT_SEASON))
+            out["obs"] = (_pr.extract_pressers(
+                conn, seasons=[config.CURRENT_SEASON]) or {}).get("obs")
+        with _lock:
+            _state["pressers_last_run"] = time.time()
+            _state["pressers_last_posts"] = out.get("posts")
+            _state["pressers_last_error"] = None
+        if out.get("posts"):
+            try:
+                from . import live            # the desk caches for a minute
+                live._cache["v"] = None
+            except Exception:  # noqa: BLE001
+                pass
+        return out
+    except Exception as exc:  # noqa: BLE001 - never take the news thread down
+        with _lock:
+            _state["pressers_last_error"] = str(exc)
+        return {"error": str(exc)}
+
+
 def _news_loop(startup_delay: float) -> None:
     if _stop.wait(startup_delay):
         return
+    last_pressers = 0.0
     while not _stop.is_set():
         pull_team_news()
+        hrs = hours_to_deadline()
+        if (hrs is not None and hrs <= PRESSER_WINDOW_H
+                and time.time() - last_pressers >= presser_minutes() * 60.0):
+            last_pressers = time.time()
+            pull_pressers()
         if _stop.wait(news_minutes() * 60.0):
             return
 

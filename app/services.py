@@ -39,7 +39,7 @@ FPL_BASE = "https://fantasy.premierleague.com/api"
 _TTL = 600.0
 # bumped whenever the API contract changes; the frontend compares it with
 # its own build so a stale `python -m app` process is flagged, not puzzling
-API_VERSION = "2026-09-17.1"
+API_VERSION = "2026-09-18.1"
 
 _mem: dict[str, tuple[float, object]] = {}
 _bundle = None
@@ -1112,18 +1112,36 @@ def projections_payload() -> dict:
     return {**cache, "players": players}
 
 
+def gws_to_build(cache: dict, gws: list[int], *, force: bool = False,
+                 max_new: int | None = None) -> list[int]:
+    """Which gameweeks a build call should model.
+
+    The cap applies to what is MISSING, never to what was asked for: capping
+    the request first meant a plan reaching past the built horizon asked for
+    weeks that were already cached, modelled nothing, and left the new weeks
+    projecting zero.
+    """
+    todo = [g for g in gws if force or str(g) not in (cache.get("gws") or {})]
+    return todo[:max_new] if max_new else todo
+
+
 def build_projections(job_id: str | None, gws: list[int], *,
-                      force: bool = False, blend=None) -> dict:
+                      force: bool = False, blend=None,
+                      max_new: int | None = None) -> dict:
     """Compute and cache per-player projections for each gw in ``gws``.
 
     Serialised under a lock so concurrent solves don't duplicate model runs.
+    ``max_new`` bounds how many gameweeks one call will MODEL — applied after
+    the cached ones are skipped, so asking for a long horizon always makes
+    progress on the weeks that are missing rather than stopping on the ones
+    that are already there.
     """
     season = config.CURRENT_SEASON
     with _proj_lock:
         cache = _load_proj_cache()
         if cache.get("season") != season:
             cache = {"season": season, "gws": {}, "players": {}}
-        todo = [g for g in gws if force or str(g) not in cache["gws"]]
+        todo = gws_to_build(cache, gws, force=force, max_new=max_new)
         if not todo:
             return cache
         conn = db.connect(config.DB_PATH)

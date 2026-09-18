@@ -297,6 +297,9 @@ def projections_history(request: Request, _=Depends(rate("cheap"))):
     return services.projection_history_payload()
 
 
+BUILD_MAX_NEW = 8       # gameweeks modelled per request (~25 s each)
+
+
 @app.post("/api/projections/build")
 def projections_build(body: dict, request: Request, admin=Depends(require_admin)):
     gws = body.get("gws")
@@ -304,8 +307,15 @@ def projections_build(body: dict, request: Request, admin=Depends(require_admin)
         raise HTTPException(400, "gws required")
     if jobs.running("projections") or jobs.running("solve") or jobs.running("refresh"):
         raise HTTPException(409, "a projection/solve job is already running")
+    want = sorted({int(g) for g in gws if 1 <= int(g) <= 38})
+    if not want:
+        raise HTTPException(400, "no valid gameweeks")
+    # The cap belongs on the gameweeks this job will actually MODEL, not on
+    # the ones asked for: capping the request first meant a plan extended past
+    # the built horizon asked for weeks that were already cached, did no work,
+    # and left the new weeks projecting zero.
     job_id = jobs.start("projections", services.build_projections,
-                        [int(g) for g in gws][:8], force=bool(body.get("force")),
+                        want, force=bool(body.get("force")), max_new=BUILD_MAX_NEW,
                         blend=body.get("blend"), owner="system")
     return {"job_id": job_id}
 

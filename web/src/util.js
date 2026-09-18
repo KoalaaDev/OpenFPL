@@ -315,6 +315,117 @@ export function planToDraft(plan, meta, label, note) {
 export const MAX_FT = 5
 export const HIT_COST = 4
 
+/* The whole fifteen, not just the eleven: a Free Hit or a Wildcard buys a
+   squad, so the bench has to be bought out of the same money. The XI is the
+   affordable-XI solve; the bench is then the cheapest legal completion of
+   2/5/5/3 that the leftover budget and the 3-per-club cap allow. */
+export function bestAffordableSquad(pool, posOf, epFor, priceOf, clubOf, budget) {
+  const NEED = { GK: 2, DEF: 5, MID: 5, FWD: 3 }
+  const best = bestAffordableXI(pool, posOf, epFor, priceOf, clubOf, budget)
+  const picked = [...best.xi]
+  const count = { GK: 0, DEF: 0, MID: 0, FWD: 0 }
+  const perClub = {}
+  for (const id of picked) {
+    count[posOf(id)] = (count[posOf(id)] || 0) + 1
+    perClub[clubOf(id)] = (perClub[clubOf(id)] || 0) + 1
+  }
+  let left = budget - best.cost
+  const rest = pool.filter((id) => NEED[posOf(id)] && !picked.includes(id))
+    .sort((a, b) => priceOf(a) - priceOf(b) || epFor(b) - epFor(a))
+  const bench = []
+  for (const pos of ['GK', 'DEF', 'MID', 'FWD']) {
+    while (count[pos] < NEED[pos]) {
+      const ok = (id) => posOf(id) === pos && !picked.includes(id)
+        && (perClub[clubOf(id)] || 0) < 3
+      // a player nobody projects is a wasted bench slot, so prefer the
+      // cheapest one the model still expects to play
+      const pick = rest.find((id) => ok(id) && epFor(id) > 0.5 && priceOf(id) <= left + 1e-9)
+        || rest.find((id) => ok(id) && priceOf(id) <= left + 1e-9)
+        || rest.find(ok)
+      if (!pick) break
+      picked.push(pick); bench.push(pick); count[pos]++
+      perClub[clubOf(pick)] = (perClub[clubOf(pick)] || 0) + 1
+      left = Math.round((left - priceOf(pick)) * 10) / 10
+    }
+  }
+  bench.sort((a, b) => (posOf(a) === 'GK' ? -1 : posOf(b) === 'GK' ? 1 : epFor(b) - epFor(a)))
+  const cost = Math.round(picked.reduce((a, id) => a + priceOf(id), 0) * 10) / 10
+  return {
+    xi: best.xi, bench, squad: picked, cost,
+    bank: Math.round((budget - cost) * 10) / 10,
+    legal: picked.length === 15 && cost <= budget + 1e-9,
+  }
+}
+
+/* Setting a chip used to tag the gameweek and change nothing, which for the
+   two chips that BUY something reads as the app ignoring you: a Free Hit is a
+   different fifteen for one week, a Wildcard a different fifteen from then on.
+   Both are now filled in from the same money FPL would give you — the squad's
+   selling value plus the bank — and the week each one overwrote is kept, so
+   removing or moving the chip puts your own team back.
+
+   Bench Boost and Triple Captain change no players, so they still only tag. */
+export const chipSnapshot = (g, by) => ({
+  by,
+  squad: structuredClone(g.squad), xi: [...g.xi], captain: g.captain, vice: g.vice,
+  bank: g.bank, transfers_in: [...(g.transfers_in || [])],
+  transfers_out: [...(g.transfers_out || [])], sold: { ...(g.sold || {}) },
+})
+
+export function restoreChip(d, chip) {
+  for (const g of d.gws) {
+    if (g.chip_before?.by !== chip) continue
+    const { by, ...was } = g.chip_before          // eslint-disable-line no-unused-vars
+    Object.assign(g, structuredClone(was))
+    delete g.chip_before
+  }
+}
+
+export function applyChipToDraft(d, chip, gw, ctx) {
+  restoreChip(d, chip)
+  for (const p of d.gws) if (p.chip === chip) p.chip = null
+  if (gw == null) return d
+  const t = d.gws.findIndex((p) => p.gw === gw)
+  if (t < 0) return d
+  d.gws[t].chip = chip
+  if (chip !== 'freehit' && chip !== 'wildcard') return d
+
+  const g0 = d.gws[t]
+  const priceOf = (id) => ctx.byId.get(id)?.price ?? 0
+  const clubOf = (id) => ctx.byId.get(id)?.team_id ?? 0
+  const epAt = (id, w) => epOf(ctx.proj, id, w)
+  const budget = g0.squad.reduce((a, s) => a + (s.sell ?? priceOf(s.id)), 0) + (g0.bank || 0)
+  const pool = ctx.players.filter((p) => (p.available ?? 1) > 0).map((p) => p.id)
+  // a gameweek the model has not projected has no team to pick — filling it
+  // would swap a real squad for whoever happens to be cheapest
+  if (!pool.some((id) => epAt(id, gw) > 0)) return d
+  const sel = bestAffordableSquad(pool, ctx.posOf, (id) => epAt(id, gw),
+                                  priceOf, clubOf, budget)
+  if (!sel.legal) return d
+
+  const was = chipSnapshot(g0, chip)
+  const end = chip === 'freehit' ? t + 1 : d.gws.length
+  for (let i = t; i < end; i++) {
+    const g = d.gws[i]
+    g.chip_before = i === t ? was : chipSnapshot(g, chip)
+    g.squad = sel.squad.map((id) => ({ id, sell: priceOf(id) }))
+    g.bank = sel.bank
+    g.xi = i === t ? [...sel.xi]
+      : bestXI(sel.squad, ctx.posOf, (id) => epAt(id, g.gw))
+    const sorted = [...g.xi].sort((a, b) => epAt(b, g.gw) - epAt(a, g.gw))
+    g.captain = sorted[0] ?? null
+    g.vice = sorted.find((id) => id !== g.captain) ?? null
+    // the swap is one move of fifteen in the chip week; later Wildcard weeks
+    // simply own the new squad, and anything planned off the old one is gone
+    g.transfers_in = i === t ? sel.squad.filter((id) => !was.squad.some((x) => x.id === id)) : []
+    g.transfers_out = i === t ? was.squad.filter((x) => !sel.squad.includes(x.id)).map((x) => x.id) : []
+    g.sold = i === t
+      ? Object.fromEntries(g.transfers_out.map((id) => [id, was.squad.find((x) => x.id === id)?.sell ?? priceOf(id)]))
+      : {}
+  }
+  return d
+}
+
 export function applyFtLedger(draft, ft0) {
   if (!draft?.gws?.length) return draft
   const start = Number.isFinite(ft0) ? ft0 : null

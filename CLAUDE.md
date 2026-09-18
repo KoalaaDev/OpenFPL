@@ -2693,6 +2693,36 @@ present itself as a finding*. `tests/test_deadline_lineups.py`.
   P(start) >=0.6. One rebuild per `FPLABS_REPROJECT_MINUTES` (default 60,
   floor 20); news inside the cooldown is queued, not dropped.
 
+**Three bugs the owner hit on 2026-09-18, and what each was.**
+
+* **A plan extended past the built horizon could never be projected.**
+  `/api/projections/build` capped the REQUEST at eight gameweeks
+  (`[int(g) for g in gws][:8]`) before the cached weeks were skipped — so a
+  draft reaching GW16 asked for GW5-16, the first eight were exactly the ones
+  already built, the job modelled nothing, and every added week sat at 0.00
+  through any number of rebuilds. The cap now applies to what is MISSING
+  (`services.gws_to_build`, `main.BUILD_MAX_NEW`), the Planner's build repeats
+  until the plan is covered, and the add-a-gameweek button is disabled for a
+  visitor who cannot build (only an admin can). `tests/test_projection_build.py`.
+* **Setting Free Hit or Wildcard changed nothing.** Both chips BUY a squad —
+  a Free Hit for one week, a Wildcard from then on — and the chip bar only
+  tagged the gameweek, which reads as the app ignoring you. `applyChipToDraft`
+  (`web/src/util.js`) now fills the week from the same money FPL would give
+  you (selling value + bank) with `bestAffordableSquad` — the affordable XI
+  plus the cheapest legal completion of 2/5/5/3 — and keeps what it overwrote
+  in `chip_before`, so removing or moving the chip puts the manager's own team
+  back. A week with no projections is left alone rather than filled with
+  whoever is cheapest. The exact MILP stays one click away in Model assist
+  ("Build it"), which the toast names. Bench Boost and Triple Captain buy no
+  players, so they still only tag. `tests/test_chip_squad_js.py` (node).
+* **Press conferences only updated on the full refresh** (daily, and ~2 h
+  before the deadline) while the BBC page is published through the Friday
+  morning — 26 posts on the deadline morning that the panel could be hours
+  behind. `scheduler.pull_pressers` now runs on the news thread every
+  `FPLABS_PRESSER_MINUTES` (default 20, floor 10) whenever a deadline is
+  within `PRESSER_WINDOW_H` (40 h), and the Deadline desk has a
+  press-conference health row. `tests/test_presser_polling.py`.
+
 Solver specifics worth knowing:
 
 * **Playstyles, not near-duplicates.** Asking for N plans returns one per
