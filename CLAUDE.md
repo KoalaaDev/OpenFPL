@@ -2735,9 +2735,13 @@ present itself as a finding*. `tests/test_deadline_lineups.py`.
   week read as a roll. `recordMoves`/`pairMoves` (`web/src/util.js`) accumulate
   the way manual transfers always have (selling someone bought earlier the same
   week rewrites that pair), a chip week's record is `movesBetween` what it
-  carried in and what it plays, the solve now asks for the free transfers the
-  week has LEFT rather than always one, and a solve that moves nobody says so
-  instead of claiming it applied something. `tests/test_transfer_record_js.py`.
+  carried in and what it plays, and a solve that moves nobody says so instead
+  of claiming it applied something. The action also asks for what the week
+  actually has: `free_transfers` and `max_transfers` both come from the stock
+  LEFT after the moves already recorded, so two banked transfers are solved as
+  a PAIR (the best two are not always the best single plus the next best) and
+  a move with none left is only taken if it beats -4.
+  `tests/test_transfer_record_js.py`, `tests/test_web_source_guards.py`.
 * **The Friday page is written all day, and the collector stopped reading it.**
   `collect_page` skips a page whose every stream page has been read — true
   until the next post, and a live blog keeps appending as each manager takes

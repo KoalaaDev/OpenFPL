@@ -81,3 +81,31 @@ def test_the_admin_model_tab_is_gated_on_both_sides():
     assert "visited.Model && isAdmin" in app
     main = read(os.path.join(ROOT, "app", "main.py"))
     assert "def admin_model(" in main and "require_admin" in main
+
+
+# --- the transfer assistant must ask for what the week actually has ---------
+#
+# It sent `free_transfers: 1, max_transfers: 1` whatever the draft's stock was,
+# so with two or three banked it could only ever suggest the best SINGLE move,
+# and priced a second one at zero when the ledger would charge -4.
+ASSIST = os.path.join(SRC, "components", "ModelAssist.jsx")
+
+
+def test_the_transfer_solve_uses_the_free_transfers_the_week_has_left():
+    src = code(ASSIST)
+    assert "freeLeft" in src, "the week's remaining free transfers are not computed"
+    assert re.search(r"free_transfers:\s*kind === 'transfer'\s*\?\s*freeLeft", src), \
+        "the solve still asks for a fixed number of free transfers"
+    assert not re.search(r"max_transfers:\s*kind === 'transfer'\s*\?\s*1\b", src), \
+        "the solve is capped at one move however many transfers are banked"
+    assert re.search(r"max_transfers:.*freeLeft", src), \
+        "the move cap is not tied to the free transfers available"
+
+
+def test_a_solve_result_is_added_to_the_week_not_written_over_it():
+    """Overwriting lost every earlier move in the same gameweek: the squad kept
+    the players, the record did not, and the ledger charged nothing."""
+    src = code(ASSIST)
+    assert "recordMoves" in src and "pairMoves" in src
+    assert not re.search(r"g\.transfers_in\s*=\s*per\.transfers_in", src), \
+        "the gameweek's transfer record is being replaced by one solve's moves"

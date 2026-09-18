@@ -97,7 +97,10 @@ export default function ModelAssist({
       free_transfers: kind === 'transfer' ? freeLeft : 5,
       n_plans: 1,
       time_limit: 45,
-      max_transfers: kind === 'transfer' ? 1 : 3,
+      // as many moves as the week has banked, not one: with 2 or 3 free
+      // transfers the best PAIR is often not the best single move plus the
+      // next one, and clicking twice only ever finds the greedy version
+      max_transfers: kind === 'transfer' ? Math.min(5, Math.max(1, freeLeft)) : 3,
     }
     if (kind === 'freehit' || kind === 'wildcard') {
       params.chips = { [kind]: { enabled: true, gws: [plan.gw], force: plan.gw } }
@@ -167,10 +170,15 @@ export default function ModelAssist({
     })
     const label = { freehit: 'Free Hit squad', wildcard: 'Wildcard squad',
                     transfer: 'transfer' }[kind]
-    setToast({ kind: 'ok', msg: kind === 'transfer' && !per.transfers_in.length
-      ? `Nothing is worth transferring from here for GW${plan.gw}`
-        + `${freeLeft ? '' : ' at -4'} — the model would keep this squad.`
-      : `Applied the model's ${label} for GW${plan.gw}.` })
+    const n = per.transfers_in.length
+    setToast({ kind: 'ok', msg: kind !== 'transfer'
+      ? `Applied the model's ${label} for GW${plan.gw}.`
+      : n === 0
+        ? `Nothing is worth transferring from here for GW${plan.gw}`
+          + `${freeLeft ? ` — the model would roll ${freeLeft === 1 ? 'the' : 'its'} free `
+            + `transfer${freeLeft === 1 ? '' : 's'}.` : ' at -4 — the model would keep this squad.'}`
+        : `Applied ${n} transfer${n === 1 ? '' : 's'} for GW${plan.gw}`
+          + `${n > freeLeft ? ` — ${n - freeLeft} at -4.` : '.'}` })
   }
 
   const chip = plan.chip
@@ -198,10 +206,14 @@ export default function ModelAssist({
     {
       key: 'transfer',
       icon: '↔',
-      title: 'Best single transfer from here',
-      body: `Solves one move from the squad this draft reaches at this gameweek — `
-        + (freeLeft ? `${freeLeft} free transfer${freeLeft === 1 ? '' : 's'} left, no hit.`
-          : 'no free transfer left, so it only moves if the gain beats -4.'),
+      title: freeLeft > 1 ? `Best use of your ${freeLeft} free transfers`
+        : 'Best single transfer from here',
+      body: `Solves the squad this draft reaches at this gameweek — `
+        + (freeLeft > 1
+          ? `up to ${freeLeft} moves, no hit, and it takes fewer if fewer are worth it.`
+          : freeLeft
+            ? 'one move, free transfer, no hit.'
+            : 'no free transfer left, so it only moves if the gain beats -4.'),
       cta: 'Find it',
       run: () => runSolve('transfer'),
       disabled: !!busy || isPast,
