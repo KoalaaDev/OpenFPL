@@ -897,3 +897,7 @@
 {"chance_next": null, "code": 655585, "news": null, "news_added": null, "observed_utc": "2026-09-20T00:11:33.711553+00:00", "player_id": 665, "season": "2026-27", "status": "a", "web_name": "Mills"}
 {"chance_next": null, "code": 671875, "news": null, "news_added": null, "observed_utc": "2026-09-20T00:11:33.711553+00:00", "player_id": 666, "season": "2026-27", "status": "a", "web_name": "Thompson"}
 {"chance_next": 1.0, "code": 248875, "news": null, "news_added": "2026-08-18T17:00:08.385597Z", "observed_utc": "2026-09-20T14:17:12.375527+00:00", "player_id": 400, "season": "2026-27", "status": "a", "web_name": "Doku"}
+{"chance_next": 0.0, "code": 222683, "news": "Unspecified injury - Unknown return date", "news_added": "2026-09-20T15:30:09.074071Z", "observed_utc": "2026-09-20T18:55:05.649952+00:00", "player_id": 70, "season": "2026-27", "status": "i", "web_name": "Kluivert"}
+{"chance_next": 1.0, "code": 184349, "news": null, "news_added": "2026-09-14T11:30:07.403957Z", "observed_utc": "2026-09-20T18:55:05.649952+00:00", "player_id": 269, "season": "2026-27", "status": "a", "web_name": "Sessegnon"}
+{"chance_next": 1.0, "code": 106760, "news": null, "news_added": "2026-09-11T13:00:09.030120Z", "observed_utc": "2026-09-20T18:55:05.649952+00:00", "player_id": 423, "season": "2026-27", "status": "a", "web_name": "Shaw"}
+{"chance_next": 1.0, "code": 434399, "news": null, "news_added": "2026-09-12T21:30:09.421687Z", "observed_utc": "2026-09-20T18:55:05.649952+00:00", "player_id": 536, "season": "2026-27", "status": "a", "web_name": "Reinildo"}
