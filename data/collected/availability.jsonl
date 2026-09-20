@@ -896,3 +896,4 @@
 {"chance_next": null, "code": 601767, "news": null, "news_added": null, "observed_utc": "2026-09-20T00:11:33.711553+00:00", "player_id": 664, "season": "2026-27", "status": "a", "web_name": "Salia"}
 {"chance_next": null, "code": 655585, "news": null, "news_added": null, "observed_utc": "2026-09-20T00:11:33.711553+00:00", "player_id": 665, "season": "2026-27", "status": "a", "web_name": "Mills"}
 {"chance_next": null, "code": 671875, "news": null, "news_added": null, "observed_utc": "2026-09-20T00:11:33.711553+00:00", "player_id": 666, "season": "2026-27", "status": "a", "web_name": "Thompson"}
+{"chance_next": 1.0, "code": 248875, "news": null, "news_added": "2026-08-18T17:00:08.385597Z", "observed_utc": "2026-09-20T14:17:12.375527+00:00", "player_id": 400, "season": "2026-27", "status": "a", "web_name": "Doku"}
