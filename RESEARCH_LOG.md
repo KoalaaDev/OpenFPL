@@ -1288,3 +1288,42 @@ prior gameweek the fitted soft arm was worse than the naive LR=4 default.
 2, precision 1/2; hard vs baseline top11 +0.18/−0.18, soft +0.09/−0.55;
 soft ll_start −12%/+26%. Nothing resolvable, exactly as pre-registered —
 the battery needs ~5 gameweeks for calibration and ~10 for removals.
+
+### E17, GW5 scored — an agreeing week, and the first pooled calibration readout
+
+Archive 4,125 rows; 1,309 pre-deadline predicted rows for GW5. One name miss
+(RotoWire "Yarmolyuk" vs FPL "Yarmoliuk" — a one-edit transliteration
+variant) initially dropped Brentford under the partial-XI guard; a
+conservative fuzzy fallback (long names only, ratio ≥ 0.86, unique within
+the club) repairs it, and GW5 was re-scored with all 20 clubs — a mechanical
+fix applied before looking at what it changed. 220/220 matched.
+
+**Zero removals.** The feed and the model fully agreed on ranks 5-30, and
+the band's false-starter rate was 0.04 for both — a week with nothing to
+disagree about. Feed quality steady: TPR 0.900, FPR 0.049.
+
+| GW5 | top11 | top30 | ll_start | note |
+|---|---|---|---|---|
+| baseline | 4.82 | 4.57 | 0.2567 | |
+| hard | 4.09 | 4.27 | 0.9109 | third straight week of 3-4× log-loss |
+| soft (LR 17.0/8.9) | **5.91** | 4.33 | **0.2479** | pooled LRs behaved |
+| oracle | **3.55** | 4.63 | 0 | perfect minutes LOST 1.27/pick this week |
+
+The oracle row is the week's education: substituting realised minutes made
+the top11 WORSE by 1.27 points per pick — the rotated high-xP players who
+did start scored less than baseline's picks. Perfect information loses
+single weeks; this is what E16's wide per-gw spread looks like from inside,
+and why nothing here concludes before the pre-registered sample sizes.
+
+**Pooled calibration after 3 scored gameweeks (1,972 covered rows):**
+
+| feed says | n | realised start rate |
+|---|---|---|
+| XI | 649 | **0.897** |
+| bench | 1,323 | **0.051** |
+
+As a binary start classifier the feed is genuinely strong and stable
+(pooled TPR 0.897 / FPR 0.051, LR+ ≈ 17). The E16-sharpened question —
+whether it beats the model exactly where the model is unsure — remains at
+2 removals, 1/2 correct, and per-arm top11 records vs baseline of
+hard +0.18/−0.18/−0.73 and soft +0.09/−0.55/+1.09: accrual, not answers.

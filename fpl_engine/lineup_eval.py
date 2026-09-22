@@ -166,6 +166,16 @@ def match_players(conn, season: str, rows: pd.DataFrame) -> pd.DataFrame:
                                     for t in toks)]
             if len(hits) == 1:
                 pid = hits[0]
+        if pid is None and len(name) >= 8:
+            # transliteration variants one edit apart ("Yarmolyuk" vs FPL's
+            # "Yarmoliuk"): fuzzy, but only for long names, only above 0.86,
+            # and only when exactly one candidate clears the bar
+            import difflib
+            scored = [(difflib.SequenceMatcher(None, name, full).ratio(), p)
+                      for p, full, web, lst in cands]
+            good = [p for r, p in scored if r >= 0.86]
+            if len(good) == 1:
+                pid = good[0]
         out.append(pid)
     rows = rows.copy()
     rows["player_id"] = out
