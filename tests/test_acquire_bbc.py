@@ -1,4 +1,5 @@
 """BBC Sport collector: parsers on the container shapes seen on the site."""
+import copy
 import os
 import tempfile
 from datetime import date
@@ -240,6 +241,74 @@ def test_pressers_refresh_rereads_the_page_a_live_blog_is_still_writing(monkeypa
         pass
 
 
+def test_pressers_refresh_reads_the_newest_end_of_the_stream(monkeypatch):
+    """The stream is NEWEST-FIRST: page 1 holds the latest posts, the last page
+    the oldest. Carrying on "where we stopped" therefore re-read the oldest
+    page for ever — the Friday 18 Sep blog was archived at 26 posts ending
+    09:25 and grew to 92 ending 14:15, the whole afternoon block unseen."""
+    import json
+    from acquire.core import http
+    from acquire.sources import bbc_pressers as bp
+    fd, path = tempfile.mkstemp(suffix=".sqlite")
+    os.close(fd)
+    conn = storage.connect(path)
+    storage.init(conn)
+    bp.register(conn)
+
+    def post(urn, when):
+        r = copy.deepcopy(PRESSER_STREAM["results"][0])
+        r["urn"] = urn
+        r["dates"] = {"firstPublished": when}
+        return r
+
+    # morning: two pages, newest first
+    stream = {1: {"page": {"index": 1, "total": 2},
+                  "results": [post("urn:x:c", "2026-09-18T09:20:00.000Z"),
+                              post("urn:x:b", "2026-09-18T09:00:00.000Z")]},
+              2: {"page": {"index": 2, "total": 2},
+                  "results": [post("urn:x:a", "2026-09-18T08:00:00.000Z")]}}
+    calls = []
+
+    def fake_get(url, **kw):
+        calls.append(url)
+        if "/sport/football/live/" in url:
+            return http.Response(url, 200, 'x "stream?assetId=c3l&liveTextStreamId=ABC&pageNumber=1" y',
+                                 http.utcnow(), "text/html")
+        n = int(url.rsplit("pageNumber=", 1)[1].split("&")[0])
+        return http.Response(url, 200, json.dumps(stream.get(n, {"page": {"index": n, "total": len(stream)},
+                                                                "results": []})),
+                             http.utcnow(), "application/json")
+
+    monkeypatch.setattr(http, "get", fake_get)
+    page = {"page_id": "c3l", "headline": "News conferences", "date_published": date.today().isoformat()}
+    assert bp.collect_page(conn, page, progress=lambda m: None)["posts"] == 3
+
+    # afternoon: two more posts arrive, pushing the rest down a page
+    stream = {1: {"page": {"index": 1, "total": 3},
+                  "results": [post("urn:x:e", "2026-09-18T14:15:00.000Z"),
+                              post("urn:x:d", "2026-09-18T13:50:00.000Z")]},
+              2: {"page": {"index": 2, "total": 3},
+                  "results": [post("urn:x:c", "2026-09-18T09:20:00.000Z"),
+                              post("urn:x:b", "2026-09-18T09:00:00.000Z")]},
+              3: {"page": {"index": 3, "total": 3},
+                  "results": [post("urn:x:a", "2026-09-18T08:00:00.000Z")]}}
+    calls.clear()
+    out = bp.refresh_live(conn, progress=lambda m: None)
+    assert out["new"] == 2, "the afternoon block was not picked up"
+    assert conn.execute("SELECT COUNT(*) FROM acq_bbc_presser").fetchone()[0] == 5
+    # it stops at the first page that adds nothing rather than re-reading the blog
+    assert sum(1 for u in calls if "pageNumber=" in u) == 2
+    # and a second refresh with nothing new costs one request
+    calls.clear()
+    assert bp.refresh_live(conn, progress=lambda m: None)["new"] == 0
+    assert sum(1 for u in calls if "pageNumber=" in u) == 1
+    conn.close()
+    try:
+        os.remove(path)
+    except PermissionError:
+        pass
+
+
 def test_pressers_refresh_needs_a_recent_page(monkeypatch):
     from acquire.sources import bbc_pressers as bp
     fd, path = tempfile.mkstemp(suffix=".sqlite")
@@ -249,7 +318,8 @@ def test_pressers_refresh_needs_a_recent_page(monkeypatch):
     bp.register(conn)
     conn.execute("INSERT INTO acq_bbc_presser_page (page_id, headline, date_published, "
                  "observed_utc) VALUES ('old', 'Recap', '2026-01-01T08:00:00Z', '2026-01-01T09:00:00Z')")
-    assert bp.refresh_live(conn, progress=lambda m: None) == {"pages": 0, "posts": 0, "new": 0}
+    out = bp.refresh_live(conn, progress=lambda m: None)
+    assert out["pages"] == 0 and out["new"] == 0
     conn.close()
     try:
         os.remove(path)

@@ -272,31 +272,106 @@ def collect_page(conn, page: dict, *, progress=print, refresh: bool = False) -> 
     return {"page_id": pid, "posts": n_posts, "new": after - before, "pages": total}
 
 
-def refresh_live(conn, *, within_days: int = 3, progress=print) -> dict:
-    """Re-read the newest archived page, for a blog that is still running.
+def refresh_live(conn, *, within_days: int = 3, max_pages: int = 12,
+                 progress=print) -> dict:
+    """Re-read the pages a live blog is still writing.
 
-    The Friday page is published in the morning and written all day — the
-    managers speak in blocks through to the evening — so a collector that
-    stops at "every page read" freezes at whatever had been posted when it
-    first ran.
+    **The stream is NEWEST-FIRST**: page 1 holds the latest posts and the last
+    page the oldest. `collect_page` walks 1..total once and then treats the
+    page as finished, so it freezes at whatever had been posted when it ran —
+    and "carry on from where we stopped" means the LAST page, which on a
+    newest-first stream is the oldest posts and never changes. The Friday
+    18 Sep page was archived at 26 posts, ending 09:25, and grew to 92 posts
+    ending 14:15: the whole afternoon block, where most managers speak, was
+    sitting on page 1 and never read.
+
+    So this walks FORWARD from page 1 and stops at the first page that adds
+    nothing, which is one request when the blog is idle and a handful while it
+    is running. Every page published in the last `within_days` is refreshed,
+    not just the newest: BBC often runs one page a day and the early speakers
+    are on yesterday's.
     """
     register(conn)
     since = (date.today() - timedelta(days=within_days)).isoformat()
-    row = conn.execute(
-        "SELECT page_id, headline, date_published FROM acq_bbc_presser_page "
-        "WHERE date_published >= ? ORDER BY date_published DESC LIMIT 1",
-        (since,)).fetchone()
-    if not row:
-        return {"pages": 0, "posts": 0, "new": 0}
-    out = collect_page(conn, {"page_id": row[0], "headline": row[1],
-                              "date_published": row[2]}, progress=progress, refresh=True)
-    return {"pages": 1, "posts": out.get("posts", 0), "new": out.get("new", 0),
-            "page_id": row[0]}
+    rows = conn.execute(
+        "SELECT page_id, headline, date_published, stream_id, pages_total FROM "
+        "acq_bbc_presser_page WHERE date_published >= ? ORDER BY date_published DESC",
+        (since,)).fetchall()
+    out = {"pages": 0, "posts": 0, "new": 0, "page_ids": []}
+    for pid, headline, dpub, sid, known_total in rows:
+        if not sid:
+            r = collect_page(conn, {"page_id": pid, "headline": headline,
+                                    "date_published": dpub}, progress=progress)
+            out["new"] += r.get("new", 0) or 0
+            out["pages"] += 1
+            continue
+        before = conn.execute("SELECT COUNT(*) FROM acq_bbc_presser WHERE page_id=?",
+                              (pid,)).fetchone()[0]
+        total, read = known_total, 0
+        for page_no in range(1, max_pages + 1):
+            resp = http.get(stream_url(pid, sid, page_no), delay=DELAY)
+            if not resp.ok or not resp.text.strip():
+                break
+            try:
+                payload = json.loads(resp.text)
+            except ValueError:
+                break
+            rid = storage.store_raw(conn, SOURCE_ID, resp, parser_version=PARSER_VERSION)
+            posts, total = parse_stream(payload)
+            if not posts:
+                break
+            known = {r[0] for r in conn.execute(
+                "SELECT post_urn FROM acq_bbc_presser WHERE page_id=?", (pid,))}
+            fresh = [q for q in posts if q["post_urn"] not in known]
+            for q in posts:
+                conn.execute(
+                    "INSERT OR REPLACE INTO acq_bbc_presser (page_id, post_urn, published_utc, "
+                    "fixture_label, text, raw_id) VALUES (?,?,?,?,?,?)",
+                    (pid, q["post_urn"], q["published_utc"], q["fixture_label"],
+                     q["text"], rid))
+            read = page_no
+            out["posts"] += len(posts)
+            # a page that adds nothing means everything above it is already in
+            if not fresh:
+                break
+            if total and page_no >= total:
+                break
+        conn.execute("UPDATE acq_bbc_presser_page SET pages_total=?, pages_done=?, "
+                     "posts=(SELECT COUNT(*) FROM acq_bbc_presser WHERE page_id=?), "
+                     "observed_utc=? WHERE page_id=?",
+                     (total, max(read, 0), pid, http.utcnow(), pid))
+        conn.commit()
+        after = conn.execute("SELECT COUNT(*) FROM acq_bbc_presser WHERE page_id=?",
+                             (pid,)).fetchone()[0]
+        out["pages"] += 1
+        out["new"] += after - before
+        if after > before:
+            out["page_ids"].append(pid)
+    return out
 
 
-# --------------------------------------------------------------------------
-# entry points
-# --------------------------------------------------------------------------
+def discover(conn, *, terms=(SEARCH_TERM,), max_pages: int = 1, progress=print) -> dict:
+    """The cheap look for a page we have not seen (one search request).
+
+    A gameweek usually has two: the early speakers a day before, then the one
+    most managers appear on. Waiting an hour for the thorough sweep to notice
+    the second means missing the morning it is published.
+    """
+    register(conn)
+    seen: dict[str, dict] = {}
+    for term in terms:
+        _enumerate_term(term, seen, max_pages, 1, lambda m: None)
+    known = {r[0] for r in conn.execute("SELECT page_id FROM acq_bbc_presser_page")}
+    out = {"seen": len(seen), "collected": 0, "posts": 0}
+    for pg in seen.values():
+        if pg["page_id"] in known:
+            continue
+        r = collect_page(conn, pg, progress=progress)
+        if not r.get("error"):
+            out["collected"] += 1
+            out["posts"] += r.get("posts", 0) or 0
+    return out
+
 
 def backfill(conn, *, since: str = "2023-07-01", progress=print) -> dict:
     register(conn)

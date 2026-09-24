@@ -5,10 +5,13 @@ from fpl_engine import pressers
 
 
 def test_fixture_label_parsing_maps_bbc_club_names_to_fpl():
-    assert pressers.fixture_clubs("Tottenham v Everton (Sat, 17:30 BST)") == ("Spurs", "Everton")
-    assert pressers.fixture_clubs("Nottingham Forest vs Man Utd") == ("Nott'm Forest", "Man Utd")
-    assert pressers.fixture_clubs("Wolves 1-0 Burnley") is None          # a result, not a fixture
-    assert pressers.fixture_clubs("Today's papers") is None
+    # clubs resolve against the SEASON's own names — a hardcoded table went
+    # stale the summer FPL renamed Ipswich "Ipswich Town" (test_presser_rules)
+    idx = pressers.club_index(["Spurs", "Everton", "Nott'm Forest", "Man Utd"])
+    assert pressers.fixture_clubs("Tottenham v Everton (Sat, 17:30 BST)", idx) == ("Spurs", "Everton")
+    assert pressers.fixture_clubs("Nottingham Forest vs Man Utd", idx) == ("Nott'm Forest", "Man Utd")
+    assert pressers.fixture_clubs("Wolves 1-0 Burnley", idx) is None     # a result, not a fixture
+    assert pressers.fixture_clubs("Today's papers", idx) is None
 
 
 def test_classification_precedence_and_phrases():

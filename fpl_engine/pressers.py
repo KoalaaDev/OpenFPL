@@ -33,6 +33,20 @@ import pandas as pd
 
 from . import db as _db
 
+# BBC writes the club as it pleases ("Ipswich", "Nottingham Forest", "Spurs")
+# and FPL renames clubs between seasons — it called Ipswich "Ipswich" in
+# 2024-25 and "Ipswich Town" in 2026-27. A hardcoded map therefore goes stale
+# silently: this one did, and 74 posts (47 Ipswich, 16 Coventry, 8 Hull,
+# 3 Forest) were being dropped as "not a Premier League fixture". Clubs are now
+# resolved against the SEASON'S OWN team names, with aliases only for the cases
+# no rule can reach.
+# The BBC *lineup* feed spells clubs in full ("Manchester City", "Brighton &
+# Hove Albion"), and `xpts/bbc_role_features.py` and `xpts/bbc_context.py`
+# join on this table. It is kept exactly as it was because those two feed the
+# shipped minutes model: changing a model input is a backtest, not a tidy-up.
+# The clubs it gets wrong for 2026-27 (Ipswich, Coventry, Hull) never appear
+# in that spelling there — checked, not assumed — so the defect below was the
+# presser fixture labels only.
 BBC_TO_FPL = {
     "Tottenham": "Spurs", "Tottenham Hotspur": "Spurs",
     "Nottingham Forest": "Nott'm Forest", "Nottm Forest": "Nott'm Forest",
@@ -45,38 +59,145 @@ BBC_TO_FPL = {
     "Crystal Palace": "Crystal Palace", "Aston Villa": "Aston Villa",
 }
 
+CLUB_ALIASES = {
+    "spurs": "tottenham", "tottenham hotspur": "tottenham",
+    "forest": "nottingham forest", "nottm forest": "nottingham forest",
+    "notts forest": "nottingham forest",
+    "man utd": "manchester united", "man united": "manchester united",
+    "man city": "manchester city",
+    "wolves": "wolverhampton wanderers",
+    "sheff utd": "sheffield united", "sheff wed": "sheffield wednesday",
+    "west brom": "west bromwich albion",
+}
+CLUB_SUFFIXES = ("city", "town", "united", "albion", "wanderers", "hotspur",
+                 "rovers", "county", "athletic", "fc", "afc")
+
+
+def _norm_club(name: str) -> str:
+    t = (name or "").lower().replace("&", "and").replace("'", "").replace(".", "")
+    t = re.sub(r"[^a-z ]", " ", t)
+    return " ".join(t.split())
+
+
+def _club_keys(name: str) -> set[str]:
+    """Every spelling of a club that should resolve to it."""
+    base = _norm_club(name)
+    keys = {base}
+    words = base.split()
+    while len(words) > 1 and words[-1] in CLUB_SUFFIXES:
+        words = words[:-1]
+        keys.add(" ".join(words))
+    for short, full in CLUB_ALIASES.items():
+        if _norm_club(full) in keys or short in keys:
+            keys.add(short)
+            keys.add(_norm_club(full))
+            fw = _norm_club(full).split()
+            while len(fw) > 1 and fw[-1] in CLUB_SUFFIXES:
+                fw = fw[:-1]
+                keys.add(" ".join(fw))
+    return keys
+
+
+def club_index(names) -> dict[str, str]:
+    """{every spelling: the season's own club name}.
+
+    A key two clubs could both answer to is dropped rather than given to
+    whichever was seen first — "Manchester" is not an answer.
+    """
+    idx: dict[str, str] = {}
+    clash: set[str] = set()
+    for n in names:
+        for k in _club_keys(n):
+            if k in idx and idx[k] != n:
+                clash.add(k)
+            idx.setdefault(k, n)
+    for k in clash:
+        idx.pop(k, None)
+    return idx
+
+
+def resolve_club(name: str, idx: dict[str, str]) -> str | None:
+    """A club as BBC spells it -> the club as this season's FPL data spells it."""
+    t = _norm_club(name)
+    words = [w for w in t.split() if w not in ("afc", "fc")]
+    t = " ".join(words)
+    for cand in (t, CLUB_ALIASES.get(t, t)):
+        if cand in idx:
+            return idx[cand]
+    # "Brighton and Hove Albion" -> "Brighton": drop words from the end, which
+    # covers both the club suffixes and the long ceremonial names
+    for k in range(len(words) - 1, 0, -1):
+        head = " ".join(words[:k])
+        for cand in (head, CLUB_ALIASES.get(head, head)):
+            if cand in idx:
+                return idx[cand]
+    return None
+
+
 # ordered: the first family that matches the player's sentence wins
 PATTERNS = [
     ("out", re.compile(
         r"ruled out|won'?t be involved|will not be involved|won'?t be available|"
         r"will not be available|not available|unavailable|is out\b|are out\b|"
         r"remains? out|still out|out for (the|a|an|several|weeks|months|\d)|"
-        r"out until|out of (the|Saturday|Sunday|this|contention)|sidelined|"
+        r"out until|out of (the|Saturday|Sunday|this|contention|squad)|sidelined|"
         r"miss(es|ing)? (the|Saturday|Sunday|Monday|this|out)|will miss|"
-        r"no chance|surgery|long[- ]term|not fit\b|isn'?t fit|won'?t make it|"
-        r"suspended|serves? (a|his) (ban|suspension)|banned|won'?t play|"
-        r"will not play|not be (fit|ready)|not going to be (fit|ready|involved)|"
-        r"needs? (another|a few|more) (week|month)", re.I)),
+        r"no chance|surgery|operation|operated|long[- ]term|not fit\b|isn'?t fit|"
+        r"won'?t make it|suspended|serves? (a|his) (ban|suspension)|banned|"
+        r"won'?t play|will not play|not be (fit|ready)|"
+        r"not going to be (fit|ready|involved)|"
+        r"needs? (another|a few|more) (week|month)|"
+        # what a manager says instead of "out"
+        r"not in the squad|not be in the squad|out of the squad|not in contention|"
+        r"won'?t feature|will not feature|unavailable for selection|"
+        r"too soon for|comes? too soon|came too soon|not ready for (this|Saturday|Sunday)|"
+        r"won'?t risk|not risk(ing)? him|not going to risk|"
+        r"weeks? away|months? away|still (a few|some|several) weeks|"
+        r"in the treatment room|did ?(n'?t|not) travel|not travell?ing|won'?t travel|"
+        r"back (after|following) the international break|"
+        r"(tear|torn|ruptur|fracture|broken)\w*", re.I)),
     ("doubt", re.compile(
-        r"\bdoubt|assess(ed|ing)?\b|50-50|50/50|touch and go|wait and see|"
-        r"late (call|decision|check)|not sure|unsure|hopeful|we'?ll see|"
-        r"see how he|a chance|could (be|return|feature)|might (be|return|feature)|"
+        r"\bdoubt|assess(ed|ing|ment)?\b|will be assessed|we'?ll assess|"
+        r"50-50|50/50|touch and go|wait and see|"
+        r"late (call|decision|check|test)|not sure|unsure|hopeful|we'?ll see|"
+        r"see how he|a chance|small chance|outside chance|might make it|"
+        r"could (be|return|feature|make)|might (be|return|feature)|"
         r"may (be|return|feature)|not (yet|quite) (ready|there)|"
-        r"question mark|fitness test|day[- ]to[- ]day|struggl|niggle|"
-        r"pulled out|felt (something|his)|picked up a", re.I)),
+        r"question mark|fitness (test|check)|day[- ]to[- ]day|struggl|niggle|"
+        r"pulled out|felt (something|his)|picked up a|"
+        # the hedges managers actually use
+        r"optimistic (about|that|he)|in the balance|borderline|"
+        r"not 100|not fully fit|carrying (a|an) (knock|injury|problem)|"
+        r"slight (problem|issue|knock|strain)|minor (problem|issue|knock)|"
+        r"if he trains|trains? (today|tomorrow) (and|we)|part(-| )trained|"
+        r"has ?n'?t trained (fully|much|with)|trained (partially|separately)|"
+        r"we hope (he|to have)|hopefully (he|they)|fingers crossed", re.I)),
     ("rested", re.compile(
         r"\brest(ed|ing)?\b|rotat|unlikely to start|not start|won'?t start|"
         r"start on the bench|from the bench|manage his minutes|"
-        r"protect(ed|ing)? him", re.I)),
+        r"protect(ed|ing)? him|"
+        r"needs? a (rest|break)|give him a (rest|break)|"
+        r"manage his (load|game time|minutes)|load management|"
+        r"freshen (things|it|the team) up", re.I)),
     ("available", re.compile(
         r"\bavailable\b|\bfit\b|fully fit|back in training|trained (this|all|fully)|"
         r"in (full )?training|\breturns?\b|is back|are back|back in (contention|the squad)|"
         r"in contention|\bready\b|no problem|should be (fine|ok|okay)|all good|"
         r"good to go|in the squad|will be involved|can play|could start|"
-        r"no (new|fresh|further) (injur|problem|concern)|recovered|clean bill", re.I)),
+        r"no (new|fresh|further) (injur|problem|concern)|recovered|clean bill|"
+        # the all-clear, which is how most team news is actually delivered
+        r"every(one|body) (is|'?s)? ?(fit|fine|available|good)|"
+        r"(is|are|'?s) fine\b|all fine|no (injury )?(issues|problems|concerns)|"
+        r"no absentees|nobody (is )?(out|missing)|"
+        r"trained (today|yesterday|normally|with the (group|team|rest))|"
+        r"came through (the (game|match|week))?|back available|available again|"
+        r"fit again|fully available|100 ?(%|per cent)|in the mix", re.I)),
 ]
 INJURY_STREAM = re.compile(r"because of an injury|injur(y|ed)|forced off|limp", re.I)
-SENT_SPLIT = re.compile(r"(?<=[.!?])\s+|\n+")
+# a quoted answer ends with ." — without allowing the closing quote the
+# splitter runs two managers' answers together, and the first verdict then
+# reaches the second player's name
+SENT_SPLIT = re.compile(r"(?<=[.!?])[\"'\u201d\u2019)]*\s+|\n+")
 # a sentence often names several players with different fates ("Saka is
 # suspended but Odegaard returns"); the class is read from the CLAUSE that
 # names the player, split on contrast words and punctuation
@@ -108,12 +229,15 @@ def season_of(d: str) -> str:
     return f"{y0}-{str(y0 + 1)[2:]}"
 
 
-def fixture_clubs(label: str) -> tuple[str, str] | None:
+def fixture_clubs(label: str, idx: dict[str, str] | None = None) -> tuple[str, str] | None:
+    """The two clubs a fixture label names, as the season calls them."""
     m = re.match(r"\s*(.+?)\s+v(?:s)?\.?\s+(.+?)(?:\s*\(|\s*$)", label or "")
     if not m:
         return None
     a, b = m.group(1).strip(), m.group(2).strip()
-    return BBC_TO_FPL.get(a, a), BBC_TO_FPL.get(b, b)
+    if idx is None:
+        return a, b
+    return resolve_club(a, idx) or a, resolve_club(b, idx) or b
 
 
 def gw_kickoffs(conn, season: str) -> list[tuple[int, str]]:
@@ -177,16 +301,30 @@ def classify(sentence: str) -> tuple[str, str] | None:
     return None
 
 
+# how far a verdict can reach past the sentence that named the players
+CARRY_SENTENCES = 3
+
+
 def extract_post(text: str, patterns) -> list[tuple[dict, str, str, str]]:
-    """(player, cls, phrase, sentence) for every classified mention."""
-    out = []
-    for sent in SENT_SPLIT.split(text or ""):
-        if not sent.strip():
-            continue
+    """(player, cls, phrase, sentence) for every classified mention.
+
+    Two passes. The first reads the clause that names the player, which is the
+    conservative case. The second is the shape most of these posts actually
+    take: a lead that names the players and says nothing about them, then the
+    quote that answers — "Arteta was asked about the availability of Mosquera,
+    White, Timber and Hincapie: 'Everyone is fine.'" The names are in one
+    sentence and the verdict in the next, so the first pass sees nothing at
+    all. A verdict carries only while the following sentences name nobody
+    else, so a quote about a different player cannot be misattributed.
+    """
+    sents = [s.strip() for s in SENT_SPLIT.split(text or "") if s.strip()]
+    named = [[p for p, rx in patterns if rx.search(s)] for s in sents]
+    rx_of = {id(p): rx for p, rx in patterns}
+    out, classified = [], set()
+    for i, sent in enumerate(sents):
         clauses = [c for c in CLAUSE_SPLIT.split(sent) if c and c.strip()]
-        for p, rx in patterns:
-            if not rx.search(sent):
-                continue
+        for p in named[i]:
+            rx = rx_of[id(p)]
             # the clause naming him decides; a status stated once for a whole
             # list ("X, Y and Z are all out") falls back to the sentence
             hit = None
@@ -195,10 +333,31 @@ def extract_post(text: str, patterns) -> list[tuple[dict, str, str, str]]:
                     hit = classify(cl)
                     if hit:
                         break
-            if hit is None and not any(classify(cl) for cl in clauses):
-                hit = classify(sent)
+            if hit is None:
+                # "asked about the availability of A, B and C: everyone is
+                # fine" — the verdict is a clause of its own. It carries only
+                # while it names nobody else, so "Saka is suspended but
+                # Odegaard returns" still keeps its two halves apart.
+                free = [cl for cl in clauses
+                        if classify(cl) and not any(r.search(cl) for _q, r in patterns)]
+                if free:
+                    hit = classify(free[0])
+                elif not any(classify(cl) for cl in clauses):
+                    hit = classify(sent)
             if hit:
-                out.append((p, hit[0], hit[1], sent.strip()[:240]))
+                out.append((p, hit[0], hit[1], sent[:240]))
+                classified.add(i)
+    for i, sent in enumerate(sents):
+        if not named[i] or i in classified:
+            continue
+        for j in range(i + 1, min(i + 1 + CARRY_SENTENCES, len(sents))):
+            if named[j]:
+                break                       # the answer is about someone else
+            hit = classify(sents[j])
+            if hit:
+                for p in named[i]:
+                    out.append((p, hit[0], hit[1], f"{sent} {sents[j]}"[:240]))
+                break
     return out
 
 
@@ -213,15 +372,16 @@ def extract_pressers(conn, seasons: list[str] | None = None) -> dict:
         if seasons and season not in seasons:
             continue
         if season not in cache:
-            cache[season] = (_squads(conn, season), gw_kickoffs(conn, season))
-        squads, kickoffs = cache[season]
+            sq = _squads(conn, season)
+            cache[season] = (sq, gw_kickoffs(conn, season), club_index(sq))
+        squads, kickoffs, cidx = cache[season]
         stats["pages"] += 1
         conn.execute("DELETE FROM presser_obs WHERE page_id=? AND source='presser'", (page_id,))
         for post_urn, pub, label, text in conn.execute(
                 "SELECT post_urn, published_utc, fixture_label, text FROM acq_bbc_presser "
                 "WHERE page_id=?", (page_id,)):
             stats["posts"] += 1
-            clubs = fixture_clubs(label)
+            clubs = fixture_clubs(label, cidx)
             if not clubs:
                 continue
             players = []

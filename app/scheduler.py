@@ -326,6 +326,11 @@ def news_minutes() -> float:
         return 15.0
 
 
+def _transient(exc: Exception) -> bool:
+    """A lock lost to a long refresh is not a fault: the next poll gets it."""
+    return "database is locked" in str(exc).lower()
+
+
 def pull_team_news() -> dict:
     """Record any FPL availability changes since the last pull. Never raises."""
     from fpl_engine import config
@@ -359,7 +364,10 @@ def pull_team_news() -> dict:
         return out
     except Exception as exc:  # noqa: BLE001 - a news poll must never take the app down
         with _lock:
-            _state["news_last_error"] = str(exc)
+            if _transient(exc):
+                _state["news_last_skipped"] = str(exc)
+            else:
+                _state["news_last_error"] = str(exc)
         return {"error": str(exc)}
 
 
@@ -535,8 +543,12 @@ def pull_pressers(*, full: bool = False) -> dict:
         from fpl_engine import pressers as _pr
         with _st.connect(config.DB_PATH) as conn:
             _st.init(conn)
-            out = dict(_bp.pull(conn, season=config.CURRENT_SEASON) if full
-                       else _bp.refresh_live(conn, progress=lambda m: None))
+            if full:
+                out = dict(_bp.pull(conn, season=config.CURRENT_SEASON))
+            else:
+                # a new page first (one request), then the pages already open
+                out = dict(_bp.discover(conn, progress=lambda m: None))
+                out.update(_bp.refresh_live(conn, progress=lambda m: None))
             out["obs"] = (_pr.extract_pressers(
                 conn, seasons=[config.CURRENT_SEASON]) or {}).get("obs")
         with _lock:
@@ -552,7 +564,10 @@ def pull_pressers(*, full: bool = False) -> dict:
         return out
     except Exception as exc:  # noqa: BLE001 - never take the news thread down
         with _lock:
-            _state["pressers_last_error"] = str(exc)
+            if _transient(exc):
+                _state["pressers_last_skipped"] = str(exc)
+            else:
+                _state["pressers_last_error"] = str(exc)
         return {"error": str(exc)}
 
 

@@ -2752,6 +2752,63 @@ present itself as a finding*. `tests/test_deadline_lineups.py`.
   The scheduler polls that every `FPLABS_PRESSER_MINUTES` (default 5, floor 3)
   inside the deadline window and walks the search index for a NEW page once an
   hour. `tests/test_acquire_bbc.py`.
+* **The live blog was read from the wrong end, and three quarters of it was
+  never collected.** BBC's stream is **newest-first**: page 1 holds the latest
+  posts, the last page the oldest. `collect_page` walks 1..total once and then
+  treats the page as finished, and the "refresh" added on 2026-09-18 carried on
+  from `pages_done` — the LAST page, i.e. the oldest posts, which never change.
+  The Friday 18 Sep page was archived at **26 posts ending 09:25** and had
+  grown to **92 ending 14:15**: the morning block (two managers) was on file
+  and the afternoon block (most of the league) was not, which is exactly what
+  the desk showed. `refresh_live` now walks FORWARD from page 1 and stops at
+  the first page that adds nothing (one request idle, a handful while the blog
+  runs), refreshes every page published in the last three days rather than only
+  the newest — BBC runs one page a day and the early speakers are on
+  yesterday's — and `discover` spends one search request looking for a page we
+  have not seen, so a second page appearing mid-morning is picked up on the
+  next 5-minute poll instead of waiting for the hourly sweep.
+  `tests/test_acquire_bbc.py`.
+* **Clubs were resolved by a hardcoded table, and FPL renames clubs.** It said
+  `"Ipswich Town" -> "Ipswich"`; in 2026-27 FPL calls them *Ipswich Town*, so
+  every post labelled Ipswich, Coventry, Hull or Forest (74 in one gameweek)
+  was dropped as "not a Premier League fixture". `club_index`/`resolve_club`
+  resolve against the SEASON'S OWN team names — suffix stripping (City, Town,
+  United, Albion…), a short alias table for what no rule reaches (Spurs,
+  Forest, Wolves, Man Utd/City), leading AFC/FC dropped, long ceremonial names
+  shortened from the end (Brighton & Hove Albion → Brighton) — and a key two
+  clubs would answer to ("Manchester") is refused rather than given to
+  whichever was loaded first.
+* **A verdict one sentence away from the names was invisible**, which is the
+  shape most of these posts take: *"Arteta was asked about the availability of
+  Mosquera, White, Timber and Hincapie: 'Everyone is fine.'"* The names are in
+  the lead and the answer in the quote, so the clause rule saw nothing at all.
+  `extract_post` now carries a verdict to the names before it — across clauses
+  first, then up to `CARRY_SENTENCES` (3) — **only while the intervening text
+  names nobody else**, so "Saka is suspended but Odegaard returns" still keeps
+  its halves apart. The sentence splitter also accepts a closing quote after
+  the full stop; without that, two managers' answers ran together and the first
+  verdict reached the second player. The phrase lists gained what managers
+  actually say (`not in the squad`, `comes too soon`, `won't risk`, `did not
+  travel`, `carrying a knock`, `optimistic about`, `not 100%`, `trained
+  normally`, `came through`, `everyone is fine`…).
+
+  **Judged on realised starts, not on eyeballing.** Same corpus (six pages,
+  545 posts), scored against `player_gw.starts` for the gameweeks already
+  played:
+
+  | | statements | out | doubt | available | "out" who started | "available" who started |
+  |---|---|---|---|---|---|---|
+  | before | 62 | 19 | 10 | 32 | **16%** | 35% |
+  | after | **166** | 33 | 37 | 86 | **9%** | 39% |
+
+  2.7x the coverage with the out/available separation widening from 19 to 30
+  points, i.e. more statements AND better ones. On the subset that could change
+  a decision — men who had started at least half their earlier gameweeks, n=41
+  — an "out" call is wrong 22% of the time against Round 18's 41-49% for the
+  old rules. Small samples (four gameweeks): read the direction, not the
+  decimal. **Nothing here reaches a projection**: `LIVE_FACTORS` are still all
+  1.0, so this is coverage of what is SHOWN, and the E18 gate for modelling it
+  is unchanged. `tests/test_presser_rules.py`.
 * **Both feeds are club-pickable, and the line-ups no longer hide.** "Managers
   said" reads as the team-news feed it sits beside — one row a post, crest,
   manager, fixture, the quote clamped to three lines and opening on click,
