@@ -2826,6 +2826,15 @@ present itself as a finding*. `tests/test_deadline_lineups.py`.
   within `PRESSER_WINDOW_H` (40 h), and the Deadline desk has a
   press-conference health row. `tests/test_presser_polling.py`.
 
+**Undo is per draft, labelled, and survives leaving the tab** (2026-09-24).
+It lived in a ref inside the Planner, so switching to Projections and back
+threw the history away — exactly when you want it, because the changes worth
+undoing (a Wildcard, a Free Hit, a solved pair of transfers) are the ones you
+leave the tab to check. `HISTORY` is a module-scope map keyed by draft id, each
+entry carries what the change WAS, and the button says it: "↶ Undo Free Hit
+GW7". Redo sits beside it (Ctrl+Shift+Z / Ctrl+Y) and a new edit ends the
+branch you undid.
+
 Solver specifics worth knowing:
 
 * **Playstyles, not near-duplicates.** Asking for N plans returns one per

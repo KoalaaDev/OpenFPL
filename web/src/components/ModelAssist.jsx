@@ -59,7 +59,7 @@ export default function ModelAssist({
       const rest = best.filter((id) => id !== cap).sort((a, b) => epFor(b) - epFor(a))
       g.vice = rest[0] ?? null
       return d
-    })
+    }, { label: `the best XI for GW${plan.gw}` })
     setToast({ kind: 'ok', msg: `XI optimised — +${fmt1(xiGap.gain)} projected points.` })
   }
 
@@ -167,7 +167,8 @@ export default function ModelAssist({
         }
       }
       return d
-    })
+    }, { label: { freehit: `the model's Free Hit`, wildcard: `the model's Wildcard`,
+                  transfer: `the model's transfers` }[kind] })
     const label = { freehit: 'Free Hit squad', wildcard: 'Wildcard squad',
                     transfer: 'transfer' }[kind]
     const n = per.transfers_in.length

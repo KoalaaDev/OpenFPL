@@ -1264,3 +1264,8 @@ body {
 @media (max-width: 620px) {
   .pq-select { max-width: 150px; }
 }
+
+/* ---------- planner: undo says what it will put back ----------------------- */
+.undo-pair { display: inline-flex; gap: 4px; align-items: center; }
+.undo-pair .pill-btn { max-width: 210px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 820px) { .undo-pair .pill-btn { max-width: 140px; } }

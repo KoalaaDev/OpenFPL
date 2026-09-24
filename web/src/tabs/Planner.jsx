@@ -26,8 +26,7 @@ export default function Planner() {
   const [statPid, setStatPid] = useState(null)  // player stats modal
   const [xfer, setXfer] = useState(null)        // pid being transferred out (modal)
   const [armed, setArmed] = useState(null)      // player picked from search, to bring in
-  const undoRef = useRef([])                    // previous draft states (this session)
-  const [undoN, setUndoN] = useState(0)
+  const [undoN, setUndoN] = useState(0)          // a tick so the bar re-renders
 
   const plan = draft?.gws?.[Math.min(gwIdx, (draft?.gws?.length || 1) - 1)] || null
   // A draft saved before the season still lists played gameweeks; those have no
@@ -92,12 +91,14 @@ export default function Planner() {
   // every edit goes through here: snapshot for undo, then mutate a clone
   // Every edit re-runs the free-transfer ledger, so a transfer, a chip or a
   // rolled week immediately shows the right FT count and any -4 it costs.
-  const updateDraft = (fn, { record = true } = {}) => {
+  const updateDraft = (fn, { record = true, label = 'change' } = {}) => {
     setDrafts((ds) => ds.map((d) => {
       if (d.id !== draft.id) return d
       if (record) {
-        undoRef.current.push(structuredClone(d))
-        if (undoRef.current.length > 60) undoRef.current.shift()
+        const h = historyOf(d.id)
+        h.undo.push({ draft: structuredClone(d), label })
+        if (h.undo.length > HISTORY_MAX) h.undo.shift()
+        h.redo.length = 0            // a new edit ends the branch you undid
       }
       const next = fn(structuredClone(d))
       return applyFtLedger(next, draftFt0(next, entry, editableGw))
@@ -120,19 +121,29 @@ export default function Planner() {
     })
     if (stale) setDrafts((ds) => ds.map((d) => (d.id === draft.id ? fixed : d)))
   }, [draft?.id, entry?.free_transfers, editableGw, draft?.ft0])   // eslint-disable-line react-hooks/exhaustive-deps
-  const undo = () => {
-    const prev = undoRef.current.pop()
-    if (!prev) return
-    setDrafts((ds) => ds.map((d) => (d.id === prev.id ? prev : d)))
-    setUndoN((n) => Math.max(0, n - 1))
-    setToast({ kind: 'ok', msg: 'Undone.' })
+  const step = (from, to, verb) => {
+    if (!draft) return
+    const h = historyOf(draft.id)
+    const entryOf = h[from].pop()
+    if (!entryOf) return
+    setDrafts((ds) => ds.map((d) => {
+      if (d.id !== entryOf.draft.id) return d
+      h[to].push({ draft: structuredClone(d), label: entryOf.label })
+      return entryOf.draft
+    }))
+    setUndoN((n) => n + 1)
+    setToast({ kind: 'ok', msg: `${verb} ${entryOf.label}.` })
   }
+  const undo = () => step('undo', 'redo', 'Undone:')
+  const redo = () => step('redo', 'undo', 'Redone:')
   useEffect(() => {
     const onKey = (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.target.closest('input,textarea')) {
-        e.preventDefault(); undo()
-      }
-      if (e.key === 'Escape') { setArmed(null); setSel(null) }
+      if (e.target.closest?.('input,textarea')) return
+      const z = (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z'
+      if (z && e.shiftKey) { e.preventDefault(); redo() }
+      else if (z) { e.preventDefault(); undo() }
+      else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); redo() }
+      else if (e.key === 'Escape') { setArmed(null); setSel(null) }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -181,7 +192,7 @@ export default function Planner() {
         }
       }
       return d
-    })
+    }, { label: `${byId.get(outId)?.web_name || 'transfer'} → ${inP.web_name}` })
     return true
   }
 
@@ -209,7 +220,7 @@ export default function Planner() {
       g.transfers_in = g.transfers_in.filter((_, i) => i !== k)
       g.transfers_out = g.transfers_out.filter((_, i) => i !== k)
       return d
-    })
+    }, { label: `undoing ${byId.get(inId)?.web_name || 'a transfer'}` })
   }
 
   const createFromEntry = () => {
@@ -312,7 +323,8 @@ export default function Planner() {
   return (
     <div>
       <GwBar draft={draft} gwIdx={gwIdx} setGwIdx={setGwIdx} evs={evs} deltas={deltas}
-        plan={plan} nMoves={nMoves} updateDraft={updateDraft} undo={undo} canUndo={undoN > 0}
+        plan={plan} nMoves={nMoves} updateDraft={updateDraft}
+        undo={undo} redo={redo} history={historyOf(draft.id)} tick={undoN}
         byId={byId} players={players} posOf={posOf} />
       <div className="planner-grid">
         <div className="planner-main">
@@ -468,8 +480,25 @@ function Advice({ draft, gwIdx, plan, posOf, updateDraft, setToast, proj,
 
 const ALL_CHIPS = ['bench_boost', 'triple_captain', 'wildcard', 'freehit']
 
-function GwBar({ draft, gwIdx, setGwIdx, evs, deltas, plan, nMoves, updateDraft, undo, canUndo,
-                 byId, players, posOf }) {
+/* Undo history.
+
+   It lived in a ref inside the Planner, so switching to Projections and back
+   threw it away — exactly when you want it, because the changes worth undoing
+   (a Wildcard, a Free Hit, a solved pair of transfers) are the ones you go and
+   check somewhere else. It sits at module scope now, keyed by draft, and every
+   entry carries what it was, so the button can say what it will put back
+   rather than making you remember. */
+const HISTORY = new Map()      // draft id -> { undo: [{draft, label}], redo: [] }
+const HISTORY_MAX = 40
+
+function historyOf(id) {
+  let h = HISTORY.get(id)
+  if (!h) HISTORY.set(id, (h = { undo: [], redo: [] }))
+  return h
+}
+
+function GwBar({ draft, gwIdx, setGwIdx, evs, deltas, plan, nMoves, updateDraft,
+                 undo, redo, history, byId, players, posOf }) {
   const { proj, status, entry, editableGw, isAdmin, setToast } = useStore()
   const avail = chipAvailability(entry?.chips, draft.gws.map((p) => p.gw))
   const total = evs.reduce((a, b) => a + b, 0)
@@ -477,7 +506,8 @@ function GwBar({ draft, gwIdx, setGwIdx, evs, deltas, plan, nMoves, updateDraft,
   const [openChip, setOpenChip] = useState(null)
 
   const setChip = (c, gw) => {
-    updateDraft((d) => applyChipToDraft(d, c, gw, { proj, byId, players, posOf }))
+    updateDraft((d) => applyChipToDraft(d, c, gw, { proj, byId, players, posOf }),
+                { label: gw == null ? `clearing ${CHIP_NAME[c]}` : `${CHIP_NAME[c]} GW${gw}` })
     setOpenChip(null)
     // The two chips that buy a squad now fill one in from this budget, which
     // is a good team instantly; the exact solve is one click away in Model
@@ -531,7 +561,7 @@ function GwBar({ draft, gwIdx, setGwIdx, evs, deltas, plan, nMoves, updateDraft,
               transfers_in: [], transfers_out: [], sold: {},
             })
             return d
-          })}>+</button>
+          }, { label: `adding GW${nextUnplanned}` })}>+</button>
       </div>
       <div className="chipbar">
         {openChip && (
@@ -575,9 +605,22 @@ function GwBar({ draft, gwIdx, setGwIdx, evs, deltas, plan, nMoves, updateDraft,
           )
         })}
       </div>
-      <button className="pill-btn" onClick={undo} disabled={!canUndo} title="Undo last change (Ctrl+Z)">
-        ↶ Undo
-      </button>
+      {(() => {
+        const last = history.undo[history.undo.length - 1]
+        const next = history.redo[history.redo.length - 1]
+        return (
+          <span className="undo-pair">
+            <button className="pill-btn" onClick={undo} disabled={!last}
+              title={last ? `Undo ${last.label} (Ctrl+Z)` : 'Nothing to undo'}>
+              ↶ {last ? `Undo ${last.label}` : 'Undo'}
+            </button>
+            {next && (
+              <button className="pill-btn" onClick={redo}
+                title={`Redo ${next.label} (Ctrl+Shift+Z)`}>↷</button>
+            )}
+          </span>
+        )
+      })()}
       <div className="stats">
         <div className="stat"><span className="k">GW pts</span>
           <span className="v">{fmt1(evs[gwIdx])}</span>
