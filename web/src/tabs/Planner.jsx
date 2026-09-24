@@ -11,6 +11,7 @@ import { Radar, VIZ, VIZ_NEUTRAL as VIZ_MUTED } from '../charts'
 import { DNA_AXES, dnaOf, dnaRaw, dnaScaled } from '../dna'
 import {
   CHIP_LONG, CHIP_NAME, CHIP_SHORT, POSITIONS, applyFtLedger, baselineDeltas, draftFt0,
+  loadHistory, pruneHistory, saveHistory,
   applyChipToDraft, bestAffordableXI, bestXI, chipAvailability, chipNote, epOf, fdrColor,
   formationRows, fmt1, gwEV, gwHasProj, money, shirtUrl, withBaseline, xiLegal,
 } from '../util'
@@ -99,6 +100,7 @@ export default function Planner() {
         h.undo.push({ draft: structuredClone(d), label })
         if (h.undo.length > HISTORY_MAX) h.undo.shift()
         h.redo.length = 0            // a new edit ends the branch you undid
+        saveHistory(d.id, h)
       }
       const next = fn(structuredClone(d))
       return applyFtLedger(next, draftFt0(next, entry, editableGw))
@@ -129,11 +131,20 @@ export default function Planner() {
     setDrafts((ds) => ds.map((d) => {
       if (d.id !== entryOf.draft.id) return d
       h[to].push({ draft: structuredClone(d), label: entryOf.label })
+      saveHistory(d.id, h)
       return entryOf.draft
     }))
     setUndoN((n) => n + 1)
     setToast({ kind: 'ok', msg: `${verb} ${entryOf.label}.` })
   }
+  /* A deleted draft's history must not sit in storage for ever — but drafts
+     arrive from the server a moment after mount, and pruning against an empty
+     list deletes the history of every draft you have. Only ever prune when
+     there is something to prune against. */
+  useEffect(() => {
+    if (drafts.length) pruneHistory(drafts.map((d) => d.id))
+  }, [drafts.length])  // eslint-disable-line react-hooks/exhaustive-deps
+
   const undo = () => step('undo', 'redo', 'Undone:')
   const redo = () => step('redo', 'undo', 'Redone:')
   useEffect(() => {
@@ -493,7 +504,7 @@ const HISTORY_MAX = 40
 
 function historyOf(id) {
   let h = HISTORY.get(id)
-  if (!h) HISTORY.set(id, (h = { undo: [], redo: [] }))
+  if (!h) HISTORY.set(id, (h = loadHistory(id)))   // written by the last visit
   return h
 }
 

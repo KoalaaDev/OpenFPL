@@ -291,10 +291,22 @@ def player_breakdown(player_id: int, _=Depends(rate("cheap"))):
 
 
 @app.get("/api/projections/history")
-def projections_history(request: Request, _=Depends(rate("cheap"))):
+def projections_history(request: Request, n: int = services.HISTORY_DEFAULT,
+                        _=Depends(rate("cheap"))):
     if not _entitlements(request)["history"]:
         return {"snapshots": [], "locked": True}
-    return services.projection_history_payload()
+    return services.projection_history_payload(max(1, min(40, int(n))))
+
+
+@app.get("/api/player/{player_id}/history")
+def player_history(player_id: int, request: Request, _=Depends(rate("cheap"))):
+    """One player's projection across builds — the card's trend line, without
+    shipping the whole archive to draw it."""
+    if player_id <= 0:
+        raise HTTPException(400, "bad player id")
+    if not _entitlements(request)["history"]:
+        return {"player_id": player_id, "builds": [], "locked": True}
+    return services.player_projection_history(player_id)
 
 
 BUILD_MAX_NEW = 8       # gameweeks modelled per request (~25 s each)
@@ -509,4 +521,19 @@ app.include_router(legal.router)
 
 STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
 if os.path.isdir(STATIC_DIR):
-    app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="static")
+    class _Static(StaticFiles):
+        """Vite fingerprints every bundle, so /assets/* can be cached for a
+        year — a repeat visit then costs one HTML request instead of half a
+        megabyte. index.html itself must never be cached, or a deploy would
+        keep serving the old bundle names."""
+
+        def file_response(self, *a, **kw):
+            resp = super().file_response(*a, **kw)
+            path = str(getattr(resp, "path", "") or "")
+            if "/assets/" in path.replace("\\", "/"):
+                resp.headers["cache-control"] = "public, max-age=31536000, immutable"
+            else:
+                resp.headers["cache-control"] = "no-cache"
+            return resp
+
+    app.mount("/", _Static(directory=STATIC_DIR, html=True), name="static")

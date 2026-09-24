@@ -10,7 +10,7 @@ import { availPct, badgeUrl, epColor, epOf, fdrColor, fmt1, money, photoUrl } fr
    the model output (fixture-aware); the per-90 columns are current season
    rates (xG-based once the season has data, else last-season history). */
 export default function PlayerModal({ pid, draft, plan, actions, close }) {
-  const { byId, teams, proj, projHistory, players, watch,
+  const { byId, teams, proj, players, watch,
           setTransferWatch, context, status } = useStore()
   const fixOf = useFixtureLookup()
   const [fdrMode, setFdrMode] = useState('diff_att')
@@ -45,19 +45,29 @@ export default function PlayerModal({ pid, draft, plan, actions, close }) {
     return { gw, fixes, ep: epOf(proj, pid, gw), xm }
   }), [gws.join(','), p, proj, pid, ava, xminsBase, fixOf])
 
-  // model trend: this player's horizon total across projection builds
+  /* Model trend: this player's horizon total across builds. It used to read
+     the whole 40-build archive out of the store — 1.6 MB downloaded by every
+     visitor on every page load to draw one sparkline. It is fetched per
+     player now, when the card opens. */
+  const [builds, setBuilds] = useState([])
+  useEffect(() => {
+    let alive = true
+    setBuilds([])
+    api.playerHistory(pid).then((d) => { if (alive) setBuilds(d.builds || []) }).catch(() => {})
+    return () => { alive = false }
+  }, [pid])
   const trend = useMemo(() => {
     const pts = []
-    for (const s of projHistory || []) {
+    for (const s of builds) {
       let tot = 0, k = 0
       for (const gw of gws) {
-        const v = s.gws?.[String(gw)]?.[String(pid)]
+        const v = s.gws?.[String(gw)]
         if (v != null) { tot += v; k++ }
       }
       if (k) pts.push(tot)
     }
     return pts
-  }, [projHistory, gws.join(','), pid])
+  }, [builds, gws.join(','), pid])
 
   // Percentile WITHIN POSITION. An 0.35 g90 is elite for a defender and
   // ordinary for a forward, so an absolute scale would make every centre-back

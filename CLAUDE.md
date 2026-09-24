@@ -2886,14 +2886,33 @@ present itself as a finding*. `tests/test_deadline_lineups.py`.
   within `PRESSER_WINDOW_H` (40 h), and the Deadline desk has a
   press-conference health row. `tests/test_presser_polling.py`.
 
-**Undo is per draft, labelled, and survives leaving the tab** (2026-09-24).
+**Undo is per draft, labelled, and survives a reload** (2026-09-24).
 It lived in a ref inside the Planner, so switching to Projections and back
 threw the history away — exactly when you want it, because the changes worth
 undoing (a Wildcard, a Free Hit, a solved pair of transfers) are the ones you
 leave the tab to check. `HISTORY` is a module-scope map keyed by draft id, each
 entry carries what the change WAS, and the button says it: "↶ Undo Free Hit
 GW7". Redo sits beside it (Ctrl+Shift+Z / Ctrl+Y) and a new edit ends the
-branch you undid.
+branch you undid. It persists to `localStorage` per draft (`trimHistory`
+caps it at 12 entries / 0.4 MB, every access wrapped because a private window
+throws), so a refresh no longer loses it — and a deleted draft's history is
+pruned, but only once the drafts have actually loaded: pruning against an
+empty list wipes the history of every draft you own, which is exactly what
+the first version did.
+
+**Page weight, measured rather than assumed** (2026-09-24). Every visitor was
+downloading `/api/projections/history` — **1.58 MB**, the last 40 projection
+builds for every player — on every page load. The board reads only the
+PREVIOUS build (the "since the last build" column) and the player card wants
+one player's series: the endpoint now defaults to the last two snapshots
+(`?n=` up to 40) and `/api/player/{id}/history` serves the card's sparkline in
+a few hundred bytes. Vite fingerprints its bundles, so `/assets/*` is served
+`public, max-age=31536000, immutable` while `index.html` stays `no-cache` —
+a deploy must never be pinned to an old bundle name. First load fell from
+**2,955 KB to 1,460 KB**, and a repeat visit skips another 507 KB of JS+CSS.
+Note when reading these numbers: Cloudflare gzips at the edge (354 KB of
+projections is 59 KB on the wire), so the visitor-facing win is smaller than
+the raw figures — but the JSON parse on a phone is real, and it was 1.6 MB.
 
 Solver specifics worth knowing:
 

@@ -479,6 +479,63 @@ export function movesBetween(before, after, posOf) {
                    now.filter((id) => !had.includes(id)), posOf)
 }
 
+/* Undo history that survives a reload.
+
+   It began as a ref inside the Planner (gone on a tab switch), then a module
+   map (gone on refresh). A plan is a document people come back to, so the
+   history belongs with it: localStorage, per draft, capped — big enough to
+   walk back a Wildcard, small enough that a few drafts cannot fill the quota.
+   Every access is wrapped: private windows and blocked site data throw, and a
+   convenience must never take the tab down with it. */
+export const HISTORY_KEEP = 12          // entries kept per draft
+export const HISTORY_BYTES = 400000     // ~0.4 MB per draft, of a ~5 MB quota
+const HKEY = (id) => `fplabs.hist.${id}`
+
+export function trimHistory(h, { keep = HISTORY_KEEP, bytes = HISTORY_BYTES } = {}) {
+  let out = { undo: (h.undo || []).slice(-keep), redo: (h.redo || []).slice(-keep) }
+  // a long plan is a big snapshot; drop the oldest until it fits rather than
+  // storing nothing at all
+  while (JSON.stringify(out).length > bytes && (out.undo.length || out.redo.length)) {
+    if (out.redo.length) out.redo = out.redo.slice(1)
+    else out.undo = out.undo.slice(1)
+  }
+  return out
+}
+
+export function loadHistory(id, store) {
+  const ls = store || (typeof localStorage === 'undefined' ? null : localStorage)
+  try {
+    const raw = ls?.getItem(HKEY(id))
+    if (raw) {
+      const h = JSON.parse(raw)
+      if (Array.isArray(h?.undo) && Array.isArray(h?.redo)) return h
+    }
+  } catch { /* private window, blocked storage: start empty */ }
+  return { undo: [], redo: [] }
+}
+
+export function saveHistory(id, h, store) {
+  const ls = store || (typeof localStorage === 'undefined' ? null : localStorage)
+  try {
+    ls?.setItem(HKEY(id), JSON.stringify(trimHistory(h)))
+  } catch { /* quota or blocked: the plan itself is saved, this is extra */ }
+}
+
+/* Drafts are deleted; their history must not sit in storage for ever. */
+export function pruneHistory(keepIds, store) {
+  const ls = store || (typeof localStorage === 'undefined' ? null : localStorage)
+  try {
+    const live = new Set((keepIds || []).map((id) => HKEY(id)))
+    const dead = []
+    for (let i = 0; i < ls.length; i++) {
+      const k = ls.key(i)
+      if (k && k.startsWith('fplabs.hist.') && !live.has(k)) dead.push(k)
+    }
+    dead.forEach((k) => ls.removeItem(k))
+    return dead.length
+  } catch { return 0 }
+}
+
 export function applyFtLedger(draft, ft0) {
   if (!draft?.gws?.length) return draft
   const start = Number.isFinite(ft0) ? ft0 : null

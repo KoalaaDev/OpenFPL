@@ -39,7 +39,7 @@ FPL_BASE = "https://fantasy.premierleague.com/api"
 _TTL = 600.0
 # bumped whenever the API contract changes; the frontend compares it with
 # its own build so a stale `python -m app` process is flagged, not puzzling
-API_VERSION = "2026-09-18.4"
+API_VERSION = "2026-09-24.1"
 
 _mem: dict[str, tuple[float, object]] = {}
 _bundle = None
@@ -1261,8 +1261,32 @@ def _append_history(cache: dict) -> None:
     os.replace(tmp, HISTORY_PATH)
 
 
-def projection_history_payload() -> dict:
-    return {"snapshots": _load_history()}
+HISTORY_DEFAULT = 2      # enough for "what changed since the last build"
+
+
+def projection_history_payload(n: int | None = HISTORY_DEFAULT) -> dict:
+    """Projection snapshots, newest last.
+
+    The full archive is 40 snapshots of every player's horizon — 1.6 MB, and
+    it was being sent to every visitor on every page load. The board only ever
+    reads the PREVIOUS one (the "since the last build" column), and the player
+    card wants one player's series, which `player_projection_history` serves
+    in a few hundred bytes. So the default is the last two.
+    """
+    snaps = _load_history()
+    return {"snapshots": snaps if not n else snaps[-int(n):], "kept": len(snaps)}
+
+
+def player_projection_history(player_id: int) -> dict:
+    """One player's horizon total across every stored build."""
+    pid = str(int(player_id))
+    out = []
+    for s in _load_history():
+        gws = {g: v.get(pid) for g, v in (s.get("gws") or {}).items()}
+        gws = {g: round(float(v), 2) for g, v in gws.items() if v is not None}
+        if gws:
+            out.append({"built_at": s.get("built_at"), "gws": gws})
+    return {"player_id": int(player_id), "builds": out}
 
 
 def _proj_frame(cache: dict, gws: list[int], decay: float) -> pd.DataFrame:
