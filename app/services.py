@@ -1112,6 +1112,18 @@ def projections_payload() -> dict:
     return {**cache, "players": players}
 
 
+def lineup_feed_enabled() -> bool:
+    """The predicted-lineup overlay on the live board.
+
+    Measured forward on this season's own archive (E15/E16): inside the band
+    where the model is undecided the feed is right 72% of the time against the
+    model's 66%, worth ~33 pts a season. It is live-only — the archive starts
+    in 2026-27, so no replay sees it — and `FPLABS_LINEUP_FEED=0` turns it off
+    without a deploy.
+    """
+    return os.environ.get("FPLABS_LINEUP_FEED", "1") != "0"
+
+
 def gws_to_build(cache: dict, gws: list[int], *, force: bool = False,
                  max_new: int | None = None) -> list[int]:
     """Which gameweeks a build call should model.
@@ -1144,6 +1156,8 @@ def build_projections(job_id: str | None, gws: list[int], *,
         todo = gws_to_build(cache, gws, force=force, max_new=max_new)
         if not todo:
             return cache
+        # the predicted-lineup overlay applies to the first OPEN gameweek only
+        lineup_gw = editable_gw() if lineup_feed_enabled() else None
         conn = db.connect(config.DB_PATH)
         try:
             n_fx = conn.execute(
@@ -1172,7 +1186,9 @@ def build_projections(job_id: str | None, gws: list[int], *,
                                   pct=0.05 + 0.6 * (i / max(1, len(todo))))
                 df = project.horizon_projections(
                     conn, season, [g], bundle=bundle, retrained=retrained,
-                    blend=weight, xpts_w=xw, penalty_takers=pens)
+                    blend=weight, xpts_w=xw, penalty_takers=pens,
+                    # the feed only forecasts the imminent gameweek
+                    lineup_gw=lineup_gw)
                 if df.empty:
                     continue
                 for r in df.itertuples():

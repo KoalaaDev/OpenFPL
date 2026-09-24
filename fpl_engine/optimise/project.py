@@ -87,7 +87,8 @@ def preseason_priors(conn, season: str, profiles: dict) -> dict[int, float]:
 def horizon_projections(conn, season: str, gws: list[int], *, bundle=None,
                         decay: float = 0.85, retrained=None,
                         blend: float = 0.0, xpts_w: float | None = None,
-                        penalty_takers: dict[int, int] | None = None) -> pd.DataFrame:
+                        penalty_takers: dict[int, int] | None = None,
+                        lineup_gw: int | None = None) -> pd.DataFrame:
     """Return a projection dataframe indexed by player_id.
 
     Columns: player_id, player, position, team, team_id, price, available,
@@ -185,8 +186,19 @@ def horizon_projections(conn, season: str, gws: list[int], *, bundle=None,
             # blend the component engine in (availability handled below for
             # both, so the engine runs without its own availability overlay)
             from ..xpts import engine as xpts_engine
+            # A predicted-lineup feed resolves the band the start model is
+            # undecided about, but only for the gameweek it forecasts: it says
+            # nothing about GW+2, and pretending otherwise would carry one
+            # week's rotation across the whole horizon.
+            xi = None
+            if lineup_gw is not None and g == lineup_gw:
+                try:
+                    from .. import lineup_feed as _lf
+                    xi = _lf.pre_deadline_xi(conn, season, g) or None
+                except Exception:  # noqa: BLE001 - a missing archive is not fatal
+                    xi = None
             xdf = xpts_engine.xpts_predict_gw(
-                conn, season, g, use_availability=False,
+                conn, season, g, use_availability=False, lineup_xi=xi,
                 minutes_bundle=minutes_bundle, penalty_takers=penalty_takers)
             if not xdf.empty:
                 xmap = dict(zip(xdf["player_id"].astype(int),

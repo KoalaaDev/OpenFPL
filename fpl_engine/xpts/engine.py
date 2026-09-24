@@ -201,8 +201,54 @@ def _realised(name: str, row: dict | None, pos: str, rules: dict):
     return None
 
 
+def _apply_lineup_xi(mins, lineup_xi: dict):
+    """Resolve the ambiguous band with a predicted-lineup feed.
+
+    The engine's own start model is calibrated but undecided for ~11% of rows
+    (P(start) 0.3-0.7), and that band carries 40% of the entire minutes
+    ceiling (E16). A feed that names the XI resolves it: measured on this
+    season's archive, a player the feed picks in that band starts 76% of the
+    time against the model's 56%, and one it leaves out 33% against 46%.
+
+    Only the START probability is replaced. How long he lasts GIVEN he starts,
+    and how often he appears GIVEN he does not, stay the player's own — so a
+    keeper and a rotated winger keep their different shapes.
+
+    Live only, by construction: the archive begins in 2026-27, so no replay
+    can see it and `data/bt_base` is untouched.
+    """
+    from ..lineup_feed import target_p_start
+    out = mins.copy()
+    # the minutes frame stores these as float32; assigning a posterior into a
+    # float32 column raises rather than casting
+    for c in ("p_start", "p_full", "p_sub", "p_none", "e_min", "m_played"):
+        if c in out.columns:
+            out[c] = out[c].astype("float64")
+    s = out["p_start"]
+    tgt = [target_p_start(v, lineup_xi[int(p)]) if int(p) in lineup_xi else None
+           for p, v in zip(out["player_id"], s)]
+    tgt = pd.Series(tgt, index=out.index, dtype="float64")
+    hit = tgt.notna()
+    if not hit.any():
+        return out
+    s_safe = s.clip(1e-4, 1 - 1e-4)
+    # P(60+ | starts) and P(appears | does not start), as this player behaves
+    r60 = (out["p_full"] / s_safe).clip(0, 1)
+    rsub = (out["p_sub"] / (1 - s_safe)).clip(0, 1)
+    new_full = (tgt * r60).clip(0, 0.99)
+    new_sub = ((1 - tgt) * rsub).clip(0, 0.99)
+    out.loc[hit, "p_full"] = new_full[hit]
+    out.loc[hit, "p_sub"] = new_sub[hit]
+    out.loc[hit, "p_start"] = tgt[hit]
+    out["p_none"] = (1.0 - out["p_sub"] - out["p_full"]).clip(0, 1)
+    out.loc[hit, "e_min"] = ((out["p_sub"] + out["p_full"]) * out["m_played"])[hit]
+    out.attrs["lineup_rows"] = int(hit.sum())
+    return out
+
+
 def xpts_predict_gw(conn, season: str, gw: int, *, as_of: str | None = None,
                     use_availability: bool = True,
+                    lineup_xi: dict | None = None,
                     minutes_bundle=None, rules: dict | None = None,
                     penalty_takers: dict[int, int] | None = None,
                     odds_weight: float | None = None,
@@ -278,6 +324,8 @@ def xpts_predict_gw(conn, season: str, gw: int, *, as_of: str | None = None,
     mins = (minutes_override if minutes_override is not None
             else minutes_model.predict_gw(conn, season, as_of, clf, meta, gw=gw,
                                           use_availability=use_availability))
+    if lineup_xi:
+        mins = _apply_lineup_xi(mins, lineup_xi)
     tw = tweaks or {}
     rates = rates_mod.fit(conn, season, as_of, rules=rules, **(tw.get("rates") or {}))
     bonus_coef = rates.attrs.get("bonus_coef", {})   # merge drops attrs

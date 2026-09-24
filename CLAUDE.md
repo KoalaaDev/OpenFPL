@@ -2103,6 +2103,66 @@ live-only calibration by construction (no replayed fixture is unpriced),
 measured on 2,162 fixture-sides rather than assumed. On GW7 it moves City's
 players up ~0.3-0.5 and Ipswich's down ~0.3.
 
+### Round 24: the lineup feed stops being a display and starts being an input
+
+The research log has said since E8/E16 that expected minutes is the ceiling,
+that the reachable part of it sits in the band where the start model itself is
+undecided (P(start) 0.30-0.70 — 11% of rows, 40% of the minutes ceiling), and
+that a feed is priced by its accuracy THERE rather than by a decision
+backtest. Five gameweeks of forward collection make that measurable:
+
+| in the band | n | actually started | the model said |
+|---|---|---|---|
+| RotoWire names him in the XI | 84 | **76%** | 56% |
+| RotoWire leaves him out | 69 | **33%** | 46% |
+
+Pooled band accuracy **0.719** [0.643, 0.784] against the model's **0.660**,
+which on the E8b line is **+33 pts/season** [18, 46] — the first time that CI
+has excluded zero. Outside the band the feed earns nothing: an omission above
+0.70 still started 78% of the time (n=18, the model was right) and below 0.30
+the two agree to within a point (n=811). The one exception is the surprise
+starter — a man the model wrote off at under 0.30 whom the feed names started
+**60%** of the time (n=10).
+
+**Shipped** (`lineup_feed.pre_deadline_xi`, `engine._apply_lineup_xi`,
+`services.lineup_feed_enabled`, `FPLABS_LINEUP_FEED=0` to disable): the
+overlay replaces the START probability for the three cells above, shrunk
+toward the model by `SHRINK_N`=10 pseudo-observations so the ten-row cell
+lands at 0.38 rather than 0.60. How long he lasts GIVEN he starts and how
+often he appears GIVEN he does not stay his own, so a keeper and a rotated
+winger are not flattened. It applies to the imminent gameweek only (a feed
+says nothing about GW+2), to clubs whose XI actually resolved (>=10 names —
+a resolution failure must never read as "all eleven dropped"), and never to
+confirmed XIs, which are published after the deadline. `calibrate()`
+recomputes the table from the scorecards as gameweeks accrue; do not hand-tune
+it.
+
+**What the A/B says, including the part that disagrees.** Point-in-time on the
+three gameweeks with a pre-deadline forecast (257 player-rows moved):
+
+| metric | base | with the feed | delta | p |
+|---|---|---|---|---|
+| start Brier (lower better) | 0.0652 | **0.0588** | **-0.0063** | 0.021 |
+| top-30 pts/pick | 4.52 | 4.59 | +0.067 | 0.42 |
+| top-11 pts/pick | 4.76 | 4.76 | 0.000 | — |
+| `spearman_played` | 0.4019 | 0.3992 | **-0.0026** | 0.044 |
+
+The channel metric improves significantly and the points metrics lean the
+right way at n=3 gameweeks, which cannot resolve them. `spearman_played` goes
+the other way, and E11c/E22 explain why it is the wrong instrument here: it
+conditions on players who played, which is the very population the overlay is
+re-weighting — perfect knowledge of who does NOT play scores exactly +0.0000
+on it by construction. It is reported rather than buried, and it is the reason
+this ships on the band-accuracy gate (E16's pre-registered rule) rather than
+on a three-gameweek decision test.
+
+**Live only, by construction.** The archive begins in 2026-27, so no replay
+can see it: `backtest.py` passes nothing, `data/bt_base` cannot move, and the
+model record's replays stay comparable with the weeks before it. Re-run the
+A/B and `calibrate()` at 10 and 20 gameweeks; if the band accuracy falls back
+to the model's, turn it off with the env var rather than arguing with it.
+`tests/test_lineup_overlay.py`.
+
 ### Where the forward-collected tests stand (2026-27 GW3)
 
 `python -m fpl_engine lineup-feed --gw N` scores the archived RotoWire

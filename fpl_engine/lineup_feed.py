@@ -258,6 +258,125 @@ def _iso(ts) -> str:
     return pd.Timestamp(ts).tz_convert("UTC").strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+# ---------------------------------------------------------------- overlay --
+#
+# What a forecast is WORTH, measured on this season's own archive rather than
+# assumed (E8b/E16: judge a feed on its accuracy inside the band where the
+# model is undecided, because that is where 40% of the whole minutes ceiling
+# sits). Five gameweeks, 1,348 scored rows:
+#
+#   model p_start   feed says        n    actually started   model said
+#   0.30-0.70       in the XI       84          76%              56%
+#   0.30-0.70       left out        69          33%              46%
+#   < 0.30          in the XI       10          60%              16%
+#   < 0.30          left out       811           2%               3%
+#   > 0.70          in the XI      356          92%              87%
+#   > 0.70          left out        18          78%              83%
+#
+# The feed earns its place in the first three rows only. Above 0.70 it is not
+# better than the model (an omission there still started 78% of the time), and
+# below 0.30 an omission agrees with the model to within a point. So the
+# overlay touches a player only when the model is NOT already confident he
+# starts, and each target is shrunk toward the model's own estimate by
+# SHRINK_N pseudo-observations, which keeps the thin cells honest: the
+# surprise-starter cell is n=10 and lands at 0.38 rather than 0.60.
+#
+# Re-derive with `calibrate()` as gameweeks accrue; do not hand-tune.
+SHRINK_N = 10.0
+START_POSTERIOR = {          # (cell, feed named him) -> P(start), already shrunk
+    ("band", True): 0.74,
+    ("band", False): 0.35,
+    ("unlikely", True): 0.38,
+}
+
+
+def cell_of(p_start: float, band=BAND) -> str | None:
+    if band[0] <= p_start <= band[1]:
+        return "band"
+    if p_start < band[0]:
+        return "unlikely"
+    return None                  # the model is confident; the feed adds nothing
+
+
+def target_p_start(p_start: float, in_xi: bool, table=None, band=BAND):
+    """The feed-conditioned probability he starts, or None to leave him be."""
+    cell = cell_of(float(p_start), band)
+    if cell is None:
+        return None
+    return (table or START_POSTERIOR).get((cell, bool(in_xi)))
+
+
+def calibrate(season: str, *, path: str | None = None, shrink: float = SHRINK_N,
+              band=BAND) -> dict:
+    """Recompute START_POSTERIOR from the saved scorecards.
+
+    Each cell is the realised start rate shrunk toward what the model itself
+    said, so a cell with ten rows cannot swing the live model on ten rows.
+    """
+    import json
+    path = path or os.path.join("data", f"lineup_feed_{season}.json")
+    if not os.path.exists(path):
+        return {}
+    with open(path, encoding="utf-8") as fh:
+        doc = json.load(fh)
+    rows = [r for g in (doc.get("gws") or doc).values() for r in (g.get("records") or [])]
+    out = {}
+    for cell in ("band", "unlikely", None):
+        for in_xi in (True, False):
+            g = [r for r in rows
+                 if cell_of(float(r["p_start"]), band) == cell and bool(r["feed_xi"]) is in_xi]
+            if not g:
+                continue
+            k = sum(1 for r in g if r["started"])
+            prior = sum(float(r["p_start"]) for r in g) / len(g)
+            out[(cell, in_xi)] = {"n": len(g), "started": k, "raw": k / len(g),
+                                  "model": prior,
+                                  "shrunk": round((k + shrink * prior) / (len(g) + shrink), 3)}
+    return out
+
+
+def pre_deadline_xi(conn, season: str, gw: int, *, archive: pd.DataFrame | None = None,
+                    now=None) -> dict:
+    """player_id -> was he in the last forecast XI published before the deadline.
+
+    Only clubs whose forecast actually resolved (>= 10 names matched to FPL
+    ids) are included: a resolution failure must never read as "the feed left
+    all eleven out". Confirmed XIs are excluded — they land about an hour
+    before kick-off, i.e. AFTER the deadline, so they are the answer and never
+    an input.
+    """
+    archive = load_archive(season) if archive is None else archive
+    if archive.empty:
+        return {}
+    as_of = engine.first_kickoff(conn, season, gw)
+    if as_of is None:
+        return {}
+    cutoff = pd.Timestamp(as_of, tz="UTC") - DEADLINE_LEAD
+    if now is not None:
+        cutoff = min(cutoff, pd.Timestamp(now, tz="UTC") if pd.Timestamp(now).tzinfo is None
+                     else pd.Timestamp(now).tz_convert("UTC"))
+    forecasts = pre_deadline_forecasts(archive, gw, cutoff)
+    if not forecasts:
+        return {}
+    players = pd.read_sql_query(
+        "SELECT p.player_id, p.web_name, p.full_name, p.team_id, t.short_name "
+        "FROM player p JOIN team t ON t.season=p.season AND t.team_id=p.team_id "
+        "WHERE p.season=? AND p.position IN (%s)" % ",".join("?" * len(PLAYER_POSITIONS)),
+        conn, params=(season, *PLAYER_POSITIONS))
+    resolved, _unresolved, _mismatched = resolve(
+        {t: set(v[1]) for t, v in forecasts.items()}, players)
+    abbr_of = {v: k for k, v in ABBR.items()}
+    players["team"] = players["short_name"].map(lambda x: abbr_of.get(x, x))
+    out: dict[int, bool] = {}
+    for team, (_when, names) in forecasts.items():
+        ids = {resolved[(team, n)] for n in names if (team, n) in resolved}
+        if len(ids) < 10:
+            continue                       # an unresolved XI is not a forecast
+        for pid in players.loc[players["team"] == team, "player_id"]:
+            out[int(pid)] = int(pid) in ids
+    return out
+
+
 def score_gw(conn, season: str, gw: int, *, archive: pd.DataFrame | None = None,
              band=BAND, minutes_bundle=None) -> dict:
     archive = load_archive(season) if archive is None else archive
