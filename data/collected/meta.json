@@ -4,12 +4,12 @@
   "lineups": 0,
   "news": 126
  },
- "lineups": 66,
+ "lineups": 0,
  "next_gw": 6,
- "observed_utc": "2026-09-28T22:10:25.279890+00:00",
+ "observed_utc": "2026-09-29T02:05:55.947935+00:00",
  "ownership": "gw06.csv",
  "picks": [],
  "season": "2026-27",
- "snapshot": "20260928T2210_gw06.csv.gz",
+ "snapshot": "20260929T0205_gw06.csv.gz",
  "sportsgambler": 22
 }
