@@ -1,15 +1,15 @@
 {
- "availability_changes": 1,
+ "availability_changes": 0,
  "ffscout": {
   "lineups": 0,
   "news": 95
  },
- "lineups": 0,
+ "lineups": 143,
  "next_gw": 6,
- "observed_utc": "2026-10-02T20:50:01.279089+00:00",
+ "observed_utc": "2026-10-03T01:15:22.453972+00:00",
  "ownership": "gw06.csv",
  "picks": [],
  "season": "2026-27",
- "snapshot": "20261002T2050_gw06.csv.gz",
- "sportsgambler": 11
+ "snapshot": "20261003T0115_gw06.csv.gz",
+ "sportsgambler": 0
 }
