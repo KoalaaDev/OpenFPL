@@ -1128,10 +1128,10 @@
   null
  ],
  "230001": [
-  "a",
-  null,
-  null,
-  null
+  "d",
+  0.75,
+  "Back injury - 75% chance of playing",
+  "2026-10-04T21:30:08.533022Z"
  ],
  "230650": [
   "a",
@@ -3228,10 +3228,10 @@
   null
  ],
  "570794": [
-  "a",
-  null,
-  null,
-  null
+  "d",
+  0.75,
+  "Hamstring injury - 75% chance of playing",
+  "2026-10-04T22:00:08.963040Z"
  ],
  "571380": [
   "u",
