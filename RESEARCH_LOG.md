@@ -1327,3 +1327,48 @@ As a binary start classifier the feed is genuinely strong and stable
 whether it beats the model exactly where the model is unsure — remains at
 2 removals, 1/2 correct, and per-arm top11 records vs baseline of
 hard +0.18/−0.18/−0.73 and soft +0.09/−0.55/+1.09: accrual, not answers.
+
+### E17, GW6 scored — the rotation week the feed exists for
+
+The first post-international-break gameweek, a 10:00 UTC deadline, and the
+feed's best week in the channel that matters. Archive 9,064 rows; 4,939
+pre-deadline predicted rows; 220/220 matched. Snapshot age at the deadline:
+median 17.8h since each club's forecast last CHANGED (the archive records
+changes, not captures — a stale-looking age can mean a stable forecast).
+Operational note: the DB did not survive a month of container idleness and
+was rebuilt from scratch (init-db, pull, pull --understat) — the evaluator's
+fail-loud checks passed on the rebuild, and `models/xpts` is tracked in git
+so the frozen bundle was never at risk.
+
+**Four removals, three right.** The feed benched four rank-5-30 players the
+model had at P(start) 0.66-0.90: Scott (0.89), Gakpo (0.84), Brobbey (0.90)
+— all three played ZERO minutes — and João Pedro (0.66), who started and
+hauled 12. Removal tally to date: **6 calls, 4 correct (0.67)**, every one
+against a model probability ≥ 0.66. This week the feed also beat the model
+outright on the band's false-starter rate: 0.045 vs 0.154 in ranks 5-30,
+0.000 vs 0.091 in ranks 5-15 — exactly the E16 channel, in exactly the kind
+of week (returning internationals, rotation) team news should matter.
+
+| GW6 | top11 | top30 | ll_start | note |
+|---|---|---|---|---|
+| baseline | 5.00 | 3.43 | 0.2783 | |
+| hard | 5.27 | 3.90 | 1.4492 | right 3 of 4, paid for the 4th in ll |
+| soft (LR 17.4/9.1) | 4.09 | 4.10 | 0.3200 | leaks on the easy rows again |
+| oracle | 6.27 | 4.37 | 0 | |
+
+**The emerging split, four gameweeks in**: the feed's REMOVAL information
+keeps proving real (4/6 at model P ≥ 0.66, and the three correct calls each
+saved a 0-point pick against the one 12-point miss), while both
+FULL-COVERAGE implementations keep leaking value across the ~630 rows where
+the model is already calibrated — running top11 records vs baseline: hard
++0.18/−0.18/−0.73/+0.27, soft +0.09/−0.55/+1.09/−0.91; soft's ll_start is
+net worse despite two good weeks. The data is pointing at E16's own
+prescription: use the feed ONLY where it disagrees with a confident model.
+A **targeted arm** (feed-bench ∧ model P(start)>0.6 → non-starter profile;
+every other row bit-identical to baseline) is added to the evaluator now,
+provenance-marked as post-hoc in design and scored PROSPECTIVELY from GW7 —
+its GW3-6 performance is in-sample and will not be pooled.
+
+Pooled accrual, 4 gameweeks (~2,640 covered rows): TPR 0.88, FPR 0.058;
+feed-XI realised start rate ~0.89, feed-bench ~0.055. Calibration battery
+reaches its pre-registered n at GW7-8.

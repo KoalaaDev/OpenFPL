@@ -546,9 +546,22 @@ def evaluate(conn, season: str, gw: int, feed: pd.DataFrame) -> dict:
     oracle["p_start"] = om["starts"].fillna(0.0).clip(0, 1).to_numpy()
     oracle["e_min"] = mins
     oracle["m_played"] = np.where(mins > 0, mins, oracle["m_played"])
+    # "targeted" applies the feed ONLY to E16's channel — rows the feed
+    # benches while the model says P(start) > 0.6 get the non-starter
+    # profile; the other ~630 rows stay bit-identical to baseline. Added
+    # after four scored gameweeks (provenance in RESEARCH_LOG E17: the
+    # removal information kept proving real while both full-coverage arms
+    # leaked value on the easy rows); scored prospectively from GW7.
+    targeted = base.copy()
+    rem = (targeted.team_id.isin(set(snap.fpl_team_id))
+           & ~targeted.player_id.isin(set(snap.player_id.dropna().astype(int)))
+           & (targeted.p_start > 0.6))
+    for k, v in prof["bench"].items():
+        targeted.loc[rem, k] = v
     arms = {"baseline": base,
             "hard": hard_frame(base, snap, prof),
             "soft": soft_frame(base, snap, lr_in, lr_out),
+            "targeted": targeted,
             "oracle": oracle}
     eps = 1e-6
     for name, mo in arms.items():
