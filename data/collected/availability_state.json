@@ -768,9 +768,9 @@
   null
  ],
  "209365": [
-  "d",
-  0.75,
-  "Back injury - 75% chance of playing",
+  "a",
+  1.0,
+  null,
   "2026-07-23T12:01:23.690880Z"
  ],
  "209400": [
@@ -2322,9 +2322,9 @@
   null
  ],
  "487992": [
-  "d",
-  0.25,
-  "Hamstring injury - 25% chance of playing",
+  "i",
+  0.0,
+  "Hamstring injury - Unknown return date",
   "2026-10-10T18:00:10.750593Z"
  ],
  "488024": [
