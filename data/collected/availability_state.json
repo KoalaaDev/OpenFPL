@@ -120,9 +120,9 @@
   null
  ],
  "119090": [
-  "i",
-  0.0,
-  "Knee injury - Expected back 17 Oct",
+  "d",
+  0.75,
+  "Knee injury - 75% chance of playing",
   "2026-09-09T09:30:08.229436Z"
  ],
  "119471": [
@@ -3859,8 +3859,8 @@
  ],
  "690838": [
   "d",
-  0.75,
-  "Unspecified injury - 75% chance of playing",
+  0.5,
+  "Unspecified injury - 50% chance of playing",
   "2026-08-15T16:00:07.974271Z"
  ],
  "696104": [
