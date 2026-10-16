@@ -1056,3 +1056,4 @@
 {"chance_next": 1.0, "code": 547027, "news": null, "news_added": "2026-08-30T16:30:08.428960Z", "observed_utc": "2026-10-15T19:56:27.845141+00:00", "player_id": 543, "season": "2026-27", "status": "a", "web_name": "Diarra"}
 {"chance_next": 1.0, "code": 441264, "news": null, "news_added": "2026-09-24T21:30:10.382142Z", "observed_utc": "2026-10-15T19:56:27.845141+00:00", "player_id": 552, "season": "2026-27", "status": "a", "web_name": "Brobbey"}
 {"chance_next": 0.5, "code": 437505, "news": "Knock - 50% chance of playing", "news_added": "2026-10-15T16:30:07.851112Z", "observed_utc": "2026-10-15T19:56:27.845141+00:00", "player_id": 553, "season": "2026-27", "status": "d", "web_name": "Isidor"}
+{"chance_next": 0.0, "code": 172850, "news": "Unspecified injury - Unknown return date", "news_added": "2026-10-15T20:30:08.876514Z", "observed_utc": "2026-10-16T00:31:01.852568+00:00", "player_id": 643, "season": "2026-27", "status": "i", "web_name": "Chilwell"}
