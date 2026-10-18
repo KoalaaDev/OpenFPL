@@ -518,7 +518,7 @@
  "184349": [
   "s",
   0.0,
-  "Suspended until 7 Nov",
+  "Suspended until 21 Nov",
   "2026-10-17T16:30:09.374216Z"
  ],
  "184667": [
@@ -2666,7 +2666,7 @@
  "508395": [
   "s",
   0.0,
-  "Suspended until 8 Nov",
+  "Suspended until 23 Nov",
   "2026-10-17T15:00:07.992801Z"
  ],
  "508479": [
@@ -3996,9 +3996,9 @@
   null
  ],
  "98980": [
-  "d",
-  0.25,
-  "Head injury - 25% chance of playing",
+  "i",
+  0.0,
+  "Head injury - Unknown return date",
   "2026-10-17T13:30:08.724000Z"
  ]
 }
