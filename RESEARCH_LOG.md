@@ -1372,3 +1372,53 @@ its GW3-6 performance is in-sample and will not be pooled.
 Pooled accrual, 4 gameweeks (~2,640 covered rows): TPR 0.88, FPR 0.058;
 feed-XI realised start rate ~0.89, feed-bench ~0.055. Calibration battery
 reaches its pre-registered n at GW7-8.
+
+### E17, GW7 scored — the pre-registered 5-gameweek verdict
+
+Archive 9,823 rows; 506 pre-deadline predicted rows for GW7 (a quiet
+forecast week). One unmatched name (BHA "Chema" — not resolvable to an FPL
+player) dropped Brighton under the guard; 19 clubs scored. The one
+rank-5-30 removal — **Enzo, rank 8, model P(start) 0.88 — was right** (did
+not start). Removal tally: **7 calls, 5 correct (0.71)**, all against model
+probabilities ≥ 0.66.
+
+| GW7 | top11 | top30 | ll_start |
+|---|---|---|---|
+| baseline | 4.09 | 4.40 | 0.2949 |
+| hard | 3.82 | 4.77 | 1.4881 |
+| soft (LR 15.2/8.0) | 3.73 | 4.60 | 0.3764 |
+| targeted (first prospective gw) | 4.09 | 4.47 | 0.4273 |
+| oracle | 5.09 | 5.43 | 0 |
+
+The targeted arm's debut exposes its own flaw: it hard-zeroes EVERY
+feed-benched row where the model is above 0.6, not just ranks 5-30 — and
+across all ranks that population is far weaker ground (below). Its top11
+tied baseline (the correct Enzo removal swapped in an equal scorer); its
+log-loss inherited the hard arm's unbounded penalty on roughly a dozen
+wrong zeros.
+
+**The calibration battery at its pre-registered sample (422 ambiguous-band
+rows, 5 gameweeks):**
+
+| in the model's 0.30-0.70 band | accuracy |
+|---|---|
+| the feed | **0.737** |
+| the concurrent model (threshold 0.5) | 0.647 |
+| the historical E8/E14 bar | ~0.55 |
+
+The feed genuinely knows more than the frozen model where the model is
+unsure: **+9.0 points of band accuracy on n=422**. By E14's linear rule the
+feed's band channel is worth ~+37 pts/season against the historical bar, or
+**~+18 pts/season incremental** over this season's model — real, and
+roughly a fifth of the full perfect-rotation prize (+89).
+
+**And the sharpest caveat the accrual has produced:** pooling all five
+gameweeks, the feed benched **83** players the model had above 0.6 (all
+ranks), and only **53% of them failed to start** — a coin flip — against
+71% (5/7) inside ranks 5-30. The feed's disagreements with a confident
+model are only trustworthy near the top of the board, where clubs' likely
+XIs are best-reported. Any integration must therefore be (a) soft, never
+zeroing — the hard/targeted log-loss blowups are the measured cost of
+certainty the feed lacks — and (b) aware that removal precision varies by
+board position. The accrual continues toward the ~10-gameweek removal
+sample before any ship decision.
