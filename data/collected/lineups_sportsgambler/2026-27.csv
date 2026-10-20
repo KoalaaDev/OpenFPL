@@ -4905,3 +4905,47 @@ observed_utc,gw,source,team_abbr,opponent_abbr,status,formation,row,slot,player,
 2026-10-19T17:03:07.274323+00:00,8,sportsgambler,MCI,AVL,predicted,4-2-3-1,4,9,Phil Foden,,Saturday 24 October 06:30
 2026-10-19T17:03:07.274323+00:00,8,sportsgambler,MCI,AVL,predicted,4-2-3-1,4,10,Jérémy Doku,,Saturday 24 October 06:30
 2026-10-19T17:03:07.274323+00:00,8,sportsgambler,MCI,AVL,predicted,4-2-3-1,5,11,Erling Haaland,,Saturday 24 October 06:30
+2026-10-20T01:07:19.741816+00:00,8,sportsgambler,COV,FUL,predicted,4-2-3-1,1,1,Carl Rushworth,,Saturday 24 October 08:00
+2026-10-20T01:07:19.741816+00:00,8,sportsgambler,COV,FUL,predicted,4-2-3-1,2,2,Milan van Ewijk,,Saturday 24 October 08:00
+2026-10-20T01:07:19.741816+00:00,8,sportsgambler,COV,FUL,predicted,4-2-3-1,2,3,Bobby Thomas,,Saturday 24 October 08:00
+2026-10-20T01:07:19.741816+00:00,8,sportsgambler,COV,FUL,predicted,4-2-3-1,2,4,Ethan Pinnock,,Saturday 24 October 08:00
+2026-10-20T01:07:19.741816+00:00,8,sportsgambler,COV,FUL,predicted,4-2-3-1,2,5,Jay Dasilva,,Saturday 24 October 08:00
+2026-10-20T01:07:19.741816+00:00,8,sportsgambler,COV,FUL,predicted,4-2-3-1,3,6,Caleb Yirenkyi,,Saturday 24 October 08:00
+2026-10-20T01:07:19.741816+00:00,8,sportsgambler,COV,FUL,predicted,4-2-3-1,3,7,Matt Grimes,,Saturday 24 October 08:00
+2026-10-20T01:07:19.741816+00:00,8,sportsgambler,COV,FUL,predicted,4-2-3-1,4,8,B. Thomas-Asante,,Saturday 24 October 08:00
+2026-10-20T01:07:19.741816+00:00,8,sportsgambler,COV,FUL,predicted,4-2-3-1,4,9,Jack Rudoni,,Saturday 24 October 08:00
+2026-10-20T01:07:19.741816+00:00,8,sportsgambler,COV,FUL,predicted,4-2-3-1,4,10,Tatsuhiro Sakamoto,,Saturday 24 October 08:00
+2026-10-20T01:07:19.741816+00:00,8,sportsgambler,COV,FUL,predicted,4-2-3-1,5,11,Sidiki Cherif,,Saturday 24 October 08:00
+2026-10-20T01:07:19.741816+00:00,8,sportsgambler,TOT,CHE,predicted,3-4-2-1,1,1,Antonin Kinsky,,Saturday 24 October 10:30
+2026-10-20T01:07:19.741816+00:00,8,sportsgambler,TOT,CHE,predicted,3-4-2-1,2,2,Tosin Adarabioyo,,Saturday 24 October 10:30
+2026-10-20T01:07:19.741816+00:00,8,sportsgambler,TOT,CHE,predicted,3-4-2-1,2,3,Jan Paul van Hecke,,Saturday 24 October 10:30
+2026-10-20T01:07:19.741816+00:00,8,sportsgambler,TOT,CHE,predicted,3-4-2-1,2,4,Micky van de Ven,,Saturday 24 October 10:30
+2026-10-20T01:07:19.741816+00:00,8,sportsgambler,TOT,CHE,predicted,3-4-2-1,3,5,Archie Gray,,Saturday 24 October 10:30
+2026-10-20T01:07:19.741816+00:00,8,sportsgambler,TOT,CHE,predicted,3-4-2-1,3,6,Sandro Tonali,,Saturday 24 October 10:30
+2026-10-20T01:07:19.741816+00:00,8,sportsgambler,TOT,CHE,predicted,3-4-2-1,3,7,James Maddison,,Saturday 24 October 10:30
+2026-10-20T01:07:19.741816+00:00,8,sportsgambler,TOT,CHE,predicted,3-4-2-1,3,8,Andrew Robertson,,Saturday 24 October 10:30
+2026-10-20T01:07:19.741816+00:00,8,sportsgambler,TOT,CHE,predicted,3-4-2-1,4,9,Mohammed Kudus,,Saturday 24 October 10:30
+2026-10-20T01:07:19.741816+00:00,8,sportsgambler,TOT,CHE,predicted,3-4-2-1,4,10,Omar Marmoush,,Saturday 24 October 10:30
+2026-10-20T01:07:19.741816+00:00,8,sportsgambler,TOT,CHE,predicted,3-4-2-1,5,11,Dominic Solanke,,Saturday 24 October 10:30
+2026-10-20T01:07:19.741816+00:00,8,sportsgambler,TOT,COV,confirmed,,1,1,Antonin Kinsky,,Monday 19 October 13:00
+2026-10-20T01:07:19.741816+00:00,8,sportsgambler,TOT,COV,confirmed,,2,2,Jan Paul van Hecke,,Monday 19 October 13:00
+2026-10-20T01:07:19.741816+00:00,8,sportsgambler,TOT,COV,confirmed,,2,3,Tosin Adarabioyo,,Monday 19 October 13:00
+2026-10-20T01:07:19.741816+00:00,8,sportsgambler,TOT,COV,confirmed,,2,4,Micky van de Ven,,Monday 19 October 13:00
+2026-10-20T01:07:19.741816+00:00,8,sportsgambler,TOT,COV,confirmed,,2,5,Andrew Robertson,,Monday 19 October 13:00
+2026-10-20T01:07:19.741816+00:00,8,sportsgambler,TOT,COV,confirmed,,3,6,Sandro Tonali,,Monday 19 October 13:00
+2026-10-20T01:07:19.741816+00:00,8,sportsgambler,TOT,COV,confirmed,,4,7,Archie Gray,,Monday 19 October 13:00
+2026-10-20T01:07:19.741816+00:00,8,sportsgambler,TOT,COV,confirmed,,4,8,James Maddison,,Monday 19 October 13:00
+2026-10-20T01:07:19.741816+00:00,8,sportsgambler,TOT,COV,confirmed,,5,9,Mohammed Kudus,,Monday 19 October 13:00
+2026-10-20T01:07:19.741816+00:00,8,sportsgambler,TOT,COV,confirmed,,5,10,Dominic Solanke,,Monday 19 October 13:00
+2026-10-20T01:07:19.741816+00:00,8,sportsgambler,TOT,COV,confirmed,,5,11,Omar Marmoush,,Monday 19 October 13:00
+2026-10-20T01:07:19.741816+00:00,8,sportsgambler,COV,TOT,confirmed,,1,1,Carl Rushworth,,Monday 19 October 13:00
+2026-10-20T01:07:19.741816+00:00,8,sportsgambler,COV,TOT,confirmed,,2,2,Milan van Ewijk,,Monday 19 October 13:00
+2026-10-20T01:07:19.741816+00:00,8,sportsgambler,COV,TOT,confirmed,,2,3,Bobby Thomas,,Monday 19 October 13:00
+2026-10-20T01:07:19.741816+00:00,8,sportsgambler,COV,TOT,confirmed,,2,4,Ethan Pinnock,,Monday 19 October 13:00
+2026-10-20T01:07:19.741816+00:00,8,sportsgambler,COV,TOT,confirmed,,2,5,Jay Dasilva,,Monday 19 October 13:00
+2026-10-20T01:07:19.741816+00:00,8,sportsgambler,COV,TOT,confirmed,,3,6,Caleb Yirenkyi,,Monday 19 October 13:00
+2026-10-20T01:07:19.741816+00:00,8,sportsgambler,COV,TOT,confirmed,,3,7,Matt Grimes,,Monday 19 October 13:00
+2026-10-20T01:07:19.741816+00:00,8,sportsgambler,COV,TOT,confirmed,,4,8,Tatsuhiro Sakamoto,,Monday 19 October 13:00
+2026-10-20T01:07:19.741816+00:00,8,sportsgambler,COV,TOT,confirmed,,4,9,Jack Rudoni,,Monday 19 October 13:00
+2026-10-20T01:07:19.741816+00:00,8,sportsgambler,COV,TOT,confirmed,,4,10,B. Thomas-Asante,,Monday 19 October 13:00
+2026-10-20T01:07:19.741816+00:00,8,sportsgambler,COV,TOT,confirmed,,5,11,Sidiki Cherif,,Monday 19 October 13:00
