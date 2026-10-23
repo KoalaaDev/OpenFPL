@@ -594,9 +594,9 @@
   null
  ],
  "200617": [
-  "d",
-  0.5,
-  "Back injury - 50% chance of playing",
+  "a",
+  1.0,
+  null,
   "2026-10-08T14:00:11.803126Z"
  ],
  "200641": [
@@ -800,7 +800,7 @@
  "212314": [
   "i",
   0.0,
-  "Groin injury - Expected back 23 Oct",
+  "Groin injury - Unknown return date",
   "2026-10-19T15:30:08.949503Z"
  ],
  "212319": [
@@ -1398,10 +1398,10 @@
   null
  ],
  "247412": [
-  "a",
-  null,
-  null,
-  null
+  "d",
+  0.75,
+  "Unspecified injury - 75% chance of playing",
+  "2026-10-23T17:00:09.672494Z"
  ],
  "247632": [
   "a",
