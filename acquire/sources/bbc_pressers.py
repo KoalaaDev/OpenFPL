@@ -38,14 +38,23 @@ SOURCE_ID = "bbc_pressers"
 PARSER_VERSION = "1"
 BASE = "https://www.bbc.co.uk/wc-data/container"
 SEARCH_TERM = "Premier League news conferences"
+# BBC titles some deadline build-ups by their TEAM NEWS, not the conferences
+# ("Premier League team news: Calvert-Lewin, Manzambi & Saka updates", the
+# GW8 Friday page, 23 Oct 2026). The news-conference term never ranked it and
+# the title filter rejected it, so the whole of that Friday's 111 posts --
+# every manager who spoke -- was missed while the desk showed Monday's
+# Champions League conference instead.
+TEAM_NEWS_TERM = "Premier League team news"
+DISCOVER_TERMS = (SEARCH_TERM, TEAM_NEWS_TERM)
 # relevance-ordered search misses weeks whose headline is phrased differently;
 # each extra term is a few dozen cheap requests and the union is what counts
 SEARCH_TERMS = (SEARCH_TERM, "Premier League press conferences",
                 "Premier League news conferences recap", "Premier League build-up news conferences",
-                "Friday's Premier League news conferences", "Premier League managers news conferences")
+                "Friday's Premier League news conferences", "Premier League managers news conferences",
+                TEAM_NEWS_TERM)
 TITLE_RE_WIDE = re.compile(r"news conference|press conference|build-up", re.I)
 DELAY = 1.0
-TITLE_RE = re.compile(r"news conference", re.I)
+TITLE_RE = re.compile(r"news conference|press conference|premier league team news", re.I)
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS acq_bbc_presser_page (
@@ -350,7 +359,7 @@ def refresh_live(conn, *, within_days: int = 3, max_pages: int = 12,
     return out
 
 
-def discover(conn, *, terms=(SEARCH_TERM,), max_pages: int = 1, progress=print) -> dict:
+def discover(conn, *, terms=DISCOVER_TERMS, max_pages: int = 1, progress=print) -> dict:
     """The cheap look for a page we have not seen (one search request).
 
     A gameweek usually has two: the early speakers a day before, then the one

@@ -520,6 +520,30 @@ def presser_minutes() -> float:
 
 
 PRESSER_FULL_MINUTES = 60.0     # how often to look for a NEW page
+LINEUP_WINDOW_H = 48.0          # predicted XIs settle in the two days before
+
+
+def lineup_minutes() -> float:
+    try:
+        return max(10.0, float(os.environ.get("FPLABS_LINEUP_MINUTES", 30)))
+    except ValueError:
+        return 30.0
+
+
+def pull_lineups() -> dict:
+    """Refresh the predicted-lineup feeds the Live tab draws. Never raises."""
+    from . import deadline as _dd
+    out = _dd.refresh_feeds()
+    with _lock:
+        _state["lineups_last_run"] = time.time()
+        _state["lineups_last"] = out
+    if not out.get("error"):
+        try:
+            from . import live            # the desk caches for a minute
+            live._cache["v"] = None
+        except Exception:  # noqa: BLE001
+            pass
+    return out
 
 
 def hours_to_deadline() -> float | None:
@@ -574,11 +598,15 @@ def pull_pressers(*, full: bool = False) -> dict:
 def _news_loop(startup_delay: float) -> None:
     if _stop.wait(startup_delay):
         return
-    last_pressers = last_full = 0.0
+    last_pressers = last_full = last_lineups = 0.0
     while not _stop.is_set():
         pull_team_news()
         hrs = hours_to_deadline()
         now = time.time()
+        if (hrs is not None and hrs <= LINEUP_WINDOW_H
+                and now - last_lineups >= lineup_minutes() * 60.0):
+            last_lineups = now
+            pull_lineups()
         if (hrs is not None and hrs <= PRESSER_WINDOW_H
                 and now - last_pressers >= presser_minutes() * 60.0):
             last_pressers = now

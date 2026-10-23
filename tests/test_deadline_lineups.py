@@ -126,3 +126,63 @@ def test_the_lineup_classes_do_not_reuse_the_mini_league_names():
     import pathlib
     live = (pathlib.Path(__file__).resolve().parents[1] / "web" / "src" / "tabs" / "Live.jsx").read_text(encoding="utf-8")
     assert 'className="xi-' not in live and "`xi-" not in live
+
+
+# ---- GW8 (23 Oct 2026) ------------------------------------------------------
+
+def test_german_style_transliterations_resolve():
+    """SportsGambler writes Oedegaard / Lindeloef / Roehl for Ødegaard /
+    Lindelöf / Röhl; the accent-stripped key differs by an 'e'."""
+    p = pd.DataFrame([
+        {"player_id": 7, "full_name": "Martin Ødegaard", "web_name": "Ødegaard",
+         "team_id": 1, "short_name": "ARS"},
+        {"player_id": 8, "full_name": "Victor Nilsson Lindelöf", "web_name": "Lindelöf",
+         "team_id": 2, "short_name": "AVL"},
+        {"player_id": 9, "full_name": "Merlin Röhl", "web_name": "Röhl",
+         "team_id": 3, "short_name": "EVE"}])
+    resolved, unresolved, _ = lf.resolve(
+        {"ARS": {"Martin Oedegaard"}, "AVL": {"V. Nilsson Lindeloef"}, "EVE": {"Merlin Roehl"}}, p)
+    assert unresolved == []
+    assert resolved == {("ARS", "Martin Oedegaard"): 7, ("AVL", "V. Nilsson Lindeloef"): 8,
+                        ("EVE", "Merlin Roehl"): 9}
+
+
+def test_last_weeks_team_sheet_filed_under_this_week_is_not_drawn(tmp_path, monkeypatch):
+    """The collectors stamp rows with FPL's NEXT gameweek at run time, so a
+    Saturday team sheet captured after the deadline is filed under the
+    following gameweek. Its stated kickoff gives it away."""
+    from fpl_engine import config
+    monkeypatch.setattr(config, "DATA_DIR", str(tmp_path))
+    stale = [dict(r, kickoff_text="Saturday 12 September 15:00", status="confirmed")
+             for r in _rows("LEE", "3-4-3", LEEDS, observed="2026-09-13T14:00:00+00:00")]
+    fresh = [dict(r, kickoff_text="Saturday 19 September 15:00")
+             for r in _rows("LEE", "3-5-2", LEEDS, observed="2026-09-16T05:00:00+00:00")]
+    _write_feed(tmp_path, "sportsgambler", stale + fresh)
+    deadline_gw5 = pd.Timestamp("2026-09-18T17:30", tz="UTC")
+    out = deadline._feed_xis("2026-27", 5, pd.Timestamp("2026-09-17", tz="UTC"), deadline_gw5)
+    assert out["LEE"]["formation"] == "3-5-2" and out["LEE"]["status"] == "predicted"
+    # and with only the stale sheet, nothing is drawn rather than last week's
+    _write_feed(tmp_path, "sportsgambler", stale)
+    assert deadline._feed_xis("2026-27", 5, pd.Timestamp("2026-09-17", tz="UTC"), deadline_gw5) == {}
+
+
+def test_the_servers_own_archive_is_read_and_the_newest_wins(tmp_path, monkeypatch):
+    """The repository archive reaches a running server only on redeploy; the
+    news loop's refresh lands in `live_lineups_dir`, and a fresher snapshot
+    there must win."""
+    from fpl_engine import config
+    monkeypatch.setattr(config, "DATA_DIR", str(tmp_path))
+    _write_feed(tmp_path, "sportsgambler", _rows("LEE", "3-4-3", LEEDS, observed="2026-09-14T05:00:00+00:00"))
+    live = tmp_path / "web_cache" / "live_feeds" / "lineups_sportsgambler"
+    live.mkdir(parents=True)
+    pd.DataFrame(_rows("LEE", "3-5-2", LEEDS, observed="2026-09-16T05:00:00+00:00")).to_csv(
+        live / "2026-27.csv", index=False)
+    out = deadline._feed_xis("2026-27", 5, pd.Timestamp("2026-09-17", tz="UTC"))
+    assert out["LEE"]["formation"] == "3-5-2"
+    assert out["LEE"]["observed"].startswith("2026-09-16")
+
+
+def test_a_failing_refresh_never_raises(monkeypatch):
+    from app import services
+    monkeypatch.setattr(services, "bootstrap", lambda: (_ for _ in ()).throw(RuntimeError("down")))
+    assert "error" in deadline.refresh_feeds()

@@ -395,14 +395,18 @@ function Pressers({ quotes, gw, built }) {
     return [...by.values()].sort((a, b) => a.name.localeCompare(b.name))
   }, [quotes, teams])
 
-  const rows = quotes.filter((q) => club === 'all'
-    || (q.club_id != null ? String(q.club_id) : (q.club || 'other')) === club)
+  // a saved pick can outlive its key (club names became ids when attribution
+  // was fixed): an unknown pick reads as "all", never as an empty panel
+  const pickOk = club === 'all' || clubs.some((c) => c.key === club)
+  const sel = pickOk ? club : 'all'
+  const rows = quotes.filter((q) => sel === 'all'
+    || (q.club_id != null ? String(q.club_id) : (q.club || 'other')) === sel)
 
   return (
     <div className={`panel ld-pressers ${quotes.length ? '' : 'is-empty'}`}>
       <div className="panel-head">Managers said <span className="chip dim num">{rows.length}</span>
         <span className="panel-sub">BBC, every 5 min{built ? ` · ${ago(built)}` : ''}</span>
-        <select className="pq-select" value={club} onChange={(e) => setClub(e.target.value)}
+        <select className="pq-select" value={sel} onChange={(e) => setClub(e.target.value)}
           aria-label="club">
           <option value="all">All clubs ({clubs.length})</option>
           {clubs.map((c) => <option key={c.key} value={c.key}>{c.name} ({c.n})</option>)}
@@ -536,8 +540,9 @@ function Lineups({ l, fixtures = [] }) {
   /* It used to be hidden behind a "show" button and then twenty pitches at
      once: either nothing or everything. A club picker is the concise version —
      you look up the sides you own players at — and the board is always on. */
-  const [pick, setPick] = usePersisted('live.lineupClub', 'all')
+  const [saved, setPick] = usePersisted('live.lineupClub', 'all')
   const named = clubs.map((c) => ({ ...c, name: teams[String(c.team_id)]?.name || c.team }))
+  const pick = saved === 'all' || named.some((c) => String(c.team_id) === saved) ? saved : 'all'
   // one club means one match: show who they are playing beside them, which is
   // the comparison anybody picking a captain is actually making
   const fx = pick === 'all' ? null

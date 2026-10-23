@@ -70,6 +70,15 @@ def norm(s) -> str:
     return " ".join(re.sub(r"[^a-z ]", " ", s.lower()).split())
 
 
+def fold(s) -> str:
+    """`norm`, then German-style digraphs collapsed: SportsGambler writes
+    "Martin Oedegaard", "V. Nilsson Lindeloef", "Merlin Roehl" for FPL's
+    Ødegaard, Lindelöf, Röhl. `norm` maps ø -> o and drops the umlaut, so the
+    two spellings differ by an "e"; folding ae/oe/ue on BOTH sides meets
+    them. Used only as a fallback after every exact key has failed."""
+    return re.sub(r"([aou])e", r"\1", norm(s))
+
+
 # ------------------------------------------------------------ resolution --
 def resolve(names_by_team: dict, players: pd.DataFrame):
     """RotoWire (team_abbr, name) -> FPL player_id.
@@ -83,6 +92,9 @@ def resolve(names_by_team: dict, players: pd.DataFrame):
     p = players.assign(n_full=players["full_name"].map(norm),
                        n_web=players["web_name"].map(norm))
     p["n_last"] = p["n_full"].str.split().str[-1]
+    p["f_full"] = p["full_name"].map(fold)
+    p["f_web"] = p["web_name"].map(fold)
+    p["f_last"] = p["f_full"].str.split().str[-1]
     by_team = {t: d for t, d in p.groupby("short_name")}
     resolved, unresolved, mismatched = {}, [], []
     for team, names in names_by_team.items():
@@ -98,6 +110,14 @@ def resolve(names_by_team: dict, players: pd.DataFrame):
                 if len(cand) == 1:
                     pid = int(cand.player_id.iloc[0])
                     break
+            if pid is None:
+                f = fold(name)
+                flast = f.split()[-1] if f else ""
+                for cand in (tp[tp.f_full == f], tp[tp.f_web == f],
+                             tp[tp.f_last == flast] if flast else tp.iloc[0:0]):
+                    if len(cand) == 1:
+                        pid = int(cand.player_id.iloc[0])
+                        break
             if pid is None:
                 anywhere = p[p.n_full == n]
                 if len(anywhere) == 1:

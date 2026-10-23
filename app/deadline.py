@@ -121,17 +121,101 @@ def _news(conn, season: str, pl: dict, tm: dict, days: float = 7.0) -> list[dict
 
 
 QUOTE_DAYS = 4          # a deadline's build-up, not the season's
-QUOTE_MAX = 60
+QUOTE_MAX = 200
+# Newest-first with one global cap, a long presser (Carrick's ran to 22
+# posts) pushed the MORNING speakers off the end of a Friday. Capping each
+# club keeps every manager who spoke on the panel.
+QUOTE_PER_CLUB = 12
+# A capitalised name, allowing the lowercase particles managers' names carry
+# ("Roberto de Zerbi", "Arne ten Hag"): without them the name stopped at the
+# particle and the desk credited quotes to "Roberto".
+_NAME = (r"[A-Z][\w'\u2019.\-]+"
+         r"(?:\s+(?:(?:de|da|di|del|der|den|van|von|ten|ter|le|la|du|dos|das)\s+)*"
+         r"[A-Z][\w'\u2019.\-]+){0,3}")
+# "<club> boss|manager|head coach <name>" ANYWHERE near the start of a post.
+# BBC opens plenty of posts with a lead-in ("And here's Everton boss David
+# Moyes", "A final word from Fulham boss ...", "In today's news conference,
+# Arsenal manager Mikel Arteta ..."); anchoring at the first character made
+# the lead-in the club. The club is whatever trailing words before the role
+# RESOLVE to a club -- see _speaker.
 _SPEAKER = re.compile(
-    r"^(?P<club>[A-Z][\w'\u2019&.\- ]{2,24}?)\s+"
-    r"(?:interim\s+)?(?:boss|manager|head coach)\s+"
-    r"(?P<name>[A-Z][\w'\u2019.\-]+(?:\s+[A-Z][\w'\u2019.\-]+){0,3})")
+    r"(?P<pre>[\w'\u2019&.\- ]{0,60}?)\s*"
+    r"(?:interim\s+)?(?:boss|manager|head coach)\s+(?P<name>" + _NAME + ")")
+_SPEAKER_WINDOW = 160   # only the opening of a post names its speaker
+# A Champions League / Europa / Conference League news-conference page shares
+# the BBC's title wording but is not a Premier League deadline's build-up.
+_EUROPEAN = re.compile(r"champions league|europa|conference league|uefa", re.I)
 
 
-def _clubs(conn, season: str) -> list[tuple[str, int, str]]:
-    return [(str(r[1]).lower(), int(r[0]), str(r[2] or r[1]))
-            for r in conn.execute(
-                "SELECT team_id, name, short_name FROM team WHERE season=?", (season,))]
+def _club_resolver(conn, season: str):
+    """BBC's spelling of a club -> (team_id, short_name), or None.
+
+    Built on the extractor's club index (aliases, ceremonial names, suffixes),
+    so "Manchester United", "Leeds United" and "Tottenham" resolve to FPL's
+    "Man Utd", "Leeds" and "Spurs". The ad-hoc substring test it replaces left
+    those three unresolved and split them from their own club in the picker.
+    """
+    from fpl_engine import pressers as _pr
+    by_name = {name: (tid, short) for name, tid, short in
+               ((str(r[1]), int(r[0]), str(r[2] or r[1])) for r in conn.execute(
+                   "SELECT team_id, name, short_name FROM team WHERE season=?", (season,)))}
+    idx = _pr.club_index(list(by_name))
+
+    lower = {n.lower(): v for n, v in by_name.items()}
+
+    def resolve(text: str):
+        if not text or not text.strip():
+            return None
+        name = _pr.resolve_club(text, idx)
+        if name:
+            return by_name.get(name)
+        # the season's name can be LONGER than BBC's ("Brighton & Hove Albion"
+        # in some seasons' data, "Brighton" on the page): a unique prefix match
+        t = text.strip().lower()
+        hits = [v for n, v in lower.items() if len(t) >= 5 and n.startswith(t)]
+        return hits[0] if len(hits) == 1 else None
+    return resolve
+
+
+def _speaker(body: str, resolve_club, known: dict):
+    """(team_id, short, manager) for a post's opening, or None.
+
+    The club is the shortest run of trailing words before the role that
+    resolves -- "And here's Everton" -> Everton, "Let's move on to Spurs'
+    opponents Chelsea. Here is" -> no club, but the name is kept so the
+    manager memory (`known`) can place it.
+    """
+    head = body[:_SPEAKER_WINDOW]
+    for m in _SPEAKER.finditer(head):
+        name = re.sub(r"[\u2019']s?$", "", m.group("name").strip())   # "Carrick's"
+        words = re.sub(r"[\u2019']s\b", "", m.group("pre")).split()
+        club = None
+        # SHORTEST run first: the club nearest the role word is the speaker's.
+        # Longest-first let resolve_club's drop-from-the-end read "Liverpool.
+        # Here is Arsenal manager ..." as Liverpool.
+        for k in range(1, min(4, len(words)) + 1):
+            club = resolve_club(" ".join(words[-k:]).strip(" ,.:;"))
+            if club:
+                break
+        if club:
+            return club[0], club[1], name
+        if name in known:
+            return known[name][0], known[name][1], name
+        # a club this season's table does not hold: keep the speaker, and the
+        # club as written -- only its capitalised tail, never the lead-in
+        tail = []
+        for w in reversed(words):
+            if not w[:1].isupper():
+                break
+            tail.insert(0, w)
+        if tail and len(tail) <= 3:
+            return None, " ".join(tail[-3:]).strip(" ,.:;"), name
+    # "Mathias Jaissle on 18-year-old midfielder ...": a post opening with a
+    # manager already placed by another post on the page
+    for name, (tid, short) in known.items():
+        if head.startswith(name) or head.startswith(f"And {name}"):
+            return tid, short, name
+    return None
 
 
 def _presser_quotes(conn, season: str, gw: int, pl: dict, tm: dict) -> list[dict]:
@@ -149,14 +233,26 @@ def _presser_quotes(conn, season: str, gw: int, pl: dict, tm: dict) -> list[dict
     try:
         since = (datetime.now(timezone.utc) - timedelta(days=QUOTE_DAYS)).isoformat()
         posts = conn.execute(
-            "SELECT post_urn, published_utc, fixture_label, text FROM acq_bbc_presser "
+            "SELECT page_id, post_urn, published_utc, fixture_label, text FROM acq_bbc_presser "
             "WHERE published_utc >= ? ORDER BY published_utc DESC LIMIT 400",
             (since,)).fetchall()
+    except Exception:  # noqa: BLE001 - no presser archive yet
+        return []
+    # The extractor's tags are a decoration on a quote, never a precondition:
+    # a missing or failing presser_obs used to return [] for the whole panel.
+    try:
         obs_rows = conn.execute(
             "SELECT post_urn, player_id, cls FROM presser_obs "
             "WHERE season=? AND source='presser' AND post_urn IS NOT NULL", (season,)).fetchall()
     except Exception:  # noqa: BLE001
-        return []
+        obs_rows = []
+    try:
+        european = {str(r[0]) for r in conn.execute(
+            "SELECT page_id, headline FROM acq_bbc_presser_page")
+            if _EUROPEAN.search(r[1] or "") and "premier league" not in (r[1] or "").lower()}
+    except Exception:  # noqa: BLE001 - no page table: nothing to exclude
+        european = set()
+    posts = [p for p in posts if str(p[0]) not in european]
     tagged: dict[str, list[dict]] = {}
     for urn, pid, cls in obs_rows:
         p = pl.get(int(pid))
@@ -166,30 +262,43 @@ def _presser_quotes(conn, season: str, gw: int, pl: dict, tm: dict) -> list[dict
         if not any(t["player_id"] == int(pid) for t in seen):
             seen.append({"player_id": int(pid), "name": p["name"],
                          "team": tm.get(p["team_id"]), "cls": cls})
-    clubs = _clubs(conn, season)
-    out = []
-    for urn, pub, fixture, text in posts:
-        body = " ".join((text or "").split())
-        m = _SPEAKER.match(body)
+    resolve_club = _club_resolver(conn, season)
+    bodies = [(urn, pub, fixture, " ".join((text or "").split()))
+              for _page, urn, pub, fixture, text in posts]
+    # Pass 1: managers placed by a post that names club AND manager. A page
+    # introduces "Newcastle boss Mathias Jaissle" once, then quotes "Mathias
+    # Jaissle on ..." -- the second form is only attributable through the first.
+    known: dict = {}
+    for _urn, _pub, _fx, body in bodies:
+        s = _speaker(body, resolve_club, {})
+        if s:
+            known.setdefault(s[2], (s[0], s[1]))
+    out, per_club = [], {}
+    for urn, pub, fixture, body in bodies:
+        s = _speaker(body, resolve_club, known)
         players = tagged.get(str(urn), [])
         # a post that names nobody and quotes nobody is live-blog chatter
-        if not m and not players:
+        if not s and not players:
             continue
-        club_id, club = None, None
-        if m:
-            token = m.group("club").lower()
-            for name, tid, short in clubs:
-                if token == name or token in name or name.startswith(token):
-                    club_id, club = tid, short
-                    break
-            club = club or m.group("club")
-        # "<lead>: "the quote"" — the lead is context, the quote is the news
+        club_id, club, manager = s if s else (None, None, None)
+        if club_id is None and players:
+            # narration about one club's players ("Arsenal fear Saka could be
+            # out ...") belongs to that club, not to "Other"
+            teams_of = {(pl.get(t["player_id"]) or {}).get("team_id") for t in players}
+            if len(teams_of) == 1 and None not in teams_of:
+                club_id = teams_of.pop()
+                club = tm.get(club_id)
+        key = club_id if club_id is not None else (club or "other")
+        if per_club.get(key, 0) >= QUOTE_PER_CLUB:
+            continue
+        per_club[key] = per_club.get(key, 0) + 1
+        # "<lead>: "the quote"" -- the lead is context, the quote is the news
         lead, quote = body, ""
-        cut = min([i for i in (body.find('"'), body.find("\u201c")) if i > 0] or [0])
+        cut = min([i for i in (body.find('"'), body.find("“")) if i > 0] or [0])
         if cut:
             lead, quote = body[:cut].rstrip(" :"), body[cut:]
         out.append({"when": pub, "fixture": fixture, "club": club, "club_id": club_id,
-                    "manager": m.group("name") if m else None,
+                    "manager": manager,
                     "lead": lead[:400], "quote": quote[:900].strip(), "players": players})
         if len(out) >= QUOTE_MAX:
             break
@@ -236,22 +345,85 @@ def _pressers(conn, season: str, gw: int, pl: dict, tm: dict) -> list[dict]:
 FORMATION_FEEDS = ("sportsgambler", "ffscout")
 
 
-def _feed_xis(season: str, gw: int, now) -> dict:
+def live_lineups_dir() -> str:
+    """The server's own predicted-lineup archive (gitignored, server-local).
+
+    The repository's `data/collected` archive is written ONLY by the scheduled
+    GitHub Action and reaches a running server only when someone redeploys or
+    pulls -- so a deployment left running served the line-ups it was deployed
+    with, and from the next gameweek on, "no predicted XI archived for GW yet".
+    The news loop now refreshes the formation feeds here (`refresh_feeds`).
+    """
+    return os.path.join(config.DATA_DIR, "web_cache", "live_feeds")
+
+
+def refresh_feeds() -> dict:
+    """Fetch SportsGambler and FFScout's predicted XIs into the live archive,
+    with the Action's own collectors (same columns, same change detection), so
+    the Live tab's line-ups are as fresh as the server's poll. Never raises."""
+    try:
+        from acquire import actions as _ac
+        from acquire.core import http as _http
+        boot = services.bootstrap()
+        season = config.CURRENT_SEASON
+        nxt = next((int(e["id"]) for e in boot.get("events", []) if e.get("is_next")), None)
+        out_dir = live_lineups_dir()
+        observed = _http.utcnow()
+        return {"sportsgambler": _ac._collect_sportsgambler(out_dir, season, nxt, observed),
+                "ffscout": (_ac._collect_ffscout(out_dir, season, nxt, observed) or {}).get("lineups"),
+                "observed": observed}
+    except Exception as exc:  # noqa: BLE001 - a lineup poll must never take the app down
+        return {"error": str(exc)}
+
+
+def _kickoff_date(text, observed):
+    """SportsGambler's "Saturday 24 October 11:30" -> a date, the year taken
+    from when it was observed (a December row naming January is next year).
+    None when the text is not a date (FFScout states only the opponent)."""
+    try:
+        t = datetime.strptime(" ".join(str(text).split()[1:3]), "%d %B")
+    except (ValueError, TypeError):
+        return None
+    y = observed.year + (1 if t.month < observed.month - 6 else 0)
+    return t.replace(year=y).date()
+
+
+def _feed_xis(season: str, gw: int, now, deadline=None) -> dict:
     """{club: {source, formation, status, observed, rows: [[name, ...], ...]}}
-    -- the latest snapshot per club strictly before `now`, best feed first."""
+    -- the latest snapshot per club strictly before `now`, best feed first.
+
+    The collectors stamp each row with FPL's NEXT gameweek at the moment they
+    run, so a team sheet captured on Saturday afternoon -- the gameweek's own
+    confirmed XI -- is filed under the FOLLOWING gameweek (528 of GW8's rows on
+    23 Oct were GW7's Saturday sheets). A row whose stated kickoff falls before
+    this gameweek's deadline belongs to the previous one and is dropped; it is
+    not this week's line-up, confirmed or otherwise.
+
+    Both archives are read: the repository's (written by the scheduled Action)
+    and the server's own (`live_lineups_dir`, refreshed on the news loop), the
+    newest observation winning -- see `refresh_feeds`.
+    """
     from fpl_engine import lineup_feed as lf
     out: dict = {}
     for src in FORMATION_FEEDS:
-        path = os.path.join(config.DATA_DIR, "collected", f"lineups_{src}", f"{season}.csv")
-        try:
-            d = pd.read_csv(path)
-        except (OSError, ValueError):
+        frames = []
+        for base in (os.path.join(config.DATA_DIR, "collected"), live_lineups_dir()):
+            try:
+                frames.append(pd.read_csv(os.path.join(base, f"lineups_{src}", f"{season}.csv")))
+            except (OSError, ValueError):
+                continue
+        if not frames:
             continue
+        d = pd.concat(frames, ignore_index=True).drop_duplicates()
         d = d[(d["gw"] == gw) & d["formation"].notna() & d["player"].notna()]
         if d.empty:
             continue
         d = d.assign(observed=pd.to_datetime(d["observed_utc"], utc=True, format="ISO8601"))
         d = d[d["observed"] < now]
+        if deadline is not None and "kickoff_text" in d:
+            kd = [_kickoff_date(t, o) for t, o in zip(d["kickoff_text"], d["observed"])]
+            stale = [k is not None and k < deadline.date() for k in kd]
+            d = d[[not x for x in stale]]
         for abbr, g in d.groupby("team_abbr"):
             club = lf.ABBR.get(abbr, abbr)
             if club in out:
@@ -306,7 +478,13 @@ def _lineups(conn, season: str, gw: int, pl: dict, tm: dict, start_p: dict) -> d
     """
     from fpl_engine import lineup_feed as lf
     now = pd.Timestamp.now(tz="UTC")
-    feeds = _feed_xis(season, gw, now)
+    try:
+        k = conn.execute("SELECT MIN(kickoff_utc) FROM fixture WHERE season=? AND gw=?",
+                         (season, gw)).fetchone()[0]
+        deadline = (pd.Timestamp(k).tz_convert("UTC") - lf.DEADLINE_LEAD) if k else None
+    except Exception:  # noqa: BLE001 - no fixture table: no staleness filter
+        deadline = None
+    feeds = _feed_xis(season, gw, now, deadline)
     if not feeds:
         return {"clubs": [], "gw": gw,
                 "note": f"no predicted XI with a formation archived for GW{gw} yet"}
