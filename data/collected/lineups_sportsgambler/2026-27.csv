@@ -5697,3 +5697,135 @@ observed_utc,gw,source,team_abbr,opponent_abbr,status,formation,row,slot,player,
 2026-10-25T09:15:02.969665+00:00,9,sportsgambler,ARS,NFO,confirmed,,4,9,Martin Oedegaard,,Sunday 18 October 12:30
 2026-10-25T09:15:02.969665+00:00,9,sportsgambler,ARS,NFO,confirmed,,4,10,Eberechi Eze,,Sunday 18 October 12:30
 2026-10-25T09:15:02.969665+00:00,9,sportsgambler,ARS,NFO,confirmed,,5,11,Kai Havertz,,Sunday 18 October 12:30
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,CRY,NEW,confirmed,,1,1,Walter Benitez,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,CRY,NEW,confirmed,,2,2,Chris Richards,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,CRY,NEW,confirmed,,2,3,Axel Disasi,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,CRY,NEW,confirmed,,2,4,Jaydee Canvot,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,CRY,NEW,confirmed,,3,5,Anan Khalaili,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,CRY,NEW,confirmed,,3,6,Adam Wharton,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,CRY,NEW,confirmed,,3,7,Daichi Kamada,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,CRY,NEW,confirmed,,3,8,Tyrick Mitchell,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,CRY,NEW,confirmed,,4,9,Dwight McNeil,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,CRY,NEW,confirmed,,4,10,Yeremy Pino,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,CRY,NEW,confirmed,,5,11,Jean-Philippe Mateta,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,NEW,CRY,confirmed,,1,1,Lukas Hornicek,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,NEW,CRY,confirmed,,2,2,Amar Dedic,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,NEW,CRY,confirmed,,2,3,Fabian Schaer,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,NEW,CRY,confirmed,,2,4,Daniel Burn,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,NEW,CRY,confirmed,,2,5,Lewis Hall,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,NEW,CRY,confirmed,,3,6,Nico Gonzalez,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,NEW,CRY,confirmed,,3,7,Joelinton,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,NEW,CRY,confirmed,,4,8,Jacob Murphy,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,NEW,CRY,confirmed,,4,9,Joseph Willock,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,NEW,CRY,confirmed,,4,10,Harvey Barnes,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,NEW,CRY,confirmed,,5,11,William Osula,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,HUL,BRE,confirmed,,1,1,K. Tzolakis,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,HUL,BRE,confirmed,,2,2,Semi Ajayi,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,HUL,BRE,confirmed,,2,3,John Egan,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,HUL,BRE,confirmed,,2,4,Lucas Herrington,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,HUL,BRE,confirmed,,3,5,Lewie Coyle,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,HUL,BRE,confirmed,,3,6,Ryan Giles,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,HUL,BRE,confirmed,,4,7,Mohamed Belloumi,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,HUL,BRE,confirmed,,4,8,Tim Iroegbunam,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,HUL,BRE,confirmed,,4,9,Regan Slater,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,HUL,BRE,confirmed,,4,10,Elliot Stroud,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,HUL,BRE,confirmed,,5,11,Oli McBurnie,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,BRE,HUL,confirmed,,1,1,Caoimhin Kelleher,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,BRE,HUL,confirmed,,2,2,Michael Kayode,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,BRE,HUL,confirmed,,2,3,Sepp van den Berg,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,BRE,HUL,confirmed,,2,4,K. Vassbakk Ajer,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,BRE,HUL,confirmed,,2,5,Keane Lewis-Potter,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,BRE,HUL,confirmed,,3,6,Mamadou Sangare,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,BRE,HUL,confirmed,,3,7,Aaron Hickey,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,BRE,HUL,confirmed,,4,8,Dango Ouattara,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,BRE,HUL,confirmed,,4,9,Mathias Jensen,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,BRE,HUL,confirmed,,4,10,Kevin Schade,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,BRE,HUL,confirmed,,5,11,Igor Thiago,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,LIV,BHA,confirmed,,1,1,Alisson Becker,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,LIV,BHA,confirmed,,2,2,Ronald Araujo,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,LIV,BHA,confirmed,,2,3,Jeremy Jacquet,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,LIV,BHA,confirmed,,2,4,Virgil van Dijk,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,LIV,BHA,confirmed,,2,5,Milos Kerkez,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,LIV,BHA,confirmed,,3,6,Ryan Gravenberch,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,LIV,BHA,confirmed,,3,7,Alexis Mac Allister,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,LIV,BHA,confirmed,,4,8,Bradley Barcola,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,LIV,BHA,confirmed,,4,9,Florian Wirtz,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,LIV,BHA,confirmed,,4,10,Cody Gakpo,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,LIV,BHA,confirmed,,5,11,Alexander Isak,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,MUN,BOU,confirmed,,1,1,Senne Lammens,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,MUN,BOU,confirmed,,2,2,Leny Yoro,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,MUN,BOU,confirmed,,2,3,Harry Maguire,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,MUN,BOU,confirmed,,2,4,Ayden Heaven,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,MUN,BOU,confirmed,,2,5,Diogo Dalot,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,MUN,BOU,confirmed,,3,6,Andrey Santos,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,MUN,BOU,confirmed,,3,7,Carlos Baleba,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,MUN,BOU,confirmed,,4,8,Amad Diallo,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,MUN,BOU,confirmed,,4,9,Youri Tielemans,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,MUN,BOU,confirmed,,4,10,Mason Mount,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,MUN,BOU,confirmed,,5,11,Bryan Mbeumo,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,BOU,MUN,confirmed,,1,1,Djordje Petrovic,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,BOU,MUN,confirmed,,2,2,Adam Smith,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,BOU,MUN,confirmed,,2,3,James Hill,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,BOU,MUN,confirmed,,2,4,Antonio Silva,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,BOU,MUN,confirmed,,2,5,Adrien Truffert,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,BOU,MUN,confirmed,,3,6,Tyler Adams,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,BOU,MUN,confirmed,,3,7,Lewis Cook,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,BOU,MUN,confirmed,,4,8,Rayan,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,BOU,MUN,confirmed,,4,9,Justin Kluivert,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,BOU,MUN,confirmed,,4,10,Marcus Tavernier,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,BOU,MUN,confirmed,,5,11,Evanilson,,Sunday 25 October 10:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,ARS,EVE,confirmed,,1,1,David Raya,,Saturday 24 October 11:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,ARS,EVE,confirmed,,2,2,Ben White,,Saturday 24 October 11:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,ARS,EVE,confirmed,,2,3,Ezri Konsa,,Saturday 24 October 11:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,ARS,EVE,confirmed,,2,4,Gabriel,,Saturday 24 October 11:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,ARS,EVE,confirmed,,2,5,Myles Lewis-Skelly,,Saturday 24 October 11:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,ARS,EVE,confirmed,,3,6,Declan Rice,,Saturday 24 October 11:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,ARS,EVE,confirmed,,3,7,Mikel Merino,,Saturday 24 October 11:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,ARS,EVE,confirmed,,4,8,Noni Madueke,,Saturday 24 October 11:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,ARS,EVE,confirmed,,4,9,Martin Oedegaard,,Saturday 24 October 11:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,ARS,EVE,confirmed,,4,10,Eberechi Eze,,Saturday 24 October 11:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,ARS,EVE,confirmed,,5,11,Viktor Gyoekeres,,Saturday 24 October 11:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,COV,FUL,confirmed,,1,1,Carl Rushworth,,Saturday 24 October 11:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,COV,FUL,confirmed,,2,2,Milan van Ewijk,,Saturday 24 October 11:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,COV,FUL,confirmed,,2,3,Bobby Thomas,,Saturday 24 October 11:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,COV,FUL,confirmed,,2,4,Ethan Pinnock,,Saturday 24 October 11:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,COV,FUL,confirmed,,2,5,Jay Dasilva,,Saturday 24 October 11:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,COV,FUL,confirmed,,3,6,Caleb Yirenkyi,,Saturday 24 October 11:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,COV,FUL,confirmed,,3,7,Matt Grimes,,Saturday 24 October 11:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,COV,FUL,confirmed,,4,8,Tatsuhiro Sakamoto,,Saturday 24 October 11:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,COV,FUL,confirmed,,4,9,Jack Rudoni,,Saturday 24 October 11:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,COV,FUL,confirmed,,4,10,B. Thomas-Asante,,Saturday 24 October 11:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,COV,FUL,confirmed,,5,11,Sidiki Cherif,,Saturday 24 October 11:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,TOT,COV,confirmed,,1,1,Antonin Kinsky,,Monday 19 October 16:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,TOT,COV,confirmed,,2,2,Jan Paul van Hecke,,Monday 19 October 16:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,TOT,COV,confirmed,,2,3,Tosin Adarabioyo,,Monday 19 October 16:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,TOT,COV,confirmed,,2,4,Micky van de Ven,,Monday 19 October 16:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,TOT,COV,confirmed,,2,5,Andrew Robertson,,Monday 19 October 16:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,TOT,COV,confirmed,,3,6,Sandro Tonali,,Monday 19 October 16:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,TOT,COV,confirmed,,4,7,Archie Gray,,Monday 19 October 16:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,TOT,COV,confirmed,,4,8,James Maddison,,Monday 19 October 16:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,TOT,COV,confirmed,,5,9,Mohammed Kudus,,Monday 19 October 16:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,TOT,COV,confirmed,,5,10,Dominic Solanke,,Monday 19 October 16:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,TOT,COV,confirmed,,5,11,Omar Marmoush,,Monday 19 October 16:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,COV,TOT,confirmed,,1,1,Carl Rushworth,,Monday 19 October 16:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,COV,TOT,confirmed,,2,2,Milan van Ewijk,,Monday 19 October 16:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,COV,TOT,confirmed,,2,3,Bobby Thomas,,Monday 19 October 16:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,COV,TOT,confirmed,,2,4,Ethan Pinnock,,Monday 19 October 16:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,COV,TOT,confirmed,,2,5,Jay Dasilva,,Monday 19 October 16:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,COV,TOT,confirmed,,3,6,Caleb Yirenkyi,,Monday 19 October 16:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,COV,TOT,confirmed,,3,7,Matt Grimes,,Monday 19 October 16:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,COV,TOT,confirmed,,4,8,Tatsuhiro Sakamoto,,Monday 19 October 16:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,COV,TOT,confirmed,,4,9,Jack Rudoni,,Monday 19 October 16:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,COV,TOT,confirmed,,4,10,B. Thomas-Asante,,Monday 19 October 16:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,COV,TOT,confirmed,,5,11,Sidiki Cherif,,Monday 19 October 16:00
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,NFO,ARS,confirmed,,1,1,Matz Sels,,Sunday 18 October 12:30
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,NFO,ARS,confirmed,,2,2,Jair Cunha,,Sunday 18 October 12:30
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,NFO,ARS,confirmed,,2,3,Ousmane Diomande,,Sunday 18 October 12:30
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,NFO,ARS,confirmed,,2,4,Murillo,,Sunday 18 October 12:30
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,NFO,ARS,confirmed,,3,5,Daniel Munoz,,Sunday 18 October 12:30
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,NFO,ARS,confirmed,,3,6,James McAtee,,Sunday 18 October 12:30
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,NFO,ARS,confirmed,,3,7,Xaver Schlager,,Sunday 18 October 12:30
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,NFO,ARS,confirmed,,3,8,Neco Williams,,Sunday 18 October 12:30
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,NFO,ARS,confirmed,,4,9,Dan Ndoye,,Sunday 18 October 12:30
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,NFO,ARS,confirmed,,4,10,Nicolas Dominguez,,Sunday 18 October 12:30
+2026-10-25T14:27:43.368345+00:00,9,sportsgambler,NFO,ARS,confirmed,,5,11,Liam Delap,,Sunday 18 October 12:30
