@@ -385,8 +385,8 @@
  ],
  "172649": [
   "d",
-  0.5,
-  "Foot injury - 50% chance of playing",
+  0.75,
+  "Foot injury - 75% chance of playing",
   "2026-09-12T14:00:09.378740Z"
  ],
  "172780": [
@@ -540,10 +540,10 @@
   "2026-08-29T16:30:08.151841Z"
  ],
  "194010": [
-  "a",
-  null,
-  null,
-  null
+  "i",
+  0.0,
+  "Hip injury - Unknown return date",
+  "2026-10-27T16:30:09.444144Z"
  ],
  "195384": [
   "a",
@@ -1027,8 +1027,8 @@
  ],
  "222694": [
   "d",
-  0.75,
-  "Hamstring injury - 75% chance of playing",
+  0.5,
+  "Hamstring injury - 50% chance of playing",
   "2026-10-16T17:30:09.428175Z"
  ],
  "223094": [
@@ -1400,7 +1400,7 @@
  "247412": [
   "d",
   0.75,
-  "Unspecified injury - 75% chance of playing",
+  "Ankle injury - 75% chance of playing",
   "2026-10-23T17:00:09.672494Z"
  ],
  "247632": [
@@ -3006,10 +3006,10 @@
   null
  ],
  "547719": [
-  "a",
-  1.0,
-  null,
-  "2026-10-01T15:30:10.335504Z"
+  "d",
+  0.75,
+  "Muscular injury - 75% chance of playing",
+  "2026-10-27T16:00:07.981816Z"
  ],
  "548308": [
   "u",
