@@ -60,9 +60,9 @@
   null
  ],
  "109646": [
-  "d",
-  0.75,
-  "Calf injury - 75% chance of playing",
+  "i",
+  0.0,
+  "Calf injury - Unknown return date",
   "2026-10-29T17:00:09.335810Z"
  ],
  "109745": [
@@ -390,9 +390,9 @@
   "2026-09-12T14:00:09.378740Z"
  ],
  "172780": [
-  "d",
-  0.75,
-  "Unspecified injury - 75% chance of playing",
+  "a",
+  1.0,
+  null,
   "2026-10-24T19:00:10.113555Z"
  ],
  "172850": [
@@ -762,9 +762,9 @@
   "2026-09-13T17:00:09.433455Z"
  ],
  "209289": [
-  "d",
-  0.75,
-  "Knock - 75% chance of playing",
+  "a",
+  1.0,
+  null,
   "2026-10-23T11:30:09.310090Z"
  ],
  "209365": [
@@ -798,9 +798,9 @@
   "2026-08-15T16:00:07.854151Z"
  ],
  "212314": [
-  "i",
-  0.0,
-  "Groin injury - Unknown return date",
+  "d",
+  0.75,
+  "Groin injury - 75% chance of playing",
   "2026-10-19T15:30:08.949503Z"
  ],
  "212319": [
@@ -1362,10 +1362,10 @@
   "2026-09-21T13:00:09.022726Z"
  ],
  "244858": [
-  "a",
-  1.0,
-  null,
-  "2026-08-18T13:58:17.442072Z"
+  "i",
+  0.0,
+  "Knock - Expected back 23 Nov",
+  "2026-10-30T14:30:09.456391Z"
  ],
  "244860": [
   "a",
@@ -1417,8 +1417,8 @@
  ],
  "248857": [
   "d",
-  0.75,
-  "Ankle injury - 75% chance of playing",
+  0.5,
+  "Ankle injury - 50% chance of playing",
   "2026-10-28T00:00:08.492716Z"
  ],
  "248875": [
@@ -1446,9 +1446,9 @@
   null
  ],
  "424876": [
-  "i",
-  0.0,
-  "Hamstring injury - Unknown return date",
+  "d",
+  0.5,
+  "Hamstring injury - 50% chance of playing",
   "2026-10-17T15:00:08.293301Z"
  ],
  "427623": [
@@ -1584,9 +1584,9 @@
   null
  ],
  "437499": [
-  "d",
-  0.5,
-  "Hamstring injury - 50% chance of playing",
+  "i",
+  0.0,
+  "Hamstring injury - Unknown return date",
   "2026-10-28T23:00:10.088612Z"
  ],
  "437505": [
@@ -1626,9 +1626,9 @@
   null
  ],
  "439509": [
-  "i",
-  0.0,
-  "Hamstring injury - Expected back 1 Nov",
+  "d",
+  0.75,
+  "Hamstring injury - 75% chance of playing",
   "2026-10-02T15:00:11.091226Z"
  ],
  "439668": [
@@ -1680,9 +1680,9 @@
   "2026-09-12T18:00:08.729468Z"
  ],
  "442299": [
-  "d",
-  0.75,
-  "Unspecified injury - 75% chance of playing",
+  "a",
+  1.0,
+  null,
   "2026-10-29T08:30:08.436091Z"
  ],
  "442967": [
@@ -1992,9 +1992,9 @@
   null
  ],
  "465351": [
-  "d",
-  0.75,
-  "Unspecified injury - 75% chance of playing",
+  "a",
+  1.0,
+  null,
   "2026-10-19T15:30:09.094655Z"
  ],
  "465390": [
@@ -2184,10 +2184,10 @@
   null
  ],
  "480455": [
-  "a",
-  1.0,
-  null,
-  "2026-10-16T17:00:07.929499Z"
+  "d",
+  0.75,
+  "Concussion - 75% chance of playing",
+  "2026-10-30T15:30:09.601963Z"
  ],
  "480457": [
   "a",
@@ -2220,9 +2220,9 @@
   "2026-09-02T16:02:43.386849Z"
  ],
  "482609": [
-  "d",
-  0.75,
-  "Unspecified injury - 75% chance of playing",
+  "a",
+  1.0,
+  null,
   "2026-10-29T22:00:09.886054Z"
  ],
  "482616": [
@@ -2292,15 +2292,15 @@
   "2026-08-14T23:00:06.272027Z"
  ],
  "486672": [
-  "d",
-  0.75,
-  "Unspecified injury - 75% chance of playing",
+  "a",
+  1.0,
+  null,
   "2026-10-29T22:00:09.933708Z"
  ],
  "487053": [
-  "i",
-  0.0,
-  "Knee injury - Unknown return date",
+  "a",
+  1.0,
+  null,
   "2026-10-19T22:30:08.875960Z"
  ],
  "487117": [
@@ -2508,9 +2508,9 @@
   null
  ],
  "498444": [
-  "i",
-  0.0,
-  "Unspecified injury - Expected back 31 Oct",
+  "a",
+  1.0,
+  null,
   "2026-10-17T12:00:10.154091Z"
  ],
  "499169": [
@@ -2911,8 +2911,8 @@
  ],
  "538207": [
   "d",
-  0.75,
-  "Ankle injury - 75% chance of playing",
+  0.5,
+  "Ankle injury - 50% chance of playing",
   "2026-10-29T23:00:08.575179Z"
  ],
  "538638": [
@@ -3084,9 +3084,9 @@
   "2026-10-16T17:30:09.637224Z"
  ],
  "551210": [
-  "d",
-  0.75,
-  "Unspecified injury - 75% chance of playing",
+  "i",
+  0.0,
+  "Unspecified injury - Unknown return date",
   "2026-10-29T22:00:09.909621Z"
  ],
  "551226": [
@@ -3109,8 +3109,8 @@
  ],
  "551499": [
   "d",
-  0.25,
-  "Knee injury - 25% chance of playing",
+  0.5,
+  "Knee injury - 50% chance of playing",
   "2026-10-20T18:30:09.999223Z"
  ],
  "552946": [
@@ -3654,10 +3654,10 @@
   "2026-08-06T10:00:10.456051Z"
  ],
  "622758": [
-  "a",
-  1.0,
-  null,
-  "2026-08-23T19:00:08.536705Z"
+  "i",
+  0.0,
+  "Unspecified injury - Unknown return date",
+  "2026-10-30T16:00:10.210670Z"
  ],
  "624773": [
   "a",
