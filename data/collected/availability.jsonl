@@ -1336,3 +1336,4 @@
 {"chance_next": 1.0, "code": 493250, "news": null, "news_added": "2026-10-31T17:30:08.280248Z", "observed_utc": "2026-11-03T21:52:56.542493+00:00", "player_id": 431, "season": "2026-27", "status": "a", "web_name": "Amad"}
 {"chance_next": 0.75, "code": 535301, "news": "Hamstring injury - 75% chance of playing", "news_added": "2026-11-03T22:00:07.995956Z", "observed_utc": "2026-11-04T02:29:14.476669+00:00", "player_id": 131, "season": "2026-27", "status": "d", "web_name": "Baleba"}
 {"chance_next": 0.5, "code": 535301, "news": "Hamstring injury - 50% chance of playing", "news_added": "2026-11-03T22:00:07.995956Z", "observed_utc": "2026-11-04T12:20:22.862035+00:00", "player_id": 131, "season": "2026-27", "status": "d", "web_name": "Baleba"}
+{"chance_next": 1.0, "code": 462424, "news": null, "news_added": "2026-07-23T12:01:23.289376Z", "observed_utc": "2026-11-04T22:00:14.808029+00:00", "player_id": 6, "season": "2026-27", "status": "a", "web_name": "Saliba"}
