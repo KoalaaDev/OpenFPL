@@ -1314,9 +1314,9 @@
   null
  ],
  "243298": [
-  "d",
-  0.75,
-  "Calf injury - 75% chance of playing",
+  "i",
+  0.0,
+  "Calf injury - Expected back 2 Dec",
   "2026-11-22T16:30:05.520808Z"
  ],
  "243413": [
@@ -1674,9 +1674,9 @@
   "2026-11-10T11:30:10.818854Z"
  ],
  "441266": [
-  "d",
-  0.75,
-  "Foot injury - 75% chance of playing",
+  "i",
+  0.0,
+  "Foot injury - Unknown return date",
   "2026-11-03T17:00:09.626695Z"
  ],
  "441302": [
