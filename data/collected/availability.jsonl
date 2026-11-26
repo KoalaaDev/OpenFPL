@@ -1504,3 +1504,4 @@
 {"chance_next": 1.0, "code": 59735, "news": null, "news_added": "2026-11-20T17:00:04.943349Z", "observed_utc": "2026-11-26T00:32:53.653137+00:00", "player_id": 325, "season": "2026-27", "status": "a", "web_name": "Darlow"}
 {"chance_next": 1.0, "code": 106760, "news": null, "news_added": "2026-10-12T21:30:08.995810Z", "observed_utc": "2026-11-26T00:32:53.653137+00:00", "player_id": 423, "season": "2026-27", "status": "a", "web_name": "Shaw"}
 {"chance_next": 1.0, "code": 209046, "news": null, "news_added": "2026-11-19T15:30:05.816247Z", "observed_utc": "2026-11-26T00:32:53.653137+00:00", "player_id": 482, "season": "2026-27", "status": "a", "web_name": "Hudson-Odoi"}
+{"chance_next": 0.75, "code": 551499, "news": "Knee injury - 75% chance of playing", "news_added": "2026-11-26T03:30:05.640103Z", "observed_utc": "2026-11-26T14:05:47.439016+00:00", "player_id": 377, "season": "2026-27", "status": "d", "web_name": "Munoz"}
